@@ -11,6 +11,7 @@
 #include "ScalingMode.h"
 #include "ScalingModesService.h"
 #include "ScalingService.h"
+#include "SourceWindowRelations.h"
 #include "StrHelper.h"
 #include "ShortcutService.h"
 #include "ToastService.h"
@@ -253,7 +254,10 @@ static bool IsPopupWindow(HWND hwndPopup, HWND hwndOwner) noexcept {
 		return false;
 	}
 
-	return !GetWindow(hwndOwner, GW_ENABLEDPOPUP);
+	// The scaling output and its input helpers are owned by the source on the
+	// native path; they are not application modal popups.
+	return !EnabledSourcePopup(hwndOwner,
+		FindWindow(CommonSharedConstants::SCALING_WINDOW_CLASS_NAME, nullptr));
 }
 
 static bool IsReadyForScaling(HWND hwndFore) noexcept {

@@ -111,6 +111,10 @@
     <ClInclude Include="ScalingWindow.h" />
     <ClInclude Include="ScreenshotHelper.h" />
     <ClInclude Include="SrcTracker.h" />
+    <ClInclude Include="include\SourceWindowCoordinator.h" />
+    <ClInclude Include="include\SourceWindowRelations.h" />
+    <ClInclude Include="include\ScalingWindowRetirement.h" />
+    <ClInclude Include="include\CaptureTargetLifetime.h" />
     <ClInclude Include="StepTimer.h" />
     <ClInclude Include="AdaptivePresenter.h" />
     <ClInclude Include="XeSSFGPresenter.h" />
