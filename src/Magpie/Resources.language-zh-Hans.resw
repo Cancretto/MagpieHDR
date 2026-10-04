@@ -823,7 +823,7 @@
     <value>请还原目标窗口，再启用效果组。若仍无法捕获，请打开“查看详情”，核对捕获步骤和错误码。</value>
   </data>
   <data name="Message_CreateFenceFailed" xml:space="preserve">
-    <value>所选显示卡未能创建同步资源。请打开下方配置 → 通用 → 渲染显卡，选择另一张可用显示卡后重试；若仍失败，可更新对应驱动，并提供详情和日志。</value>
+    <value>所选显示卡未能创建同步资源。请打开下方配置 → 性能 → 渲染显卡，选择另一张可用显示卡后重试；若仍失败，可更新对应驱动，并提供详情和日志。</value>
   </data>
   <data name="Message_NvidiaVsrPathUnsupported" xml:space="preserve">
     <value>NVIDIA VSR 暂未启动（错误 -2）。请退出 Magpie，把完整发行包重新解压到例如 C:\Magpie\ 的目录，再从该目录运行 Magpie.exe 并重试。路径兼容性是可能原因；若仍失败，请复制详情并附上日志。</value>

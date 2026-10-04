@@ -46,26 +46,6 @@
 					          ItemsSource="{x:Bind ViewModel.CaptureMethods, Mode=OneTime}"
 					          SelectedIndex="{x:Bind ViewModel.CaptureMethod, Mode=TwoWay}" />
 				</local:SettingsCard>
-				<local:SettingsCard x:Name="GraphicsCardSettingsCard"
-				                    x:Uid="Profile_General_GraphicsCard"
-				                    IsWrapEnabled="True">
-					<local:SettingsCard.HeaderIcon>
-						<FontIcon Glyph="&#xf211;" />
-					</local:SettingsCard.HeaderIcon>
-					<ComboBox x:Uid="Profile_General_GraphicsCard_Input"
-					          DropDownOpened="ComboBox_DropDownOpened"
-					          IsEnabled="{x:Bind ViewModel.IsGraphicsCardSelectionEnabled, Mode=OneWay}"
-					          ItemsSource="{x:Bind ViewModel.GraphicsCards, Mode=OneWay}"
-					          SelectedItem="{x:Bind ViewModel.GraphicsCard, Mode=TwoWay}" />
-				</local:SettingsCard>
-				<muxc:InfoBar x:Uid="Profile_General_NoGraphicsCard"
-				              IsClosable="False"
-				              IsOpen="{x:Bind ViewModel.IsNoGraphicsCard, Mode=OneWay}"
-				              Severity="Warning" />
-				<muxc:InfoBar x:Uid="Profile_General_GraphicsCardUnavailable"
-				              IsClosable="False"
-				              IsOpen="{x:Bind ViewModel.ShowGraphicsCardUnavailableWarning, Mode=OneWay}"
-				              Severity="Warning" />
 				<muxc:InfoBar x:Uid="Profile_General_DesktopDuplicationWarning"
 				              IsClosable="False"
 				              IsOpen="{x:Bind ViewModel.IsCaptureMethodDesktopDuplication, Mode=OneWay}"
@@ -151,6 +131,28 @@
 						           Text="x" />
 					</Grid>
 				</local:SettingsCard>
+			</local:SettingsGroup>
+			<local:SettingsGroup x:Uid="Profile_Performance">
+				<local:SettingsCard x:Name="GraphicsCardSettingsCard"
+				                    x:Uid="Profile_General_GraphicsCard"
+				                    IsWrapEnabled="True">
+					<local:SettingsCard.HeaderIcon>
+						<FontIcon Glyph="&#xf211;" />
+					</local:SettingsCard.HeaderIcon>
+					<ComboBox x:Uid="Profile_General_GraphicsCard_Input"
+					          DropDownOpened="ComboBox_DropDownOpened"
+					          IsEnabled="{x:Bind ViewModel.IsGraphicsCardSelectionEnabled, Mode=OneWay}"
+					          ItemsSource="{x:Bind ViewModel.GraphicsCards, Mode=OneWay}"
+					          SelectedItem="{x:Bind ViewModel.GraphicsCard, Mode=TwoWay}" />
+				</local:SettingsCard>
+				<muxc:InfoBar x:Uid="Profile_General_NoGraphicsCard"
+				              IsClosable="False"
+				              IsOpen="{x:Bind ViewModel.IsNoGraphicsCard, Mode=OneWay}"
+				              Severity="Warning" />
+				<muxc:InfoBar x:Uid="Profile_General_GraphicsCardUnavailable"
+				              IsClosable="False"
+				              IsOpen="{x:Bind ViewModel.ShowGraphicsCardUnavailableWarning, Mode=OneWay}"
+				              Severity="Warning" />
 			</local:SettingsGroup>
 			<local:SettingsGroup x:Uid="FrameRefresh">
 				<local:SettingsGroup.Resources>

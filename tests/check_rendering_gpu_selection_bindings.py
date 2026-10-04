@@ -10,13 +10,17 @@ x = '{http://schemas.microsoft.com/winfx/2006/xaml}'
 local = '{using:Magpie}'
 root = ET.fromstring(read('src/Magpie/ProfilePage.xaml'))
 general = next(n for n in root.iter() if n.get(x + 'Uid') == 'Profile_General')
-children = list(general)
+performance = next(n for n in root.iter() if n.get(x + 'Uid') == 'Profile_Performance')
+children = list(performance)
 card = next(n for n in children if n.get(x + 'Uid') == 'Profile_General_GraphicsCard')
-capture = next(n for n in children if n.get(x + 'Uid') == 'Profile_General_CaptureMethod')
-assert children.index(card) == children.index(capture) + 1
+assert children[0] == card
+assert not any(n.get(x + 'Uid') == 'Profile_General_GraphicsCard' for n in general.iter())
+groups = [n.get(x + 'Uid') for n in root.iter(local + 'SettingsGroup')]
+assert groups.index('Profile_WindowedScaling') + 1 == groups.index('Profile_Performance')
+assert groups.index('Profile_Performance') + 1 == groups.index('FrameRefresh')
+assert {n.get(x + 'Uid') for n in children[1:]} == {'Profile_General_NoGraphicsCard', 'Profile_General_GraphicsCardUnavailable'}
 assert card.get(x + 'Load') is None and card.get('Visibility') is None
 assert card.get('IsWrapEnabled') == 'True'
-assert not any(n.get(x + 'Uid') == 'Profile_Performance' for n in root.iter())
 combo = next(n for n in card if n.tag.endswith('ComboBox'))
 assert combo.get('SelectedItem') == '{x:Bind ViewModel.GraphicsCard, Mode=TwoWay}'
 assert combo.get('SelectedIndex') is None
@@ -41,4 +45,6 @@ for path in files:
         assert resources[key], (path.name, key)
     assert 'Performance → Graphics card' not in path.read_text(encoding='utf-8-sig')
     assert '配置 → 性能 → 显示卡' not in path.read_text(encoding='utf-8-sig')
+    assert 'General → Rendering GPU' not in path.read_text(encoding='utf-8-sig')
+    assert '配置 → 通用 → 渲染显卡' not in path.read_text(encoding='utf-8-sig')
 print(f'Rendering GPU card placement, identity binding and 9 resources in {len(files)} languages passed.')
