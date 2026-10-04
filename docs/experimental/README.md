@@ -22,6 +22,8 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- **0.6.10 Beta2 本地整合**：`release/0.6.10-beta2` 继承 Beta1，合入参数焦点／输入所有权、NVIDIA 前台兼容原型和“性能”分组渲染显卡选择。见 [本版中英说明](../RELEASE_NOTES_v0.6.10-beta2.md)。下方功能分支交接状态保留当时的开发记录；本版验证以整合审计与包清单为准，实际游戏、输入和 G-SYNC 验收继续保留。
+
 - [069 渲染显卡常驻与选择状态整理 TODO](todos/20261004-v0.6.9-rendering-gpu-selection-TODO.md)：已在 `feature/069-rendering-gpu-selection` 实现“性能”分组中的常驻显卡选择、单卡自动／指定选项及设备缺失提示；79 项选择回归、51 项原有适配器回归、20 种语言资源合同和当前 IDL／XAML／页面语法检查通过。完整 Release 编译部署与实际 UI／热插拔／GPU 验收交给后续独立会话。[实施记录](reviews/20261004-v0.6.9-rendering-gpu-selection.md)。
 
 - [参数焦点交接与会话窗口判定 TODO](todos/20261004-parameter-focus-coordination-TODO.md)：已在 `fix/069-uwp-window-owner` 完成根窗口判定、输入所有权、宿主层级及停止／重建协调，通过自动回归和测试窗口的原生层级验证；完整产品编译部署及游戏／GPU／VRR 验收待独立会话。

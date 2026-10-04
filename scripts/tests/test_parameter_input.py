@@ -178,6 +178,10 @@ struct Win32Helper {
     static bool IntersectRect(RECT& out, const RECT& a, const RECT& b) { return ::IntersectRect(&out,&a,&b); }
 };
 struct WindowHelper { static bool IsForbiddenSystemWindow(HWND) { return false; } };
+struct NvidiaForegroundCompatibility {
+    static bool ReferenceOwnsForeground() { return false; }
+    static void Retire() {}
+};
 }
 '''
 

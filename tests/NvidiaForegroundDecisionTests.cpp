@@ -17,7 +17,7 @@ static std::unordered_map<HWND, NativeWindow> native{
 	{capture, {10, 11, 101, root}}, {root, {20, 21, 102, root}}, {output, {77, 78, 103, output}},
 	{other, {99, 100, 104, other}}
 };
-static std::atomic<HWND> foreground = root;
+static std::atomic<HWND> fakeForeground = root;
 static std::atomic<bool> changeDuringIdentity = false;
 static bool retireDuringRecord = false;
 static thread_local uintptr_t fakeCaller = 0x1010;
@@ -30,14 +30,14 @@ static DWORD FakeThread(HWND window, DWORD* pid) {
 	return it->second.tid;
 }
 static ULONG_PTR FakeAtom(HWND window, int) {
-	if (window == output && changeDuringIdentity.exchange(false)) foreground = other;
+	if (window == output && changeDuringIdentity.exchange(false)) fakeForeground = other;
 	return native.at(window).atom;
 }
 static HWND FakeAncestor(HWND window, UINT) { return native.at(window).root; }
 static BOOL FakeVisible(HWND window) { return native.at(window).visible; }
 static BOOL FakeEnabled(HWND window) { return native.at(window).enabled; }
 static BOOL FakeIconic(HWND window) { return native.at(window).iconic; }
-static HWND WINAPI FakeForeground() { SetLastError(73); return foreground.load(); }
+static HWND WINAPI FakeForeground() { SetLastError(73); return fakeForeground.load(); }
 static void* FakeCaller() { return reinterpret_cast<void*>(fakeCaller); }
 
 #define IsWindow FakeIsWindow
@@ -118,9 +118,9 @@ int main() {
 	fakeCaller = 0x9999;
 	assert(DetourForegroundWindow() == root);
 	fakeCaller = 0x1010;
-	for (HWND window : {capture, root}) { foreground = window; assert(DetourForegroundWindow() == output); }
-	for (HWND window : {other, HWND(nullptr), output}) { foreground = window; assert(DetourForegroundWindow() == window); }
-	foreground = root;
+	for (HWND window : {capture, root}) { fakeForeground = window; assert(DetourForegroundWindow() == output); }
+	for (HWND window : {other, HWND(nullptr), output}) { fakeForeground = window; assert(DetourForegroundWindow() == window); }
+	fakeForeground = root;
 	for (auto mode : {ForegroundCompatibilityMode::Off, ForegroundCompatibilityMode::Trace, ForegroundCompatibilityMode::Reference}) {
 		value.mode = mode; published.Publish(value); assert(DetourForegroundWindow() == root);
 	}
@@ -135,8 +135,8 @@ int main() {
 	native[root].enabled = false; assert(DetourForegroundWindow() == root); native[root].enabled = true;
 	native[capture].root = other; assert(DetourForegroundWindow() == root); native[capture].root = root;
 	changeDuringIdentity = true;
-	assert(DetourForegroundWindow() == root && foreground == other);
-	foreground = root; retireDuringRecord = true;
+	assert(DetourForegroundWindow() == root && fakeForeground == other);
+	fakeForeground = root; retireDuringRecord = true;
 	assert(DetourForegroundWindow() == root);
 	published.Publish(Session());
 	appliedQueries = 0;
