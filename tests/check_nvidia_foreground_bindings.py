@@ -15,29 +15,23 @@ for folder in ("src/Magpie", "src/Magpie.Core"):
         assert not re.search(r"\bGetForegroundWindow\s*\(", path.read_text(encoding="utf-8-sig")), path
 
 model = read("src/Magpie.Core/include/FrameRefreshSettings.h")
-assert "bool nvidiaForegroundCompatibilityEnabled = false;" in model
-assert "MERGE_REFRESH(nvidiaForegroundCompatibilityEnabled)" in model
-assert "options.frameRefresh = settings;" in model
+assert "nvidiaForegroundCompatibilityEnabled" not in model
+assert "MERGE_REFRESH(vrrEnabled)" in model
 serialization = read("src/Magpie/ProfileFrameRefresh.h")
-assert 'boolean("nvidiaForegroundCompatibilityEnabled", result.nvidiaForegroundCompatibilityEnabled)' in serialization
-assert 'writer.Key("nvidiaForegroundCompatibilityEnabled"); writer.Bool(s.nvidiaForegroundCompatibilityEnabled)' in serialization
-assert '"nvidiaForegroundCompatibilityEnabled"' in read("src/Magpie/ConfigRecovery.h")
-
+assert 'boolean("vrrEnabled", result.vrrEnabled)' in serialization
+assert 'writer.Key("nvidiaForegroundCompatibilityEnabled")' not in serialization
+for path in ("src/Magpie/ProfilePage.xaml", "src/Magpie/ProfileViewModel.h",
+             "src/Magpie/ProfileViewModel.idl", "src/Magpie/ProfileViewModel.cpp"):
+    assert "IsNvidiaForegroundCompatibilityEnabled" not in read(path), path
 x = "{http://schemas.microsoft.com/winfx/2006/xaml}"
 page = ET.fromstring(read("src/Magpie/ProfilePage.xaml"))
-card = next(n for n in page.iter() if n.get(x + "Uid") == "FrameRefresh_NvidiaForeground")
-toggle = next(iter(card))
-assert toggle.get("IsOn") == "{x:Bind ViewModel.IsNvidiaForegroundCompatibilityEnabled, Mode=TwoWay}"
-assert 'RaisePropertyChanged(L"IsNvidiaForegroundCompatibilityEnabled")' in read("src/Magpie/ProfileViewModel.cpp")
-assert "Boolean IsNvidiaForegroundCompatibilityEnabled;" in read("src/Magpie/ProfileViewModel.idl")
+assert not any(n.get(x + "Uid", "").startswith("FrameRefresh_NvidiaForeground") for n in page.iter())
 for language in ("en-US", "zh-Hans", "zh-Hant"):
     entries = ET.fromstring(read(f"src/Magpie/Resources.language-{language}.resw")).findall("data")
     resources = {entry.get("name"): entry.findtext("value") for entry in entries}
     assert len(entries) == len(resources)
-    for key in ("FrameRefresh_NvidiaForeground.Header", "FrameRefresh_NvidiaForeground.Description",
-                "FrameRefresh_NvidiaForeground_Input.OffContent", "FrameRefresh_NvidiaForeground_Input.OnContent",
-                "FrameRefresh_NvidiaForeground_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name"):
-        assert resources[key], (language, key)
+    assert not any(key.startswith("FrameRefresh_NvidiaForeground") for key in resources)
+    assert resources["FrameRefresh_VRR.Header"].startswith("VRR ")
 
 controller = read("src/Magpie.Core/NvidiaForegroundCompatibility.cpp")
 assert 'MH_CreateHookApiEx(L"user32.dll", "GetForegroundWindow"' in controller
@@ -58,7 +52,32 @@ assert window.index("NvidiaForegroundCompatibility::Prepare(") < window.index("_
 assert "FrontendSuspended(_renderer &&" in window
 assert "ReferenceOwnsForeground()" in window
 assert "NvidiaForegroundCompatibility::PresentationState" in read("src/Magpie.Core/PresenterBase.cpp")
-assert "DeviceInitialized(adapterDesc.VendorId, _hasFrameGeneration)" in read("src/Magpie.Core/Renderer.cpp")
+renderer = read("src/Magpie.Core/Renderer.cpp")
+for path in ("OrdinaryDXGI", "DLSSFrontendDXGI", "XeSSProxy", "Composition"):
+    assert "ForegroundPresentationPath::" + path in renderer
+assert "adapterDesc.AdapterLuid.LowPart" in renderer
+assert "SupportsForegroundQuery(control.path) && control.potential" in controller
+assert "frameGeneration" not in controller and "outside-prototype" not in controller
+assert '_wcsicmp(diagnostic, L"standard")' in controller
+assert "Matches(value.outputRoot)" in controller and "value.outputShown" in controller
+assert "FrontendWindows(" in window and "_options.mainUI" in window
+assert "RegisterSessionWindow(App::Get().MainWindow().Handle())" in read("src/Magpie/ScalingService.cpp")
+main_window = read("src/Magpie/MainWindow.cpp")
+assert "MainUIChanged(Handle())" in main_window and "MainUIChanged(nullptr)" in main_window
+runtime = read("src/Magpie.Core/ScalingRuntime.cpp")
+update = runtime[runtime.index("void ScalingRuntime::UpdateMainUI("):runtime.index("void ScalingRuntime::UpdateFrameRefreshSettings(")]
+assert "_commandGeneration.load(std::memory_order_acquire) == generation" in update
+assert "_Dispatcher().TryEnqueue" in update and "UpdateMainUI(identity)" in update
+assert "UnknownQueryObservation, 16" in controller
+assert 'L"d3d12.dll"' not in controller and 'L"D3D12Core.dll"' not in controller
+assert 'L"nvspcap64.dll"' not in controller
+for role in ("source", "output", "parameter-host", "magpie-main-ui", "source-popup", "external", "none"):
+    assert 'return "' + role + '"' in controller
+base = read("src/Magpie.Core/PresenterBase.cpp")
+assert "swapChain->GetHwnd(&window)" in base and "window == _vrrWindow" in base
+assert "_vrr.Created(desc.Flags)" in base
+assert "_BindVRRSwapChain(_dxgiSwapChain.get())" in read("src/Magpie.Core/AdaptivePresenter.cpp")
+assert "_BindVRRSwapChain(impl->swapChain.get())" in read("src/Magpie.Core/XeSSFGPresenter.cpp")
 recipe_source = read("src/Magpie/conanfile.py")
 assert "minhook/1.3.4" in recipe_source
 assert "minhook/1.3.4#1ae65f6b5793b097a606940bb1774119" in read("conan-locks/Magpie.lock")

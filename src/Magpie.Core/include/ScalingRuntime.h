@@ -6,6 +6,7 @@ namespace Magpie {
 struct EffectOption;
 struct FrameRefreshSettings;
 struct ToolbarShortcutLabels;
+struct SessionWindowIdentity;
 enum class OverlayAction;
 
 enum class ScalingState {
@@ -33,6 +34,7 @@ public:
 	bool StopForTaskSwitch();
 	void UpdateFrameRefreshSettings(FrameRefreshSettings settings);
 	void UpdateToolbarShortcutLabels(ToolbarShortcutLabels labels);
+	void UpdateMainUI(SessionWindowIdentity identity);
 
 	uint32_t RunId() const noexcept;
 	void UpdateEffectParameterFromSettings(uint32_t modeIdx, std::wstring modeName,

@@ -76,12 +76,14 @@ bool AdaptivePresenter::_Initialize(HWND hwndAttach) noexcept {
 		Logger::Get().ComError("创建交换链失败", hr);
 		return false;
 	}
+	// Keep the known immutable flags even if later descriptor probing fails.
 	_vrr.Created(sd.Flags);
 	_dxgiSwapChain = dxgiSwapChain.try_as<IDXGISwapChain4>();
 	if (!_dxgiSwapChain) {
 		Logger::Get().Error("获取 IDXGISwapChain2 失败");
 		return false;
 	}
+	_BindVRRSwapChain(_dxgiSwapChain.get());
 	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
 		hr = _dxgiSwapChain->SetColorSpace1(DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709);
 		if (FAILED(hr)) {
@@ -116,6 +118,7 @@ bool AdaptivePresenter::_Initialize(HWND hwndAttach) noexcept {
 	hr = _deviceResources->GetDXGIFactory()->MakeWindowAssociation(
 		hwndAttach, DXGI_MWA_NO_ALT_ENTER);
 	_vrr.AltEnterDisabled(SUCCEEDED(hr));
+	_UpdateForegroundCompatibility();
 	if (FAILED(hr)) {
 		Logger::Get().ComError("MakeWindowAssociation 失败", hr);
 	}

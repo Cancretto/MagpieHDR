@@ -120,6 +120,7 @@ public:
 	class Renderer* TryGetRenderer() noexcept { return _renderer.get(); }
 	bool IsParameterInputWindow(HWND hwnd) const noexcept;
 	void UpdateToolbarShortcutLabels(ToolbarShortcutLabels labels) noexcept;
+	void UpdateMainUI(SessionWindowIdentity identity) noexcept;
 	class CursorManager* TryGetCursorManager() noexcept { return _cursorManager.get(); }
 
 	bool IsSrcRepositioning() const noexcept {

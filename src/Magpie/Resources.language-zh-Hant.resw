@@ -1735,7 +1735,7 @@
   <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>選擇系統游標的更新方式。</value></data>
   <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>選擇自動或自訂的游標補充更新率。</value></data>
   <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>設定游標補充更新的目標最低影格率。</value></data>
-  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>重複影格偵測與閒置重繪。</value></data>
+  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>可變更新率、重複影格偵測與閒置重繪。</value></data>
   <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>閒置時重繪目前畫面。</value></data>
   <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>設定閒置重繪的目標影格率。</value></data>
   <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>還原內容 60、游標補充 60、閒置重繪 30 FPS，節奏方式為 Front Edge。</value></data>
@@ -1784,16 +1784,11 @@
     <value>啟用效果時將自動選擇可用的顯示卡；該顯示卡恢復後會重新使用。</value>
   </data>
 
-  <data name="FrameRefresh_VRR.Header" xml:space="preserve"><value>可變更新率（實驗）</value></data>
-  <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>請求 VRR，需顯示器與驅動支援；重新啟用縮放後生效，G-SYNC 啟動情況仍需驗證。</value></data>
+  <data name="FrameRefresh_VRR.Header" xml:space="preserve"><value>VRR 可變更新率</value></data>
+  <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>讓顯示器更新率跟隨輸出影格率，提升畫面流暢度。</value></data>
   <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>關閉</value></data>
   <data name="FrameRefresh_VRR_Input.OnContent" xml:space="preserve"><value>開啟</value></data>
-  <data name="FrameRefresh_VRR_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>可變更新率</value></data>
-  <data name="FrameRefresh_NvidiaForeground.Header" xml:space="preserve"><value>NVIDIA G-SYNC 前台相容（實驗）</value></data>
-  <data name="FrameRefresh_NvidiaForeground.Description" xml:space="preserve"><value>需啟用 VRR 並使用 NVIDIA 輸出顯卡，保留來源應用程式前台與輸入；重新啟用縮放後生效，G-SYNC 需實測確認。</value></data>
-  <data name="FrameRefresh_NvidiaForeground_Input.OffContent" xml:space="preserve"><value>關閉</value></data>
-  <data name="FrameRefresh_NvidiaForeground_Input.OnContent" xml:space="preserve"><value>開啟</value></data>
-  <data name="FrameRefresh_NvidiaForeground_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>NVIDIA G-SYNC 前台相容（實驗）</value></data>
+  <data name="FrameRefresh_VRR_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>VRR 可變更新率</value></data>
 
 
   <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>更多選項</value></data>

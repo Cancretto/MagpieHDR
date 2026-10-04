@@ -9,18 +9,26 @@ namespace Magpie {
 
 enum class ForegroundCompatibilityMode : uint32_t { Off, Trace, Query, Reference };
 enum class ForegroundQueryPhase : uint32_t { Preparing, Device, SwapChain, FirstPresent, Present, Count };
+enum class ForegroundPresentationPath : uint32_t { Unknown, OrdinaryDXGI, DLSSFrontendDXGI, XeSSProxy, Composition };
+
+constexpr bool SupportsForegroundQuery(ForegroundPresentationPath path) noexcept {
+	return path == ForegroundPresentationPath::OrdinaryDXGI ||
+		path == ForegroundPresentationPath::DLSSFrontendDXGI || path == ForegroundPresentationPath::XeSSProxy;
+}
 
 struct ForegroundWindowIdentity {
 	uintptr_t window = 0;
 	uint32_t pid = 0, tid = 0;
 	uintptr_t atom = 0;
+	bool operator==(const ForegroundWindowIdentity&) const = default;
 };
 struct ForegroundCallerRange { uintptr_t begin = 0, size = 0; };
 struct ForegroundCompatibilitySnapshot {
 	uint64_t epoch = 0;
 	ForegroundCompatibilityMode mode = ForegroundCompatibilityMode::Off;
 	bool armed = false;
-	ForegroundWindowIdentity source, root, output;
+	bool outputShown = false;
+	ForegroundWindowIdentity source, root, output, outputRoot, mainUI, parameterHost;
 	std::array<ForegroundCallerRange, 8> callers{};
 };
 

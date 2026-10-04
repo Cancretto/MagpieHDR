@@ -3,7 +3,31 @@
 
 namespace Magpie {
 
-enum class SourceForegroundKind { None, InvalidSource, Source, ParameterHost, Output, SourcePopup, External };
+enum class SourceForegroundKind { None, InvalidSource, Source, ParameterHost, Output, SourcePopup, External, MagpieMainUI };
+
+// Registered on the owning UI thread; copied into a scaling session. Matching
+// PID, TID and class protects against a destroyed/reused HWND.
+struct SessionWindowIdentity {
+	HWND window = nullptr;
+	DWORD pid = 0, tid = 0;
+	ULONG_PTR atom = 0;
+	bool Matches() const noexcept {
+		DWORD actualPid = 0;
+		return window && IsWindow(window) && tid &&
+			GetWindowThreadProcessId(window, &actualPid) == tid && actualPid == pid &&
+			GetClassLongPtrW(window, GCW_ATOM) == atom;
+	}
+};
+
+inline SessionWindowIdentity RegisterSessionWindow(HWND window) noexcept {
+	SessionWindowIdentity result;
+	result.window = window;
+	if (window) {
+		result.tid = GetWindowThreadProcessId(window, &result.pid);
+		result.atom = GetClassLongPtrW(window, GCW_ATOM);
+	}
+	return result;
+}
 
 inline bool IsSourceSessionForeground(SourceForegroundKind kind, bool outputTransition = false) noexcept {
 	return kind == SourceForegroundKind::Source || kind == SourceForegroundKind::ParameterHost ||
@@ -44,7 +68,7 @@ inline HWND EnabledSourcePopup(HWND source, HWND excluded = nullptr) noexcept {
 // Classification has no activation side effects. The caller supplies the
 // coordinator's validated identity and this session's actual helper HWNDs.
 inline SourceForegroundKind ClassifySourceForeground(HWND foreground, bool sourceValid,
-	HWND capture, HWND root, HWND output, HWND parameterHost) noexcept {
+	HWND capture, HWND root, HWND output, HWND parameterHost, const SessionWindowIdentity& mainUI = {}) noexcept {
 	if (!sourceValid) return SourceForegroundKind::InvalidSource;
 	if (!foreground) return SourceForegroundKind::None;
 	if (foreground == capture || foreground == root) return SourceForegroundKind::Source;
@@ -53,6 +77,8 @@ inline SourceForegroundKind ClassifySourceForeground(HWND foreground, bool sourc
 		GetWindow(parameterHost, GW_OWNER) == output &&
 		GetWindowThreadProcessId(parameterHost, nullptr) == GetWindowThreadProcessId(output, nullptr))
 		return SourceForegroundKind::ParameterHost;
+	if (mainUI.Matches() && IsWindowInOwnerChain(foreground, mainUI.window) &&
+		!IsWindowInOwnerChain(foreground, output)) return SourceForegroundKind::MagpieMainUI;
 	if (IsWindowInOwnerChain(foreground, root) && !IsWindowInOwnerChain(foreground, output) &&
 		IsWindowVisible(foreground) && IsWindowEnabled(foreground)) return SourceForegroundKind::SourcePopup;
 	return SourceForegroundKind::External;

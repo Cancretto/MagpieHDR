@@ -139,8 +139,6 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 	void ResetFrameRefresh();
 	bool IsVRREnabled() const noexcept;
 	void IsVRREnabled(bool value);
-	bool IsNvidiaForegroundCompatibilityEnabled() const noexcept;
-	void IsNvidiaForegroundCompatibilityEnabled(bool value);
 
 	bool IsCaptureTitleBar() const noexcept;
 	void IsCaptureTitleBar(bool value);

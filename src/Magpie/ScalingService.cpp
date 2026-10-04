@@ -5,6 +5,7 @@
 #include "EffectsService.h"
 #include "ErrorService.h"
 #include "Logger.h"
+#include "MainWindow.h"
 #include "ProfileService.h"
 #include "ProfileIdentity.h"
 #include "DLSSNRDetailParameters.h"
@@ -25,6 +26,10 @@ using namespace winrt;
 using winrt::Magpie::ShortcutAction;
 
 namespace Magpie {
+
+void ScalingService::MainUIChanged(HWND window) {
+	if (_scalingRuntime) _scalingRuntime->UpdateMainUI(RegisterSessionWindow(window));
+}
 
 static ToolbarShortcutLabels GetToolbarShortcutLabels() {
 	const auto& settings = AppSettings::Get();
@@ -531,6 +536,7 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	}
 
 	options.isParameterFocusSwitchingEnabled = profile.isParameterFocusSwitchingEnabled;
+	options.mainUI = RegisterSessionWindow(App::Get().MainWindow().Handle());
 
 	// 应用全局配置
 	AppSettings& settings = AppSettings::Get();

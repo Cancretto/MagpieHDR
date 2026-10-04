@@ -146,6 +146,17 @@ static void Prepare(HWND source) {
 static void CheckParameterLayers() {
     HWND root=Window(), child=Window(root), view=Window(), host=Window(nullptr,view), other=Window();
     SourceWindowIdentity identity; assert(identity.Read(child) && identity.root==root && child!=root);
+	const auto mainUI = RegisterSessionWindow(other);
+	assert(ClassifySourceForeground(other,true,child,root,view,host,mainUI)==SourceForegroundKind::MagpieMainUI);
+	assert(!IsSourceSessionForeground(SourceForegroundKind::MagpieMainUI));
+	assert(ClassifySourceForeground(view,true,child,root,view,host,mainUI)==SourceForegroundKind::Output);
+	for (auto changed : {0,1,2}) {
+		auto stale = mainUI;
+		if (changed == 0) ++stale.pid;
+		if (changed == 1) ++stale.tid;
+		if (changed == 2) ++stale.atom;
+		assert(ClassifySourceForeground(other,true,child,root,view,host,stale)==SourceForegroundKind::External);
+	}
     constexpr UINT flags=SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE|SWP_SHOWWINDOW|SWP_NOOWNERZORDER;
     for (bool nativeOwner : {false,true}) {
         assert(SetScalingWindowOwner(view,nativeOwner?root:nullptr));

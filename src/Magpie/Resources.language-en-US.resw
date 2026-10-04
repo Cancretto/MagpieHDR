@@ -1787,7 +1787,7 @@
   <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>Selects how the system cursor is refreshed.</value></data>
   <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>Selects automatic or custom supplemental cursor refresh.</value></data>
   <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>Sets the target minimum rate for supplemental cursor refresh.</value></data>
-  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>Duplicate detection and idle redraw.</value></data>
+  <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>Variable refresh rate, duplicate detection and idle redraw.</value></data>
   <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>Redraws the current image while content is idle.</value></data>
   <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>Sets the target rate for idle redraw.</value></data>
   <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>Restores content 60, supplemental cursor 60, idle redraw 30 FPS, and Front Edge.</value></data>
@@ -1833,16 +1833,11 @@
     <value>Effects will automatically use an available GPU. The selected GPU will be used again when it returns.</value>
   </data>
 
-  <data name="FrameRefresh_VRR.Header" xml:space="preserve"><value>Variable refresh rate (experimental)</value></data>
-  <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>Request VRR with supported displays and drivers. Re-enable scaling to apply; G-SYNC activation needs verification.</value></data>
+  <data name="FrameRefresh_VRR.Header" xml:space="preserve"><value>VRR variable refresh rate</value></data>
+  <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>Let the display refresh rate follow the output frame rate for smoother motion.</value></data>
   <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>Off</value></data>
   <data name="FrameRefresh_VRR_Input.OnContent" xml:space="preserve"><value>On</value></data>
-  <data name="FrameRefresh_VRR_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Variable refresh rate</value></data>
-  <data name="FrameRefresh_NvidiaForeground.Header" xml:space="preserve"><value>NVIDIA G-SYNC foreground compatibility (experimental)</value></data>
-  <data name="FrameRefresh_NvidiaForeground.Description" xml:space="preserve"><value>Requires VRR and an NVIDIA output GPU. Keeps the source app in the foreground. Restart scaling to apply; verify G-SYNC separately.</value></data>
-  <data name="FrameRefresh_NvidiaForeground_Input.OffContent" xml:space="preserve"><value>Off</value></data>
-  <data name="FrameRefresh_NvidiaForeground_Input.OnContent" xml:space="preserve"><value>On</value></data>
-  <data name="FrameRefresh_NvidiaForeground_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>NVIDIA G-SYNC foreground compatibility (experimental)</value></data>
+  <data name="FrameRefresh_VRR_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>VRR variable refresh rate</value></data>
 
 
   <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>Other options</value></data>

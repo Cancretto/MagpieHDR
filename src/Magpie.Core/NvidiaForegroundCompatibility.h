@@ -1,6 +1,7 @@
 #pragma once
 #include "ForegroundCompatibilityState.h"
 #include "SourceWindowCoordinator.h"
+#include "SourceWindowRelations.h"
 
 namespace Magpie {
 
@@ -11,8 +12,12 @@ public:
 	static constexpr UINT_PTR ReferenceTimer = 0x4D505652;
 	static HWND RealForegroundWindow() noexcept;
 	static void Prepare(const SourceWindowIdentity& source, HWND output, uint64_t epoch,
-		bool standardVRR, bool requested, bool windowed) noexcept;
-	static void DeviceInitialized(uint32_t vendor, bool hasFrameGeneration) noexcept;
+		bool standardVRR, bool windowed, const SessionWindowIdentity& mainUI) noexcept;
+	static void DeviceInitialized(uint32_t vendor, uint32_t luidLow, int32_t luidHigh,
+		ForegroundPresentationPath path, uint32_t multiplier) noexcept;
+	static bool BindPresentationWindow(HWND window) noexcept;
+	static void FrontendWindows(HWND parameterHost) noexcept;
+	static void MainUIChanged(const SessionWindowIdentity& identity) noexcept;
 	static void PresentationState(bool canCreateTearing, bool canPresentTearing) noexcept;
 	static void Reject(const char* reason) noexcept;
 	static void Phase(ForegroundQueryPhase phase) noexcept;
