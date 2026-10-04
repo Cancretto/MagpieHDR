@@ -371,6 +371,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	}
 
 	_hasFrameGeneration = frameGeneration.HasFrameGeneration();
+	_configuredFrameGenerationMultiplier = 1;
 	_frameSyncUsesSharedSlot = frameGeneration.first != FrameGenerationEffectKind::DLSS;
 	std::optional<XeSSFGVariant> xessVariant;
 	uint32_t xessFrameGenerationMultiplier = 2;
@@ -421,7 +422,16 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 
 	const DXGI_ADAPTER_DESC1 adapterDesc =
 		LogAdapter(_frontendResources.GetGraphicsAdapter());
-	NvidiaForegroundCompatibility::DeviceInitialized(adapterDesc.VendorId, _hasFrameGeneration);
+	ForegroundPresentationPath presentationPath = xessVariant ? ForegroundPresentationPath::XeSSProxy :
+		frameGeneration.first == FrameGenerationEffectKind::DLSS ? ForegroundPresentationPath::DLSSFrontendDXGI :
+		ForegroundPresentationPath::OrdinaryDXGI;
+	if (!xessVariant && ScalingWindow::Get().Options().IsDirectFlipDisabled())
+		presentationPath = ForegroundPresentationPath::Composition;
+#ifdef MP_USE_COMPSWAPCHAIN
+	if (!xessVariant) presentationPath = ForegroundPresentationPath::Composition;
+#endif
+	NvidiaForegroundCompatibility::DeviceInitialized(adapterDesc.VendorId, adapterDesc.AdapterLuid.LowPart,
+		adapterDesc.AdapterLuid.HighPart, presentationPath, _configuredFrameGenerationMultiplier);
 	NvidiaForegroundCompatibility::Phase(ForegroundQueryPhase::SwapChain);
 
 	_EnsureGpuPriority(true);

@@ -119,15 +119,40 @@ void PresenterBase::_LogVRRState(std::string_view event) noexcept {
 		"reason={} hwnd=0x{:x} monitor=0x{:x} adapterVendor=0x{:x} adapterLuid={:x}:{:x} realForeground=0x{:x}",
 		event, _vrr.Requested(), _vrr.TearingSupported(),
 		_vrr.Reason() == VRRUnavailableReason::None, _vrr.ResizeFlags(), _vrr.PresentFlags(),
-		ScalingWindow::Get().Options().frameRefresh.nvidiaForegroundCompatibilityEnabled,
+		_vrr.Requested() && adapterDesc.VendorId == 0x10de,
 		reason, reinterpret_cast<uintptr_t>(_vrrWindow), reinterpret_cast<uintptr_t>(_vrrMonitor),
 		adapterDesc.VendorId, uint32_t(adapterDesc.AdapterLuid.HighPart), adapterDesc.AdapterLuid.LowPart,
 		uintptr_t(Win32Helper::GetRealForegroundWindow())));
 }
 
 void PresenterBase::_UpdateForegroundCompatibility() noexcept {
-	const bool potential = _vrrInitializationComplete ? _vrr.PresentFlags() != 0 : _vrr.CreationFlags() != 0;
+	const bool potential = _vrrInitializationComplete || _vrr.HasSwapChain() ?
+		_vrr.PresentFlags() != 0 : _vrr.CreationFlags() != 0;
 	NvidiaForegroundCompatibility::PresentationState(potential, _vrr.PresentFlags() != 0);
+}
+
+void PresenterBase::_BindVRRSwapChain(IDXGISwapChain4* swapChain) noexcept {
+	DXGI_SWAP_CHAIN_DESC1 desc{};
+	HWND window = nullptr;
+	const HRESULT descHr = swapChain->GetDesc1(&desc);
+	HRESULT windowHr = swapChain->GetHwnd(&window);
+	if (FAILED(windowHr)) {
+		// Some proxy implementations expose the HWND through the older descriptor.
+		DXGI_SWAP_CHAIN_DESC legacyDesc{};
+		windowHr = swapChain->GetDesc(&legacyDesc);
+		if (SUCCEEDED(windowHr)) window = legacyDesc.OutputWindow;
+	}
+	if (SUCCEEDED(descHr)) _vrr.Created(desc.Flags);
+	const bool valid = SUCCEEDED(descHr) && SUCCEEDED(windowHr) && window == _vrrWindow &&
+		(desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
+	Logger::Get().Info(fmt::format(
+		"VRR swap-chain binding: expected=0x{:x} actual=0x{:x} descHr=0x{:x} windowHr=0x{:x} flags=0x{:x} valid={}",
+		uintptr_t(_vrrWindow), uintptr_t(window), uint32_t(descHr), uint32_t(windowHr), desc.Flags, valid));
+	if (!valid || !NvidiaForegroundCompatibility::BindPresentationWindow(window)) {
+		NvidiaForegroundCompatibility::Reject("swap-chain-binding-unavailable");
+		_VRRPathAvailable(false);
+	}
+	_UpdateForegroundCompatibility();
 }
 
 HRESULT PresenterBase::_PresentWithVRR(IDXGISwapChain4* swapChain, bool retryWithoutTearing) noexcept {

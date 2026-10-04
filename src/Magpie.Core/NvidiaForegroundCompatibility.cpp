@@ -18,12 +18,18 @@ std::atomic<ForegroundQueryPhase> queryPhase = ForegroundQueryPhase::Preparing;
 std::atomic<uint64_t> targetQueries = 0, appliedQueries = 0;
 std::array<std::atomic<uint32_t>, size_t(ForegroundQueryPhase::Count)> observedPhases{};
 
+struct UnknownQueryObservation {
+	std::atomic<uintptr_t> page = 0;
+	std::atomic<uint32_t> phases = 0;
+};
+std::array<UnknownQueryObservation, 16> unknownQueries;
 struct QueryRecord {
 	uint64_t epoch = 0;
 	uintptr_t caller = 0, real = 0, result = 0;
 	DWORD thread = 0;
 	ForegroundQueryPhase phase{};
 	bool target = false;
+	const char* role = "unknown";
 };
 struct QuerySlot {
 	// Empty -> writer -> ready -> consumer -> empty; no payload data races.
@@ -36,7 +42,10 @@ std::array<QuerySlot, 64> records;
 struct Control {
 	ForegroundCompatibilitySnapshot snapshot{};
 	bool requested = false, standardVRR = false, windowed = false;
-	bool deviceReady = false, nvidia = false, frameGeneration = false;
+	bool deviceReady = false, nvidia = false;
+	ForegroundPresentationPath path = ForegroundPresentationPath::Unknown;
+	uint32_t multiplier = 1, luidLow = 0;
+	int32_t luidHigh = 0;
 	bool potential = false, present = false, suspended = false, retired = true;
 	const char* reason = "disabled";
 	uint64_t nextPoll = 0, nextModules = 0;
@@ -71,12 +80,47 @@ bool Matches(const ForegroundWindowIdentity& value) noexcept {
 }
 bool SourceForeground(const ForegroundCompatibilitySnapshot& value, HWND foreground) noexcept {
 	// Capture and root can have different PIDs (UWP). A source popup or our
-	// parameter host deliberately suspends the first prototype.
+	// parameter host pauses the presentation override while it owns input.
 	return foreground && (uintptr_t(foreground) == value.source.window || uintptr_t(foreground) == value.root.window) &&
 		Matches(value.source) && Matches(value.root) &&
 		GetAncestor(HWND(value.source.window), GA_ROOT) == HWND(value.root.window) &&
 		IsWindowVisible(HWND(value.root.window)) && !IsIconic(HWND(value.root.window)) &&
 		IsWindowEnabled(HWND(value.root.window));
+}
+bool OutputUsable(const ForegroundCompatibilitySnapshot& value) noexcept {
+	// Hidden startup presents are allowed. Once shown, background SDK workers
+	// must also observe hiding/minimization without waiting for a frontend poll.
+	return Matches(value.output) && Matches(value.outputRoot) &&
+		GetAncestor(HWND(value.output.window), GA_ROOT) == HWND(value.outputRoot.window) &&
+		(!value.outputShown || (IsWindowVisible(HWND(value.output.window)) &&
+			!IsIconic(HWND(value.outputRoot.window))));
+}
+
+const char* PathName(ForegroundPresentationPath path) noexcept {
+	switch (path) {
+	case ForegroundPresentationPath::OrdinaryDXGI: return "dxgi";
+	case ForegroundPresentationPath::DLSSFrontendDXGI: return "dlss-frontend-dxgi";
+	case ForegroundPresentationPath::XeSSProxy: return "xess-proxy";
+	case ForegroundPresentationPath::Composition: return "composition";
+	default: return "unknown";
+	}
+}
+
+const char* ForegroundRole(const ForegroundCompatibilitySnapshot& value, HWND foreground) noexcept {
+	if (!foreground) return "none";
+	if (foreground == HWND(value.source.window) || foreground == HWND(value.root.window)) {
+		if (Matches(value.source) && Matches(value.root) &&
+			GetAncestor(HWND(value.source.window), GA_ROOT) == HWND(value.root.window)) return "source";
+		return "invalid-source";
+	}
+	if (Matches(value.outputRoot) && foreground == HWND(value.outputRoot.window)) return "output";
+	if (Matches(value.parameterHost) && foreground == HWND(value.parameterHost.window) &&
+		GetWindow(foreground, GW_OWNER) == HWND(value.outputRoot.window)) return "parameter-host";
+	if (Matches(value.mainUI) && IsWindowInOwnerChain(foreground, HWND(value.mainUI.window)) &&
+		!IsWindowInOwnerChain(foreground, HWND(value.outputRoot.window))) return "magpie-main-ui";
+	if (Matches(value.root) && IsWindowInOwnerChain(foreground, HWND(value.root.window)) &&
+		!IsWindowInOwnerChain(foreground, HWND(value.outputRoot.window))) return "source-popup";
+	return "external";
 }
 #if defined(_M_X64) || defined(_M_IX86)
 unsigned CallerIndex(const ForegroundCompatibilitySnapshot& value, uintptr_t caller) noexcept {
@@ -87,13 +131,27 @@ unsigned CallerIndex(const ForegroundCompatibilitySnapshot& value, uintptr_t cal
 }
 QuerySlot* Record(const ForegroundCompatibilitySnapshot& value, uintptr_t caller, unsigned index, HWND real) noexcept {
 	const auto phase = queryPhase.load(std::memory_order_relaxed);
-	const uint32_t bit = uint32_t(1) << index;
-	if (observedPhases[size_t(phase)].fetch_or(bit, std::memory_order_relaxed) & bit) return nullptr;
+	if (index < value.callers.size()) {
+		const uint32_t bit = uint32_t(1) << index;
+		if (observedPhases[size_t(phase)].fetch_or(bit, std::memory_order_relaxed) & bit) return nullptr;
+	} else {
+		// Keep several unknown call sites: an overlay hit must not mask a later
+		// D3D12/SDK hit in the same phase. Observation does not admit the caller.
+		const uintptr_t page = caller | uintptr_t(0xfff);
+		UnknownQueryObservation* observation = nullptr;
+		for (auto& slot : unknownQueries) {
+			uintptr_t key = slot.page.load(std::memory_order_relaxed);
+			if (!key && slot.page.compare_exchange_strong(key, page)) key = page;
+			if (key == page) { observation = &slot; break; }
+		}
+		const uint32_t bit = uint32_t(1) << size_t(phase);
+		if (!observation || (observation->phases.fetch_or(bit, std::memory_order_relaxed) & bit)) return nullptr;
+	}
 	for (auto& slot : records) {
 		unsigned empty = 0;
 		if (!slot.state.compare_exchange_strong(empty, 1, std::memory_order_acquire)) continue;
 		slot.value = { value.epoch, caller, uintptr_t(real), 0, GetCurrentThreadId(), phase,
-			index < value.callers.size() };
+			index < value.callers.size(), ForegroundRole(value, real) };
 		return &slot;
 	}
 	return nullptr;
@@ -112,7 +170,7 @@ HWND WINAPI DetourForegroundWindow() noexcept {
 		const bool target = index < value.callers.size();
 		if (target) targetQueries.fetch_add(1, std::memory_order_relaxed);
 		if (value.mode == ForegroundCompatibilityMode::Query && value.armed && target &&
-			SourceForeground(value, real) && Matches(value.output) && published.Current(version))
+			SourceForeground(value, real) && OutputUsable(value) && published.Current(version))
 			result = HWND(value.output.window);
 		QuerySlot* record = Record(value, caller, index, real);
 		// A retiring/rebuilding frontend invalidates an in-flight decision.
@@ -190,8 +248,9 @@ void RefreshModules() noexcept {
 void Publish() noexcept {
 	control.snapshot.armed = control.snapshot.mode != ForegroundCompatibilityMode::Off && control.standardVRR &&
 		!control.retired && !control.suspended && control.deviceReady && control.nvidia &&
-		!control.windowed && !control.frameGeneration && control.potential &&
-		Matches(control.snapshot.source) && Matches(control.snapshot.root) && Matches(control.snapshot.output);
+		SupportsForegroundQuery(control.path) && control.potential &&
+		Matches(control.snapshot.source) && Matches(control.snapshot.root) &&
+		Matches(control.snapshot.output) && Matches(control.snapshot.outputRoot);
 	published.Publish(control.snapshot);
 }
 void DrainRecords() noexcept {
@@ -209,9 +268,9 @@ void DrainRecords() noexcept {
 			if (const auto slash = name.find_last_of(L"\\/"); slash != name.npos) name.remove_prefix(slash + 1);
 		}
 		Logger::Get().Info(fmt::format(
-			"G-SYNC foreground query: epoch={} phase={} module={} offset=0x{:x} thread={} target={} real=0x{:x} returned=0x{:x}",
+			"G-SYNC foreground query: epoch={} phase={} module={} offset=0x{:x} thread={} target={} real=0x{:x} returned=0x{:x} realRole={}",
 			record.epoch, uint32_t(record.phase), StrHelper::UTF16ToUTF8(name), record.caller - uintptr_t(module),
-			record.thread, record.target, record.real, record.result));
+			record.thread, record.target, record.real, record.result, record.role));
 	}
 }
 void LogState(const char* event) noexcept {
@@ -222,11 +281,18 @@ void LogState(const char* event) noexcept {
 	Logger::Get().Info(fmt::format(
 		"G-SYNC foreground: event={} epoch={} mode={} requested={} installed={} armed={} appliedQueries={} targetQueries={} "
 		"active=unknown reason={} real=0x{:x} realPid={} source=0x{:x} root=0x{:x} output=0x{:x} sourceForeground={} "
-		"outputOwner=0x{:x} outputExStyle=0x{:x}", event, control.snapshot.epoch, uint32_t(control.snapshot.mode),
-		control.requested, hookEnabled, control.snapshot.armed, applied, targets, control.reason, uintptr_t(real), pid,
+		"outputOwner=0x{:x} outputExStyle=0x{:x} outputPrevious=0x{:x} outputRoot=0x{:x} "
+		"realRole={} mainUI=0x{:x} parameterHost=0x{:x} presenter={} multiplier={} windowed={} "
+		"adapterLuid={:x}:{:x} overrideEligible={}", event, control.snapshot.epoch, uint32_t(control.snapshot.mode),
+		control.requested, hookEnabled, control.snapshot.armed, applied, targets,
+		control.suspended ? "parameter-interaction" : control.reason, uintptr_t(real), pid,
 		control.snapshot.source.window, control.snapshot.root.window, control.snapshot.output.window,
 		SourceForeground(control.snapshot, real), uintptr_t(GetWindow(HWND(control.snapshot.output.window), GW_OWNER)),
-		uintptr_t(GetWindowLongPtrW(HWND(control.snapshot.output.window), GWL_EXSTYLE))));
+		uintptr_t(GetWindowLongPtrW(HWND(control.snapshot.output.window), GWL_EXSTYLE)),
+		uintptr_t(GetWindow(HWND(control.snapshot.outputRoot.window), GW_HWNDPREV)), control.snapshot.outputRoot.window,
+		ForegroundRole(control.snapshot, real), control.snapshot.mainUI.window, control.snapshot.parameterHost.window,
+		PathName(control.path), control.multiplier, control.windowed, uint32_t(control.luidHigh), control.luidLow,
+		control.snapshot.armed && SourceForeground(control.snapshot, real) && OutputUsable(control.snapshot)));
 	control.lastForeground = real;
 	control.lastArmed = control.snapshot.armed;
 	control.lastApplied = applied;
@@ -253,21 +319,25 @@ HWND NvidiaForegroundCompatibility::RealForegroundWindow() noexcept {
 	return result;
 }
 void NvidiaForegroundCompatibility::Prepare(const SourceWindowIdentity& source, HWND output, uint64_t epoch,
-	bool standardVRR, bool requested, bool windowed) noexcept {
+	bool standardVRR, bool windowed, const SessionWindowIdentity& mainUI) noexcept {
 	control = {};
 	control.retired = false;
-	control.requested = requested;
+	control.requested = standardVRR;
 	control.standardVRR = standardVRR;
 	control.windowed = windowed;
 	control.snapshot.epoch = epoch;
 	control.snapshot.source = { uintptr_t(source.capture), source.capturePid, source.captureTid, source.captureClass };
 	control.snapshot.root = { uintptr_t(source.root), source.rootPid, source.rootTid, source.rootClass };
 	control.snapshot.output = Identity(output);
-	control.snapshot.mode = requested ? ForegroundCompatibilityMode::Query : ForegroundCompatibilityMode::Off;
+	control.snapshot.outputRoot = Identity(GetAncestor(output, GA_ROOT));
+	if (mainUI.Matches() && mainUI.pid == GetCurrentProcessId())
+		control.snapshot.mainUI = { uintptr_t(mainUI.window), mainUI.pid, mainUI.tid, mainUI.atom };
+	control.snapshot.mode = standardVRR ? ForegroundCompatibilityMode::Query : ForegroundCompatibilityMode::Off;
 	wchar_t diagnostic[32]{};
 	const DWORD length = GetEnvironmentVariableW(L"MAGPIE_GSYNC_DIAGNOSTIC", diagnostic, DWORD(std::size(diagnostic)));
 	if (length && length < std::size(diagnostic)) {
-		if (!_wcsicmp(diagnostic, L"trace")) control.snapshot.mode = ForegroundCompatibilityMode::Trace;
+		if (!_wcsicmp(diagnostic, L"standard")) control.snapshot.mode = ForegroundCompatibilityMode::Off;
+		else if (!_wcsicmp(diagnostic, L"trace")) control.snapshot.mode = ForegroundCompatibilityMode::Trace;
 		else if (!_wcsicmp(diagnostic, L"reference")) control.snapshot.mode = ForegroundCompatibilityMode::Reference;
 	}
 	control.requested = control.snapshot.mode != ForegroundCompatibilityMode::Off;
@@ -275,12 +345,10 @@ void NvidiaForegroundCompatibility::Prepare(const SourceWindowIdentity& source, 
 	if (!standardVRR) {
 		control.snapshot.mode = ForegroundCompatibilityMode::Off;
 		control.reason = "standard-vrr-disabled";
-	} else if (windowed) {
-		control.snapshot.mode = ForegroundCompatibilityMode::Off;
-		control.reason = "windowed-outside-prototype";
 	}
 	targetQueries.store(0); appliedQueries.store(0);
 	for (auto& mask : observedPhases) mask.store(0);
+	for (auto& slot : unknownQueries) { slot.page.store(0); slot.phases.store(0); }
 	Phase(ForegroundQueryPhase::Preparing);
 	if (!control.requested || control.snapshot.mode == ForegroundCompatibilityMode::Off) {
 		published.Publish(control.snapshot);
@@ -297,23 +365,58 @@ void NvidiaForegroundCompatibility::Prepare(const SourceWindowIdentity& source, 
 	}
 	if (control.requested) LogState("prepare");
 }
-void NvidiaForegroundCompatibility::DeviceInitialized(uint32_t vendor, bool hasFrameGeneration) noexcept {
-	if (control.retired || !control.requested || control.snapshot.mode == ForegroundCompatibilityMode::Off) return;
+void NvidiaForegroundCompatibility::DeviceInitialized(uint32_t vendor, uint32_t luidLow, int32_t luidHigh,
+	ForegroundPresentationPath path, uint32_t multiplier) noexcept {
+	if (control.retired) return;
 	control.deviceReady = true;
 	control.nvidia = vendor == 0x10de;
-	control.frameGeneration = hasFrameGeneration;
-	control.reason = !control.nvidia ? "non-nvidia-output" : hasFrameGeneration ? "fg-outside-prototype" : "initializing-swap-chain";
+	control.path = path;
+	control.multiplier = multiplier;
+	control.luidLow = luidLow; control.luidHigh = luidHigh;
+	if (!control.requested || control.snapshot.mode == ForegroundCompatibilityMode::Off) return;
+	control.reason = !control.nvidia ? "non-nvidia-output" : !SupportsForegroundQuery(path) ?
+		"presenter-path-unavailable" : "initializing-swap-chain";
+	if (!control.nvidia && control.snapshot.mode == ForegroundCompatibilityMode::Query)
+		control.snapshot.mode = ForegroundCompatibilityMode::Off;
 	if (control.snapshot.mode != ForegroundCompatibilityMode::Reference) RefreshModules();
 	Publish();
 	LogState("device-initialized");
+}
+bool NvidiaForegroundCompatibility::BindPresentationWindow(HWND window) noexcept {
+	if (control.retired || uintptr_t(window) != control.snapshot.output.window || !Matches(control.snapshot.output)) {
+		Reject("swap-chain-window-mismatch");
+		return false;
+	}
+	if (control.requested) LogState("swap-chain-window-bound");
+	return true;
+}
+void NvidiaForegroundCompatibility::FrontendWindows(HWND parameterHost) noexcept {
+	if (control.retired) return;
+	const auto identity = parameterHost ? Identity(parameterHost) : ForegroundWindowIdentity{};
+	if (identity != control.snapshot.parameterHost) {
+		control.snapshot.parameterHost = identity;
+		Publish();
+	}
+	// Also retain native-focus controls when VRR is off. Only transitions log.
+	if (RealForegroundWindow() != control.lastForeground) LogState("foreground-change");
+}
+void NvidiaForegroundCompatibility::MainUIChanged(const SessionWindowIdentity& identity) noexcept {
+	if (control.retired) return;
+	ForegroundWindowIdentity mainUI;
+	if (identity.Matches() && identity.pid == GetCurrentProcessId())
+		mainUI = { uintptr_t(identity.window), identity.pid, identity.tid, identity.atom };
+	if (mainUI == control.snapshot.mainUI) return;
+	control.snapshot.mainUI = mainUI;
+	Publish();
+	LogState("main-ui-identity");
 }
 void NvidiaForegroundCompatibility::PresentationState(bool canCreateTearing, bool canPresentTearing) noexcept {
 	if (control.retired || !control.requested || control.snapshot.mode == ForegroundCompatibilityMode::Off) return;
 	const bool changed = control.potential != canCreateTearing || control.present != canPresentTearing;
 	control.potential = canCreateTearing;
 	control.present = canPresentTearing;
-	if (control.nvidia && !control.frameGeneration && control.snapshot.mode != ForegroundCompatibilityMode::Off)
-		control.reason = canCreateTearing ? "candidate-queries-only" : "vrr-path-unavailable";
+	if (control.nvidia && SupportsForegroundQuery(control.path))
+		control.reason = canCreateTearing ? "presentation-query-ready" : "vrr-path-unavailable";
 	if (changed) { Publish(); LogState("presentation-state"); }
 }
 void NvidiaForegroundCompatibility::Reject(const char* reason) noexcept {
@@ -335,7 +438,10 @@ void NvidiaForegroundCompatibility::FrontendSuspended(bool suspended) noexcept {
 	LogState(suspended ? "frontend-suspend" : "frontend-resume");
 }
 void NvidiaForegroundCompatibility::OutputShown() noexcept {
-	if (!control.requested || control.retired) return;
+	if (control.retired) return;
+	control.snapshot.outputShown = true;
+	Publish();
+	if (!control.requested) return;
 	LogState("first-output-shown");
 	if (control.snapshot.mode != ForegroundCompatibilityMode::Reference || !control.snapshot.armed || !control.present) return;
 	const HWND real = RealForegroundWindow();
@@ -356,7 +462,7 @@ bool NvidiaForegroundCompatibility::ReferenceOwnsForeground() noexcept {
 }
 void NvidiaForegroundCompatibility::Poll() noexcept {
 	if (!control.requested || control.retired || control.snapshot.mode == ForegroundCompatibilityMode::Off) return;
-	if (control.referenceActive && (!ReferenceOwnsForeground() || !control.snapshot.armed)) EndReference(true);
+	if (control.referenceActive && (!ReferenceOwnsForeground() || !control.snapshot.armed || !OutputUsable(control.snapshot))) EndReference(true);
 	const uint64_t now = GetTickCount64();
 	if (now < control.nextPoll) return;
 	control.nextPoll = now + 1000;

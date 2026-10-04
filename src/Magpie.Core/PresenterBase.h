@@ -82,6 +82,7 @@ protected:
 	void _LogVRRState(std::string_view event) noexcept;
 	void _VRRPathAvailable(bool available) noexcept;
 	void _UpdateForegroundCompatibility() noexcept;
+	void _BindVRRSwapChain(IDXGISwapChain4* swapChain) noexcept;
 	HRESULT _PresentWithVRR(IDXGISwapChain4* swapChain, bool retryWithoutTearing) noexcept;
 	VRRPresentationPolicy _vrr;
 

@@ -165,6 +165,15 @@ void ScalingRuntime::UpdateToolbarShortcutLabels(ToolbarShortcutLabels labels) {
 	});
 }
 
+void ScalingRuntime::UpdateMainUI(SessionWindowIdentity identity) {
+	if (State() == ScalingState::Idle || State() == ScalingState::Stopping) return;
+	const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);
+	_Dispatcher().TryEnqueue([this, generation, identity] {
+		if (_commandGeneration.load(std::memory_order_acquire) == generation)
+			ScalingWindow::Get().UpdateMainUI(identity);
+	});
+}
+
 void ScalingRuntime::UpdateFrameRefreshSettings(FrameRefreshSettings settings) {
 	if (State() == ScalingState::Idle || State() == ScalingState::Stopping) return;
 	const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);

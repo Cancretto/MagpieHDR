@@ -624,6 +624,7 @@ bool XeSSFGPresenter::_Initialize(HWND hwndAttach) noexcept {
 		return false;
 	}
 	_vrr.Created(actualDesc.Flags);
+	_BindVRRSwapChain(impl->swapChain.get());
 	if (impl->hdrEnabled) {
 		HRESULT colorSpaceHr = impl->swapChain->SetColorSpace1(
 			DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020);
@@ -642,6 +643,7 @@ bool XeSSFGPresenter::_Initialize(HWND hwndAttach) noexcept {
 	}
 	const HRESULT associationHr = impl->factory->MakeWindowAssociation(hwndAttach, DXGI_MWA_NO_ALT_ENTER);
 	_vrr.AltEnterDisabled(SUCCEEDED(associationHr));
+	_UpdateForegroundCompatibility();
 	if (FAILED(associationHr)) Logger::Get().ComWarn("XeSSFG MakeWindowAssociation failed", associationHr);
 
 	result = xefgSwapChainSetNumInterpolatedFrames(impl->xefg, interpolatedFrames);

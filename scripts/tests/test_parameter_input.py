@@ -251,6 +251,7 @@ struct TestSource {
 };
 class ScalingWindow {
 public:
+	struct { SessionWindowIdentity mainUI; } _options;
     static ScalingWindow& Get() { static ScalingWindow window; return window; }
     static uint32_t RunId() { return testRunId; }
     TestRenderer renderer;

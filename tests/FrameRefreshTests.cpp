@@ -30,7 +30,6 @@ static std::string Write(FrameRefreshSettings s) {
 int main() {
 	const FrameRefreshSettings defaults;
 	Check(!defaults.vrrEnabled, "New profile unexpectedly enables VRR");
-	Check(!defaults.nvidiaForegroundCompatibilityEnabled, "New profile unexpectedly enables foreground compatibility");
 	Check(!Read(R"({"vrr":true})").vrrEnabled, "Dormant global VRR silently became active");
 	Check(!Read(R"({"vrr":true,"frameRefresh":{}})").vrrEnabled, "Partial refresh schema imported global VRR");
 	for (const char* invalid : {"0", "1", "null", "\"true\"", "{}"}) {
@@ -43,17 +42,24 @@ int main() {
 	edited.contentRate = 45;
 	Check(MergeFrameRefreshSettings(merged, stale, edited) && merged.vrrEnabled && merged.contentRate == 45,
 		"Stale runtime panel cleared a newer profile VRR opt-in");
-	auto compatibility = defaults;
-	compatibility.nvidiaForegroundCompatibilityEnabled = true;
-	Check(Read(Write(compatibility)) == compatibility && !compatibility.vrrEnabled,
-		"Compatibility preference didn't roundtrip independently of standard VRR");
-	for (const char* invalid : {"0", "1", "null", "\"true\"", "{}"}) {
-		Check(!Read(std::string("{\"frameRefresh\":{\"nvidiaForegroundCompatibilityEnabled\":") + invalid + "}}").nvidiaForegroundCompatibilityEnabled,
-			"Malformed compatibility opt-in accepted");
+	for (bool standard : {false, true}) for (bool legacyCompatibility : {false, true}) {
+		const auto json = std::string("{\"frameRefresh\":{\"vrrEnabled\":") + (standard ? "true" : "false") +
+			",\"nvidiaForegroundCompatibilityEnabled\":" + (legacyCompatibility ? "true" : "false") + "}}";
+		const auto migrated = Read(json);
+		Check(migrated.vrrEnabled == standard, "Legacy second switch changed authoritative VRR intent");
+		const auto saved = Write(migrated);
+		Check(saved.find("nvidiaForegroundCompatibilityEnabled") == std::string::npos,
+			"New serialization retained obsolete second switch");
+		Check(Read(saved) == migrated, "Unified VRR migration did not roundtrip");
 	}
-	merged = compatibility;
-	Check(MergeFrameRefreshSettings(merged, stale, edited) && merged.nvidiaForegroundCompatibilityEnabled && merged.contentRate == 45,
-		"Stale runtime panel cleared a newer foreground compatibility opt-in");
+	Check(!Read(R"({"frameRefresh":{"nvidiaForegroundCompatibilityEnabled":true}})").vrrEnabled,
+		"Legacy compatibility-only preference enabled VRR");
+	for (const char* invalid : {"0", "1", "null", "\"true\"", "{}"}) {
+		Check(Read(std::string("{\"frameRefresh\":{\"vrrEnabled\":true,\"nvidiaForegroundCompatibilityEnabled\":") + invalid + "}}").vrrEnabled,
+			"Malformed obsolete field disabled explicit VRR intent");
+		Check(!Read(std::string("{\"frameRefresh\":{\"vrrEnabled\":") + invalid + ",\"nvidiaForegroundCompatibilityEnabled\":true}}").vrrEnabled,
+			"Malformed VRR field imported legacy compatibility");
+	}
 	Check(defaults.IsValid() && defaults.contentMode == ContentFrameRateMode::Custom &&
 		defaults.contentRate == 60 && defaults.pacing == FrameSyncMode::FrontEdge &&
 		defaults.cursorMode == CursorRefreshMode::Supplement && defaults.cursorRate == 60 &&

@@ -9,7 +9,7 @@ source = (repo / "src/Magpie/ProfileViewModel.cpp").read_text(encoding="utf-8-si
 names = ("ContentFrameRateModeIndex", "ContentFrameRate", "FrameSyncModeIndex", "IsContentPacingEnabled",
          "ShowContentFrameRate", "CursorRefreshModeIndex", "CursorSupplementModeIndex", "CursorSupplementRate",
          "ShowCursorSupplement", "ShowCursorSupplementRate", "IdleRedrawModeIndex", "IdleRedrawRate",
-         "ShowIdleRedrawRate", "IsVRREnabled", "IsNvidiaForegroundCompatibilityEnabled", "ResetFrameRefresh", "_SaveFrameRefresh")
+         "ShowIdleRedrawRate", "IsVRREnabled", "ResetFrameRefresh", "_SaveFrameRefresh")
 declarations, definitions = [], []
 for name in names:
     for match in re.finditer(r"^(?:bool|double|int32_t|void) ProfileViewModel::" + name + r"\([^\n]+?\{", source, re.M):
@@ -45,8 +45,6 @@ int main() {
     ProfileViewModel vm{&defaults};
     vm.IsVRREnabled(true);
     assert(vm.IsVRREnabled() && !app.frameRefresh.vrrEnabled);
-    vm.IsNvidiaForegroundCompatibilityEnabled(true);
-    assert(vm.IsNvidiaForegroundCompatibilityEnabled() && !app.frameRefresh.nvidiaForegroundCompatibilityEnabled);
     vm.ContentFrameRate(37); vm.CursorSupplementRate(144); vm.IdleRedrawRate(17);
     for (int content=0; content<3; ++content) for (int pacing=0; pacing<3; ++pacing) for (int cursor=0; cursor<3; ++cursor)
     for (int supplement=0; supplement<2; ++supplement) for (int idle=0; idle<2; ++idle) {
@@ -80,7 +78,6 @@ int main() {
     assert(vm.FrameSyncModeIndex()==2 && !vm.IsContentPacingEnabled());
     vm.ResetFrameRefresh();
     assert(!vm.IsVRREnabled());
-    assert(!vm.IsNvidiaForegroundCompatibilityEnabled());
     assert(defaults.frameRefresh==FrameRefreshSettings{} && app.frameRefresh==FrameRefreshSettings{});
     assert(AppSettings::Get().saves==ProfileService::Get().FrameRefreshChanged.count);
     std::cout << "Production refresh view model: 108 mode combinations, hidden numeric retention, invalid edits, compatibility release, profile isolation and reset passed\n";

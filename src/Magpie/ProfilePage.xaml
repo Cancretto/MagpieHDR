@@ -220,17 +220,14 @@
 						</local:SettingsCard>
 					</local:SettingsExpander.Items>
 				</local:SettingsExpander>
-				<local:SettingsCard x:Uid="FrameRefresh_VRR" IsWrapEnabled="True">
-					<ToggleSwitch x:Uid="FrameRefresh_VRR_Input" IsOn="{x:Bind ViewModel.IsVRREnabled, Mode=TwoWay}" />
-				</local:SettingsCard>
-				<local:SettingsCard x:Uid="FrameRefresh_NvidiaForeground" IsWrapEnabled="True">
-					<ToggleSwitch x:Uid="FrameRefresh_NvidiaForeground_Input" IsOn="{x:Bind ViewModel.IsNvidiaForegroundCompatibilityEnabled, Mode=TwoWay}" />
-				</local:SettingsCard>
 				<local:SettingsExpander x:Uid="FrameRefresh_Advanced" IsWrapEnabled="True" IsExpanded="False">
 					<local:SettingsExpander.HeaderIcon>
 						<FontIcon Glyph="&#xE713;" />
 					</local:SettingsExpander.HeaderIcon>
 					<local:SettingsExpander.Items>
+						<local:SettingsCard x:Uid="FrameRefresh_VRR" IsWrapEnabled="True">
+							<ToggleSwitch x:Uid="FrameRefresh_VRR_Input" IsOn="{x:Bind ViewModel.IsVRREnabled, Mode=TwoWay}" />
+						</local:SettingsCard>
 						<local:SettingsCard x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection" IsWrapEnabled="True">
 							<ComboBox x:Uid="FrameRefresh_DuplicateDetection_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.DuplicateFrameDetectionMode, Mode=TwoWay}">
 								<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Always" />

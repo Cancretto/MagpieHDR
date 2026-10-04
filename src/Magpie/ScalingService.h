@@ -50,6 +50,7 @@ public:
 	// 强制重新检查前台窗口
 	void CheckForeground();
 	void OnTaskSwitch();
+	void MainUIChanged(HWND window);
 	void EffectParameterEdited(uint32_t modeIdx, uint32_t effectIdx,
 		const std::string& parameter, float value);
 	void RetryConfigurationSave(std::function<void(bool)> completed);

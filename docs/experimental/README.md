@@ -1,4 +1,4 @@
-# Magpie 实验分支文档索引
+﻿# Magpie 实验分支文档索引
 
 当前公开版本为 [Magpie Experimental v0.6.9](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.9-experimental)：[完整中英 Release Note](../RELEASE_NOTES_v0.6.9-experimental.md)、[分发准备记录](reviews/20261002-v0.6.9-release-preparation.md)。默认分支 `experimental` 已同步完整 0.6.9 源码，`version.json` 指向该版本。发布标签及运行包的准确构建提交为 `27c5df91177a29b33be612e98274169f3d2fca49`；后续文档与版本入口更新保留为独立提交。
 
@@ -22,13 +22,15 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [0.6.10 VRR 统一入口、FG 与前台关联修正 TODO](todos/20261004-v0.6.10-vrr-unified-fg-foreground-TODO.md)：用户已反馈双开关、无 FG 时输出指示器正常，DLSS／XeSS FG 都使其消失；部署日志确认共同 FG 资格排除。已在原功能分支合入 Beta2 基线，收敛为高级选项中的“VRR 可变刷新率”，解除 FG／窗口模式排除，接入实际交换链绑定与主界面身份更新。四项静态合同及资源检查通过；C++ 编译／执行、部署和实测交给独立会话。[源码交接](reviews/20261005-v0.6.10-vrr-unified-fg-source-development.md)。
+
+- [0.6.10 G-SYNC 输出前台身份兼容 TODO](todos/20261004-v0.6.10-gsync-output-foreground-TODO.md)：第一版查询兼容、真实业务查询隔离、生命周期及短时真实前台参考入口已由单独会话集成到 Beta2。后续双开关与 FG 扩展按上方新 TODO 推进；[初次源码实施与交接](reviews/20261004-v0.6.10-gsync-foreground-source-development.md)保留原型阶段记录。
+
 - **0.6.10 Beta2 本地整合**：`release/0.6.10-beta2` 继承 Beta1，合入参数焦点／输入所有权、NVIDIA 前台兼容原型和“性能”分组渲染显卡选择。见 [本版中英说明](../RELEASE_NOTES_v0.6.10-beta2.md)。下方功能分支交接状态保留当时的开发记录；本版验证以整合审计与包清单为准，实际游戏、输入和 G-SYNC 验收继续保留。
 
 - [069 渲染显卡常驻与选择状态整理 TODO](todos/20261004-v0.6.9-rendering-gpu-selection-TODO.md)：已在 `feature/069-rendering-gpu-selection` 实现“性能”分组中的常驻显卡选择、单卡自动／指定选项及设备缺失提示；79 项选择回归、51 项原有适配器回归、20 种语言资源合同和当前 IDL／XAML／页面语法检查通过。完整 Release 编译部署与实际 UI／热插拔／GPU 验收交给后续独立会话。[实施记录](reviews/20261004-v0.6.9-rendering-gpu-selection.md)。
 
 - [参数焦点交接与会话窗口判定 TODO](todos/20261004-parameter-focus-coordination-TODO.md)：已在 `fix/069-uwp-window-owner` 完成根窗口判定、输入所有权、宿主层级及停止／重建协调，通过自动回归和测试窗口的原生层级验证；完整产品编译部署及游戏／GPU／VRR 验收待独立会话。
-
-- [0.6.10 G-SYNC 输出前台身份兼容 TODO](todos/20261004-v0.6.10-gsync-output-foreground-TODO.md)：按焦点根因假设接入默认关闭的查询兼容、真实业务查询隔离、生命周期及短时真实前台参考入口。静态与依赖图检查通过；C++ 编译／执行、部署和硬件验收交给单独会话。[源码实施与交接](reviews/20261004-v0.6.10-gsync-foreground-source-development.md)。
 
 - [0.6.10 Beta1 VRR／G-SYNC 焦点诊断](reviews/20261004-v0.6.10-vrr-gsync-focus-diagnosis.md)：运行日志支持标准 DXGI 请求完整，但用户未看到指示器；非前台输出是首要待验证原因。真实前台对照、查询伪装／消息分离和 PresentMon 尚未执行，本轮仅调查与文档记录。
 

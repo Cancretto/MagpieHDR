@@ -415,7 +415,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc, bool& rendererInitializatio
 
 	LogRects(_srcTracker.SrcRect(), _rendererRect, _windowRect);
 	NvidiaForegroundCompatibility::Prepare(_sourceCoordinator.Source(), _hwndRenderer, RunId(),
-		_options.isVRREnabled, _options.frameRefresh.nvidiaForegroundCompatibilityEnabled, _options.IsWindowedMode());
+		_options.isVRREnabled, _options.IsWindowedMode(), _options.mainUI);
 
 	_renderer = std::make_unique<class Renderer>();
 	ScalingError error = _renderer->Initialize(_hwndRenderer, _options.overlayOptions);
@@ -1937,6 +1937,7 @@ bool ScalingWindow::_UpdateSrcState(
 	HWND hwndFore = Win32Helper::GetRealForegroundWindow();
 	if (_renderer) _renderer->UpdateParameterInputHost();
 	hwndFore = Win32Helper::GetRealForegroundWindow();
+	NvidiaForegroundCompatibility::FrontendWindows(_renderer ? _renderer->ParameterInputHandle() : nullptr);
 	NvidiaForegroundCompatibility::FrontendSuspended(_renderer &&
 		(_renderer->IsEditingParameters() || _renderer->IsParameterFocusSettling()));
 
@@ -2067,7 +2068,12 @@ bool ScalingWindow::_CheckForegroundFor3DGameMode(HWND hwndFore) const noexcept 
 
 SourceForegroundKind ScalingWindow::ClassifyForeground(HWND foreground) const noexcept {
 	return ClassifySourceForeground(foreground, SourceIdentityValid(), SrcTracker().Handle(),
-		SourceRoot(), Handle(), _renderer ? _renderer->ParameterInputHandle() : nullptr);
+		SourceRoot(), Handle(), _renderer ? _renderer->ParameterInputHandle() : nullptr, _options.mainUI);
+}
+
+void ScalingWindow::UpdateMainUI(SessionWindowIdentity identity) noexcept {
+	_options.mainUI = identity;
+	NvidiaForegroundCompatibility::MainUIChanged(identity);
 }
 
 bool ScalingWindow::IsSessionForeground(HWND foreground) const noexcept {

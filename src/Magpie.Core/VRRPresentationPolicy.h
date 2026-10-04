@@ -27,6 +27,7 @@ public:
 	void Created(uint32_t flags) noexcept { _creationFlags = flags; _created = true; }
 	bool Requested() const noexcept { return _requested; }
 	bool TearingSupported() const noexcept { return _tearingSupported; }
+	bool HasSwapChain() const noexcept { return _created; }
 	uint32_t CreationFlags() const noexcept {
 		return _CanRequest() && !_creationRejected ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 	}

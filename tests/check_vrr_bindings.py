@@ -17,7 +17,11 @@ def read(path):
 xaml = ET.fromstring(read("src/Magpie/ProfilePage.xaml"))
 x = "{http://schemas.microsoft.com/winfx/2006/xaml}"
 group = next(node for node in xaml.iter() if node.get(x + "Uid") == "FrameRefresh")
-card = next(node for node in group if node.get(x + "Uid") == "FrameRefresh_VRR")
+advanced = next(node for node in group.iter() if node.get(x + "Uid") == "FrameRefresh_Advanced")
+items = next(node for node in advanced if node.tag.endswith("SettingsExpander.Items"))
+card = next(node for node in items if node.get(x + "Uid") == "FrameRefresh_VRR")
+assert list(items)[0] is card
+assert list(items)[1].get(x + "Uid") == "Home_Advanced_DeveloperOptions_DuplicateFrameDetection"
 toggle = next(iter(card))
 assert toggle.get("IsOn") == "{x:Bind ViewModel.IsVRREnabled, Mode=TwoWay}"
 assert toggle.get(x + "Uid") == "FrameRefresh_VRR_Input"
