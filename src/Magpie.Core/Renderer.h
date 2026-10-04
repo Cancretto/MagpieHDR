@@ -39,6 +39,7 @@ public:
 
 	ScalingError Initialize(HWND hwndAttach, OverlayOptions& overlayOptions) noexcept;
 	void BeginShutdown() noexcept;
+	bool IsStopping() const noexcept { return _sessionLifetime->IsStopping(); }
 	const std::string& InitializationContext() const noexcept { return _backendInitContext; }
 	uint32_t InitializationSystemError() const noexcept { return _backendInitSystemError; }
 	const std::wstring& MotionConfigurationNotice() const noexcept { return _motionConfigurationNotice; }

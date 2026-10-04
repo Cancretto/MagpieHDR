@@ -189,6 +189,7 @@ public:
     void IsCursorCapturedOnOverlay(bool value) { captured=value; }
 };
 struct TestRenderer {
+    bool IsStopping() const { return false; }
     RECT rect{0,0,800,600};
     const RECT& DestRect() const { return rect; }
     HWND ParameterInputHandle() const { return overlay->_hwndParameterInput; }
@@ -214,6 +215,8 @@ public:
     void _CancelParameterRestart() {}
     void CleanAfterSrcRepositioned() {}
     TestRenderer& Renderer() { return renderer; }
+    TestRenderer* TryGetRenderer() { return &renderer; }
+    struct Retirement { bool Pending() const { return false; } } _retirement;
     const RECT& RendererRect() const { return renderer.rect; }
     Magpie::CursorManager& CursorManager() { return cursorManager; }
     Magpie::CursorManager* TryGetCursorManager() { return &cursorManager; }

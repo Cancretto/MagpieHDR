@@ -267,7 +267,6 @@ Renderer::Renderer() noexcept :
 
 void Renderer::BeginShutdown() noexcept {
 	_sessionLifetime->RequestStop();
-	_reflex.Stop();
 	// The backend can be waiting for a synchronous DLSSFG presentation while
 	// the frontend thread is destroying this Renderer. Stop issuing new
 	// synchronous sends before waiting for the backend thread to exit.
@@ -277,6 +276,10 @@ void Renderer::BeginShutdown() noexcept {
 
 Renderer::~Renderer() noexcept {
 	BeginShutdown();
+	// ScalingWindow retains us until the old output has completed destruction.
+	// Stop takes a configuration lock and calls the driver, so it is deliberately
+	// excluded from the pure cancellation entry used inside window callbacks.
+	_reflex.Stop();
 
 	_hKeyboardHook.reset();
 
@@ -4301,8 +4304,9 @@ LRESULT CALLBACK Renderer::_LowLevelKeyboardHook(int nCode, WPARAM wParam, LPARA
 	}
 
 	KBDLLHOOKSTRUCT* info = (KBDLLHOOKSTRUCT*)lParam;
-	if (Renderer* renderer = ScalingWindow::Get().TryGetRenderer(); renderer &&
-		renderer->_overlayDrawer.HandleParameterPreviewEscape(wParam, *info)) return 1;
+	Renderer* renderer = ScalingWindow::Get().TryGetRenderer();
+	if (!renderer || renderer->IsStopping()) return CallNextHookEx(NULL, nCode, wParam, lParam);
+	if (renderer->_overlayDrawer.HandleParameterPreviewEscape(wParam, *info)) return 1;
 	if (wParam != WM_KEYDOWN && wParam != WM_SYSKEYDOWN)
 		return CallNextHookEx(NULL, nCode, wParam, lParam);
 	if (info->vkCode == VK_LWIN || info->vkCode == VK_RWIN ||
@@ -4313,11 +4317,13 @@ LRESULT CALLBACK Renderer::_LowLevelKeyboardHook(int nCode, WPARAM wParam, LPARA
 	}
 	if (info->vkCode == VK_SNAPSHOT) {
 		// 为了缩短钩子处理时间，异步执行所有逻辑
-		ScalingWindow::Dispatcher().TryEnqueue([]() -> winrt::fire_and_forget {
+		ScalingWindow::Dispatcher().TryEnqueue([session = renderer->_sessionLifetime]() -> winrt::fire_and_forget {
+			auto& window = ScalingWindow::Get();
+			if (!session->IsCurrent(ScalingWindow::RunId()) || !window || !window.TryGetRenderer()) co_return;
 			// 暂时隐藏光标
-			Renderer& renderer = ScalingWindow::Get().Renderer();
-			renderer._cursorDrawer.IsCursorVisible(false);
-			renderer.Render();
+			Renderer& currentRenderer = window.Renderer();
+			currentRenderer._cursorDrawer.IsCursorVisible(false);
+			currentRenderer.Render();
 
 			const uint32_t runId = ScalingWindow::RunId();
 
@@ -4325,11 +4331,11 @@ LRESULT CALLBACK Renderer::_LowLevelKeyboardHook(int nCode, WPARAM wParam, LPARA
 			co_await 200ms;
 			co_await dispatcher;
 
-			if (ScalingWindow::RunId() == runId &&
-				!renderer._cursorDrawer.IsCursorVisible()
+			if (session->IsCurrent(ScalingWindow::RunId()) && ScalingWindow::RunId() == runId &&
+				!currentRenderer._cursorDrawer.IsCursorVisible()
 			) {
-				renderer._cursorDrawer.IsCursorVisible(true);
-				renderer.Render();
+				currentRenderer._cursorDrawer.IsCursorVisible(true);
+				currentRenderer.Render();
 			}
 		});
 	}

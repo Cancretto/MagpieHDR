@@ -1,0 +1,289 @@
+#include <windows.h>
+#include <cassert>
+#include <functional>
+#include <chrono>
+#include <array>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <thread>
+#include <fmt/format.h>
+
+enum class ApiMode { Native, Reject, AppliedDirtyError, Unexpected, DestroyOutput, DestroySource };
+static ApiMode apiMode = ApiMode::Native;
+static DWORD apiError = ERROR_INVALID_PARAMETER;
+static HWND alternate;
+static LONG_PTR SetOwnerForTest(HWND window, int index, LONG_PTR value) {
+    if (index != GWLP_HWNDPARENT) return SetWindowLongPtrW(window, index, value);
+    switch (apiMode) {
+    case ApiMode::Reject: SetLastError(apiError); return 0;
+    case ApiMode::AppliedDirtyError: {
+        auto previous = SetWindowLongPtrW(window, index, value);
+        SetLastError(ERROR_INVALID_WINDOW_HANDLE); return previous;
+    }
+    case ApiMode::Unexpected:
+        SetWindowLongPtrW(window, index, reinterpret_cast<LONG_PTR>(alternate));
+        SetLastError(ERROR_ACCESS_DENIED); return 0;
+    case ApiMode::DestroyOutput:
+        assert(DestroyWindow(window)); SetLastError(ERROR_INVALID_WINDOW_HANDLE); return 0;
+    case ApiMode::DestroySource:
+        assert(DestroyWindow(reinterpret_cast<HWND>(value))); SetLastError(ERROR_INVALID_WINDOW_HANDLE); return 0;
+    default: return SetWindowLongPtrW(window, index, value);
+    }
+}
+static HWND ReadOwnerForTest(HWND window, UINT relation) {
+    auto value = GetWindow(window, relation);
+    SetLastError(ERROR_NOT_ENOUGH_MEMORY); return value;
+}
+#define SetWindowLongPtrW SetOwnerForTest
+#define GetWindow ReadOwnerForTest
+#include "SourceWindowCoordinator.h"
+#undef GetWindow
+#undef SetWindowLongPtrW
+#include "CaptureTargetLifetime.h"
+using namespace Magpie;
+using namespace std::chrono_literals;
+enum class ScalingError { NoError, ScalingWindowCreationFailed, SourceWindowClosed, SourceWindowUnresponsive, LowIntegrityLevel, CaptureFailed };
+static SourceWindowCoordinator _sourceCoordinator;
+static HWND output;
+static bool hung, permission = true, pending, _isFirstFrame = true, showSucceeded = true;
+static int detachCalls, reports, toasts, shows;
+static std::string reportedContext;
+static std::string _startupFailureContext;
+static uint32_t _startupFailureSystemError;
+static bool _isDestroying, _isSrcRepositioning, _sourceStateCheckDeferred;
+static std::chrono::steady_clock::time_point _nextSourceStateCheck;
+static int transition, focusUpdates;
+static ScalingError startupError;
+static bool startupRendererFailed;
+static uint32_t reportedError;
+struct Logger {
+    struct DiagnosticCapture {
+        std::string Details() const { return "recovered startup detail"; }
+        uint32_t SystemError() const { return 999; }
+    };
+    static Logger& Get() { static Logger l; return l; }
+    void Info(std::string_view) {} void Warn(std::string_view) {} void Error(std::string_view) {}
+    void Win32Warn(std::string_view) {}
+};
+namespace Win32Helper {
+static bool IsWindowHung(HWND) { return hung; }
+static bool GetWindowIntegrityLevel(HWND, DWORD& level) { level = 1; return permission; }
+static DWORD GetCurrentProcessIntegrityLevel() { return 1; }
+static std::wstring GetWindowClassName(HWND h) { wchar_t n[256]{}; GetClassNameW(h,n,256); return n; }
+}
+namespace StrHelper {
+static std::string UTF16ToUTF8(const std::wstring& s) { std::string out; for(wchar_t c:s) out.push_back(static_cast<char>(c)); return out; }
+}
+struct Options {
+    std::function<void(HWND,ScalingError,std::string_view,uint32_t)> reportErrorDetails;
+    std::function<void(HWND,ScalingError)> showError;
+    bool IsTopmostDisabled() const { return false; }
+} _options;
+struct SourceTracker { HWND Handle() const { return _sourceCoordinator.Source().capture; } bool IsFocused() const { return false; } } _srcTracker;
+struct Renderer {
+    void OnSourceFocusChanged() {}
+    std::string InitializationContext() const { return "capture initialization failed"; }
+    uint32_t InitializationSystemError() const { return 1234; }
+    const std::wstring& MotionConfigurationNotice() const { static const std::wstring empty; return empty; }
+};
+static std::unique_ptr<Renderer> _renderer = std::make_unique<Renderer>();
+static HWND Handle() { return output; }
+static HWND SourceRoot() { return _sourceCoordinator.Source().root; }
+static uint32_t RunId() { return 1; }
+static void ShowError(ScalingError) { ++reports; }
+static void _DelayedStop(bool=false,bool reposition=false) { pending=true; transition=reposition?1:2; }
+static bool HasPendingSourceTransition() { return pending; }
+static void CleanAfterSrcRepositioned() { _sourceCoordinator.Reset(); _isSrcRepositioning=false; }
+struct Cursor {}; static std::unique_ptr<Cursor> _cursorManager=std::make_unique<Cursor>();
+static bool _UpdateSrcState(bool& reposition,bool& focusedChanged) {
+    focusedChanged=false;
+    reposition=!IsWindowVisible(SourceRoot()) || IsIconic(SourceRoot());
+    return !reposition;
+}
+struct AuxiliaryWindow { HWND value=nullptr; operator bool() const { return value!=nullptr; } HWND get() const { return value; } };
+static std::array<AuxiliaryWindow,4> _hwndTouchHoles{}, _hwndResizeHelpers{};
+static void _HideOutputForSourceTransition() noexcept;
+static void _UpdateFocusStateAsync() { ++focusUpdates; }
+static void Stop() { pending=true; }
+static ScalingError _StartImpl(HWND,bool& rendererInitializationFailed) {
+    rendererInitializationFailed=startupRendererFailed; return startupError;
+}
+static void ShowToast(std::wstring_view) { ++toasts; }
+static std::wstring GetLocalizedString(std::wstring_view) { return L"started"; }
+static BOOL DetachForTest(DWORD, DWORD, BOOL attach) { assert(!attach); ++detachCalls; return TRUE; }
+static bool _CalcTopmostState() { return _sourceCoordinator.NeedsTopmost(false,false); }
+static bool _EstablishWindowCoordination() noexcept;
+static bool _Show() { ++shows; return _EstablishWindowCoordination() && showSucceeded; }
+#define AttachThreadInput DetachForTest
+#include "ScalingWindowOwnerStartup.inc"
+#undef AttachThreadInput
+#include "ScalingWindowOwnerReport.inc"
+
+static HWND Window(HWND parent=nullptr, HWND owner=nullptr) {
+    HWND h=CreateWindowExW(WS_EX_NOACTIVATE,L"STATIC",L"Magpie window coordination test",
+        parent ? WS_CHILD : WS_POPUP, -32000,-32000,32,32,parent?parent:owner,nullptr,GetModuleHandleW(nullptr),nullptr);
+    assert(h); return h;
+}
+static void Close(HWND h) { if (IsWindow(h)) assert(DestroyWindow(h)); }
+static void Pump() { MSG m; while(PeekMessageW(&m,nullptr,0,0,PM_REMOVE)) DispatchMessageW(&m); }
+static void Prepare(HWND source) {
+    _sourceCoordinator.Reset(); assert(_sourceCoordinator.Prepare(source));
+    Close(output); output=Window(); apiMode=ApiMode::Native; apiError=ERROR_INVALID_PARAMETER;
+    detachCalls=reports=toasts=shows=0; hung=pending=false; permission=showSucceeded=_isFirstFrame=true;
+    reportedContext.clear(); reportedError=0; _startupFailureContext.clear(); _startupFailureSystemError=0;
+    _isDestroying=_isSrcRepositioning=_sourceStateCheckDeferred=false;
+    _nextSourceStateCheck={}; transition=focusUpdates=0; startupError=ScalingError::NoError; startupRendererFailed=false;
+    _options.reportErrorDetails=[](HWND,ScalingError,std::string_view context,uint32_t error) {
+        ++reports; reportedContext=context; reportedError=error;
+    };
+}
+int main() {
+    HWND source=Window(); alternate=Window(); Prepare(source);
+    auto result=TrySetScalingWindowOwner(output,source);
+    assert(result.IsApplied() && result.actualOwner==source);
+    assert(TrySetScalingWindowOwner(output,source).IsApplied());
+    assert(TrySetScalingWindowOwner(output,nullptr).IsApplied());
+    assert(TrySetScalingWindowOwner(output,nullptr).IsApplied());
+    assert(TrySetScalingWindowOwner(nullptr,nullptr).status==ScalingWindowOwnerStatus::InvalidWindow);
+    assert(TrySetScalingWindowOwner(output,output).status==ScalingWindowOwnerStatus::InvalidRelationship);
+    HWND child=Window(output);
+    assert(TrySetScalingWindowOwner(child,source).status==ScalingWindowOwnerStatus::ChildWindow);
+    assert(TrySetScalingWindowOwner(output,child).status==ScalingWindowOwnerStatus::InvalidRelationship);
+    Close(child);
+    assert(SetScalingWindowOwner(alternate,output));
+    assert(TrySetScalingWindowOwner(output,alternate).status==ScalingWindowOwnerStatus::InvalidRelationship);
+    assert(SetScalingWindowOwner(alternate,nullptr));
+    for (DWORD code : {DWORD(87),DWORD(5),DWORD(1400),DWORD(0),DWORD(12345)}) {
+        Prepare(source); apiMode=ApiMode::Reject; apiError=code;
+        result=TrySetScalingWindowOwner(output,source);
+        assert(result.systemError==code && !result.actualOwner && result.previousOwner==0);
+        assert(result.CanContinueUnowned()==(code==87));
+        assert(_EstablishWindowCoordination()==(code==87));
+        assert(detachCalls==0 && GetWindow(output,GW_OWNER)==nullptr);
+        if(code==87) assert(_sourceCoordinator.Mode()==WindowCoordinationMode::ManagedUnowned);
+        else assert(reports==1 && pending && reportedError==code);
+    }
+    Prepare(source); apiMode=ApiMode::AppliedDirtyError;
+    assert(_EstablishWindowCoordination());
+    assert(_sourceCoordinator.Mode()==WindowCoordinationMode::NativeOwned && detachCalls==1 && reports==0);
+    apiMode=ApiMode::Native; assert(TrySetScalingWindowOwner(output,nullptr).IsApplied());
+    Prepare(source); permission=false; apiMode=ApiMode::Reject;
+    assert(!_EstablishWindowCoordination() && reports==1 && reportedError==ERROR_ACCESS_DENIED);
+    Prepare(source); apiMode=ApiMode::Unexpected;
+    assert(!_EstablishWindowCoordination() && reports==1 && reportedError==ERROR_ACCESS_DENIED);
+    apiMode=ApiMode::Native; assert(TrySetScalingWindowOwner(output,nullptr).IsApplied());
+    Prepare(source); hung=true;
+    assert(!_EstablishWindowCoordination() && reports==1 && detachCalls==0);
+    Prepare(source); apiMode=ApiMode::Reject;
+    result=TrySetScalingWindowOwner(output,source);
+    assert(!_sourceCoordinator.Accept(output,result,false));
+    _sourceCoordinator.Reset(); assert(!_sourceCoordinator.Accept(output,result,true));
+    Prepare(source); apiMode=ApiMode::Reject;
+    _CompleteFrontendRender(false,false); assert(shows==0 && toasts==0);
+    _CompleteFrontendRender(true,false); assert(shows==1 && toasts==1 && !_isFirstFrame);
+    _CompleteFrontendRender(true,false); assert(shows==1 && toasts==1);
+    Prepare(source); apiMode=ApiMode::Reject;
+    _CompleteFrontendRender(true,true); assert(shows==1 && toasts==1 && !_isFirstFrame);
+    Prepare(source); apiMode=ApiMode::Reject; apiError=5;
+    _CompleteFrontendRender(true,true); assert(shows==1 && toasts==0 && _isFirstFrame && reports==1);
+    Prepare(source); showSucceeded=false;
+    _CompleteFrontendRender(true,false); assert(toasts==0 && _isFirstFrame);
+    apiMode=ApiMode::Native; assert(TrySetScalingWindowOwner(output,nullptr).IsApplied());
+
+    // Production startup reporting must not reuse a recovered initialization
+    // warning's system code for a later source/output failure.
+    Prepare(source); startupError=ScalingError::SourceWindowClosed;
+    _startupFailureContext="source retired after initialization"; _startupFailureSystemError=1400;
+    ReportStartup(source); assert(reports==1 && reportedError==1400 && reportedContext==_startupFailureContext);
+    Prepare(source); startupError=ScalingError::CaptureFailed; startupRendererFailed=true;
+    ReportStartup(source); assert(reports==1 && reportedError==1234 && reportedContext=="capture initialization failed");
+    Prepare(source); startupError=ScalingError::ScalingWindowCreationFailed;
+    _startupFailureContext="Create renderer child failed"; _startupFailureSystemError=8;
+    ReportStartup(source); assert(reports==1 && reportedError==8 && reportedContext==_startupFailureContext);
+
+    // Real controller identity/root mapping; capture HWND is never substituted.
+    Prepare(source); child=Window(source);
+    SourceWindowCoordinator mapped; assert(mapped.Prepare(child));
+    assert(mapped.Source().capture==child && mapped.Source().root==source);
+    auto epoch=mapped.Epoch();
+    mapped.Notify(epoch-1,EVENT_OBJECT_DESTROY,child); assert(mapped.Ready());
+    mapped.Notify(epoch,EVENT_OBJECT_DESTROY,child); assert(!mapped.Ready());
+    // Even if the numeric HWND still exists, a latched death cannot rebind it.
+    assert(IsWindow(child)); mapped.RetireOutput(); assert(!mapped.Ready());
+    mapped.Reset(); mapped.Notify(epoch,EVENT_OBJECT_SHOW,child); assert(!mapped.Ready());
+    Close(child);
+
+    // Controlled lifecycle events require no capture frame or renderer call.
+    Prepare(source); const auto sourceEpoch=_sourceCoordinator.Epoch();
+    _sourceCoordinator.TakeDirty();
+    for(DWORD event : {EVENT_OBJECT_HIDE,EVENT_OBJECT_SHOW,EVENT_SYSTEM_MINIMIZESTART,EVENT_SYSTEM_MINIMIZEEND,
+                      EVENT_OBJECT_LOCATIONCHANGE,EVENT_SYSTEM_FOREGROUND}) {
+        _sourceCoordinator.Notify(sourceEpoch,event,source);
+        assert(_sourceCoordinator.TakeDirty()); assert(!_sourceCoordinator.TakeDirty());
+    }
+    _sourceCoordinator.Notify(sourceEpoch-1,EVENT_OBJECT_HIDE,source); assert(!_sourceCoordinator.TakeDirty());
+    _sourceCoordinator.Notify(sourceEpoch,EVENT_OBJECT_DESTROY,source,OBJID_CLIENT); assert(_sourceCoordinator.Ready());
+    _sourceCoordinator.Notify(sourceEpoch,EVENT_OBJECT_DESTROY,source); assert(!_sourceCoordinator.Ready());
+    Prepare(source); assert(SetWindowPos(source,nullptr,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_SHOWWINDOW));
+    HWND popup=Window(nullptr,source);
+    assert(!EnabledSourcePopup(source));
+    assert(SetWindowPos(popup,nullptr,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_SHOWWINDOW));
+    assert(EnabledSourcePopup(source)==popup && !_sourceCoordinator.NeedsTopmost(true,false));
+    EnableWindow(popup,FALSE); assert(!EnabledSourcePopup(source));
+    EnableWindow(source,FALSE); assert(!_sourceCoordinator.NeedsTopmost(true,false));
+    EnableWindow(source,TRUE); assert(_sourceCoordinator.NeedsTopmost(true,false));
+    assert(!_sourceCoordinator.NeedsTopmost(true,true));
+    HWND topmostSource=CreateWindowExW(WS_EX_NOACTIVATE|WS_EX_TOPMOST,L"STATIC",L"Magpie topmost source",
+        WS_POPUP,-32000,-32000,32,32,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
+    assert(topmostSource && (GetWindowLongPtrW(topmostSource,GWL_EXSTYLE)&WS_EX_TOPMOST));
+    SourceWindowCoordinator topmostCoordinator; assert(topmostCoordinator.Prepare(topmostSource));
+    assert(topmostCoordinator.NeedsTopmost(false,true)); topmostCoordinator.Reset(); Close(topmostSource);
+    Close(popup);
+    apiMode=ApiMode::Reject; assert(_EstablishWindowCoordination());
+    HWND other=Window();
+    assert(SetWindowPos(other,HWND_TOP,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE));
+    assert(_sourceCoordinator.UpdateManagedOrder(false,false,true));
+    assert(GetWindow(source,GW_HWNDPREV)==output && GetWindow(output,GW_OWNER)==nullptr);
+    // Same topmost flag, changed relative ordering must still be repaired.
+    assert(SetWindowPos(other,output,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE));
+    assert(GetWindow(source,GW_HWNDPREV)!=output);
+    assert(_sourceCoordinator.UpdateManagedOrder(false,false,true));
+    assert(GetWindow(source,GW_HWNDPREV)==output && GetWindow(output,GW_OWNER)==nullptr);
+    assert(GetWindow(output,GW_HWNDPREV)==other); // unrelated window remains ahead
+    Close(other); apiMode=ApiMode::Native;
+    assert(SetScalingWindowOwner(output,source));
+    assert(SetWindowPos(output,nullptr,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_SHOWWINDOW));
+    assert(!EnabledSourcePopup(source,output));
+    assert(SetScalingWindowOwner(output,nullptr));
+    Prepare(source); apiMode=ApiMode::DestroyOutput;
+    result=TrySetScalingWindowOwner(output,source); assert(result.status==ScalingWindowOwnerStatus::InvalidWindow);
+    Prepare(source); HWND dying=Window(); apiMode=ApiMode::DestroySource;
+    result=TrySetScalingWindowOwner(output,dying); assert(result.status==ScalingWindowOwnerStatus::InvalidOwner);
+    // Run the actual PollSourceState body with no Render/new-frame call. A
+    // source hidden in ManagedUnowned does not let USER32 hide the output;
+    // the production poll must do it and request the existing rebuild path.
+    Prepare(source); apiMode=ApiMode::Reject; assert(_EstablishWindowCoordination());
+    assert(SetWindowPos(output,nullptr,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_SHOWWINDOW));
+    HWND independentHole=Window(); _hwndTouchHoles[0].value=independentHole;
+    assert(SetWindowPos(independentHole,nullptr,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_SHOWWINDOW));
+    assert(!GetWindow(independentHole,GW_OWNER));
+    ShowWindow(source,SW_HIDE); assert(IsWindowVisible(output) && IsWindowVisible(independentHole));
+    _isFirstFrame=false; PollSourceState(); assert(!IsWindowVisible(output) && pending && transition==1);
+    assert(!IsWindowVisible(independentHole)); Close(independentHole); _hwndTouchHoles[0].value=nullptr;
+    ShowWindow(source,SW_SHOWMINNOACTIVE); Prepare(source); apiMode=ApiMode::Reject; assert(_EstablishWindowCoordination());
+    assert(SetWindowPos(output,nullptr,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_SHOWWINDOW));
+    PollSourceState(); assert(!IsWindowVisible(output) && pending && transition==1);
+    ShowWindow(source,SW_SHOWNOACTIVATE); Prepare(source); apiMode=ApiMode::Reject; assert(_EstablishWindowCoordination());
+    assert(SetWindowPos(output,nullptr,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_SHOWWINDOW));
+    Close(source); PollSourceState(); assert(!IsWindowVisible(output) && pending && transition==2);
+    Pump(); assert(!_sourceCoordinator.Ready());
+    _sourceCoordinator.Reset(); Close(output); Close(alternate);
+    // Per-item Closed callbacks cannot mutate a replacement target's lifetime.
+    CaptureTargetLifetime oldTarget(GetCurrentThreadId()), newTarget(GetCurrentThreadId());
+    oldTarget.Retire(); std::thread callback([&]{ oldTarget.Close(); }); callback.join();
+    assert(oldTarget.IsClosed() && !newTarget.IsClosed());
+    newTarget.Close(); assert(newTarget.IsClosed());
+    std::cout << "PASS: owner capabilities, production admission/first-frame gate, identities, lifecycle signals, popup/topmost/Z-order and stale Closed" << std::endl;
+}

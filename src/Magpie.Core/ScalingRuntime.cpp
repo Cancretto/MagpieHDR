@@ -329,17 +329,21 @@ void ScalingRuntime::_ScalingThreadProc() noexcept {
 		return PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) != FALSE;
 	};
 	while (true) {
+		scalingWindow.CompletePendingDestroy();
 		for (uint32_t i = 0; i < MAX_MESSAGES_PER_PASS; ++i) {
 			if (!peekPriorityMessage()) {
 				break;
 			}
 			if (msg.message == WM_QUIT) {
 				scalingWindow.Stop();
+				scalingWindow.Destroy();
+				scalingWindow.CompletePendingDestroy();
 				return;
 			}
 			FrameTrace::Scope traceMessage(FrameTrace::Event::FrontendMessage, msg.message);
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
+			scalingWindow.CompletePendingDestroy();
 			if (scalingWindow.HasUrgentOverlayInput()) {
 				break;
 			}
@@ -366,6 +370,13 @@ void ScalingRuntime::_ScalingThreadProc() noexcept {
 
 		// Parameter callbacks only queue changes. Tear down here after rendering
 		// and window callbacks have returned, and service messages during the pause.
+		scalingWindow.CompletePendingDestroy();
+		if (scalingWindow.IsRetiring()) {
+			scalingWindow.Destroy();
+			MsgWaitForMultipleObjectsEx(0, nullptr, 10, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+			continue;
+		}
+		scalingWindow.PollSourceState();
 		if (scalingWindow.ProcessPendingStop()) {
 			_State(ScalingState::Idle);
 			continue;
@@ -451,7 +462,7 @@ void ScalingRuntime::_ScalingThreadProc() noexcept {
 			const DWORD restMs = (scalingWindow.HasPendingDLSSFGFrame() ||
 				scalingWindow.Renderer().HasPendingContent()) ? 1 :
 				DWORD((std::max<int64_t>(rest.count(), 0) + ratio - 1) / ratio);
-			scalingWindow.Renderer().WaitForFrontendWork(std::chrono::milliseconds(restMs));
+			scalingWindow.Renderer().WaitForFrontendWork(std::chrono::milliseconds(std::min(restMs, DWORD(250))));
 		} else if (scalingWindow.IsSrcRepositioning()) {
 			std::optional<bool> repositioning =
 				IsSrcRepositioning(scalingWindow.SrcTracker().Handle());
