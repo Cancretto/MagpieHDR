@@ -6,6 +6,12 @@
 
 [Magpie Experimental v0.6.9](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.9-experimental) is publicly available. The default `experimental` branch includes its source, and `version.json` points to 0.6.9. See the [complete bilingual release notes](RELEASE_NOTES_v0.6.9-experimental.md) and [development index](experimental/README.md).
 
+## 0.6.10 Beta1 本地整合 / Local integration
+
+本地分支 `release/0.6.10-beta1` 以完整 0.6.9 公开源码为基线，合入 UWP 窗口协作与完整停止流程、默认关闭的标准 DXGI VRR 配置与呈现策略。见 [本版中英说明](RELEASE_NOTES_v0.6.10-beta1.md)。公开版本入口保持 0.6.9，源分支与历史暂停 VRR 分支保留；实机兼容性及显示器变频仍需验证。
+
+Local branch `release/0.6.10-beta1` integrates UWP window coordination/shutdown and default-off standard DXGI VRR on top of the complete public 0.6.9 source. See the [bilingual Beta1 notes](RELEASE_NOTES_v0.6.10-beta1.md). The public version entry remains at 0.6.9; source branches and the historical paused VRR branch are retained. Application compatibility and physical display refresh still require testing.
+
 ## 历史准备记录 / Historical preparation records
 
 以下保留当时的 Beta 与 Draft 准备记录；其中的版本和授权状态为历史快照。
