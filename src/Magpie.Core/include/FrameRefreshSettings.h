@@ -23,6 +23,8 @@ struct FrameRefreshSettings {
 	float cursorRate = 60.0f;
 	bool idleEnabled = true;
 	float idleRate = 30.0f;
+	// Explicit per-profile opt-in. Do not migrate the dormant global vrr field.
+	bool vrrEnabled = false;
 	// Migration-only constraints. Auto must remain dynamic when an old cap
 	// coexists with it. Explicit edits to content/cursor mode release these.
 	float legacyContentLimit = 0.0f;
@@ -86,6 +88,7 @@ inline bool MergeFrameRefreshSettings(FrameRefreshSettings& current,
 	MERGE_REFRESH(contentMode); MERGE_REFRESH(contentRate); MERGE_REFRESH(pacing);
 	MERGE_REFRESH(cursorMode); MERGE_REFRESH(cursorSupplement); MERGE_REFRESH(cursorRate);
 	MERGE_REFRESH(idleEnabled); MERGE_REFRESH(idleRate);
+	MERGE_REFRESH(vrrEnabled);
 	MERGE_REFRESH(legacyContentLimit); MERGE_REFRESH(legacyLimiterOnly); MERGE_REFRESH(legacyResponsiveMinimum);
 	MERGE_REFRESH(legacySourceTarget);
 #undef MERGE_REFRESH
@@ -106,6 +109,7 @@ inline bool MergeFrameRefreshSettings(FrameRefreshSettings& current,
 template<class Options>
 void ApplyFrameRefreshSettings(Options& options, const FrameRefreshSettings& settings) noexcept {
 	options.frameRefresh = settings;
+	options.isVRREnabled = settings.vrrEnabled;
 	const auto sync = settings.ContentSync();
 	options.isFrontEdgeSyncEnabled = sync.enabled;
 	options.frontEdgeSyncFrameRate = sync.frameRate;

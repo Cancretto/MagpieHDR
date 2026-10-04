@@ -134,7 +134,8 @@ struct AdaptivePresenter {
     bool _reflexRendering = false, _reflexGenerated = false, _frameCapacityBusy = false, _isDCompPresenting = false;
     FrameLatencyGate _frameLatencyGate;
     Handle _frameLatencyWaitableObject;
-    SwapChain swap; SwapChain* _dxgiSwapChain = &swap; Surface* _dcompSurface = nullptr;
+    SwapChain swap; winrt::com_ptr<SwapChain> _dxgiSwapChain{&swap}; Surface* _dcompSurface = nullptr;
+    HRESULT _PresentWithVRR(SwapChain* chain, bool) { return chain->Present(0, 0); }
     Resources* _deviceResources = nullptr;
     std::chrono::steady_clock::time_point _lastSubmissionTime{};
     winrt::com_ptr<ID3D11Texture2D> _backBuffer{&texture};

@@ -684,6 +684,7 @@ bool ProfileViewModel::IsNoGraphicsCard() const noexcept {
 }
 
 void ProfileViewModel::_NotifyFrameRefreshChanged() {
+	RaisePropertyChanged(L"IsVRREnabled");
 	RaisePropertyChanged(L"ContentFrameRateModeIndex");
 	RaisePropertyChanged(L"ContentFrameRate");
 	RaisePropertyChanged(L"FrameSyncModeIndex");
@@ -704,6 +705,13 @@ void ProfileViewModel::_NotifyFrameRefreshChanged() {
 void ProfileViewModel::_SaveFrameRefresh() {
 	ProfileService::Get().FrameRefreshChanged.Invoke(*_data);
 	AppSettings::Get().SaveAsync();
+}
+
+bool ProfileViewModel::IsVRREnabled() const noexcept { return _data->frameRefresh.vrrEnabled; }
+void ProfileViewModel::IsVRREnabled(bool value) {
+	if (_data->frameRefresh.vrrEnabled == value) return;
+	_data->frameRefresh.vrrEnabled = value;
+	_SaveFrameRefresh();
 }
 
 int32_t ProfileViewModel::ContentFrameRateModeIndex() const noexcept { return int32_t(_data->frameRefresh.contentMode); }

@@ -1805,5 +1805,11 @@
     <value>配置文件夹</value>
   </data>
   <data name="FrameRefresh_DuplicateDetection_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>重复帧检测</value></data>
+  <data name="FrameRefresh_VRR.Header" xml:space="preserve"><value>可变刷新率（实验）</value></data>
+  <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>请求 VRR，需显示器与驱动支持；重新启用缩放后生效，G-SYNC 激活情况仍需验证。</value></data>
+  <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>关闭</value></data>
+  <data name="FrameRefresh_VRR_Input.OnContent" xml:space="preserve"><value>开启</value></data>
+  <data name="FrameRefresh_VRR_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>可变刷新率</value></data>
+
   <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>其他选项</value></data>
 </root>

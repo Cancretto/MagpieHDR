@@ -588,6 +588,7 @@ bool XeSSFGPresenter::_Initialize(HWND hwndAttach) noexcept {
 	impl->multiplier = _requestedMultiplier;
 
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+	_VRRPathAvailable(true);
 	swapChainDesc.Width = impl->width;
 	swapChainDesc.Height = impl->height;
 	swapChainDesc.Format = ColorFormat(impl->hdrEnabled);
@@ -597,7 +598,7 @@ bool XeSSFGPresenter::_Initialize(HWND hwndAttach) noexcept {
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT |
-		(_deviceResources->IsTearingSupported() && ScalingWindow::Get().Options().isVRREnabled ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0);
+		_vrr.CreationFlags();
 
 	xefg_swapchain_d3d12_init_params_t initParams{};
 	initParams.maxInterpolatedFrames = interpolatedFrames;
@@ -615,6 +616,14 @@ bool XeSSFGPresenter::_Initialize(HWND hwndAttach) noexcept {
 		LogXeFGResult("get proxy swap chain failed", result);
 		return false;
 	}
+	// Validate the proxy's actual descriptor; preserve it for every resize.
+	DXGI_SWAP_CHAIN_DESC1 actualDesc{};
+	const HRESULT descHr = impl->swapChain->GetDesc1(&actualDesc);
+	if (FAILED(descHr)) {
+		Logger::Get().ComError("Get XeSSFG proxy swap-chain descriptor failed", descHr);
+		return false;
+	}
+	_vrr.Created(actualDesc.Flags);
 	if (impl->hdrEnabled) {
 		HRESULT colorSpaceHr = impl->swapChain->SetColorSpace1(
 			DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020);
@@ -631,7 +640,9 @@ bool XeSSFGPresenter::_Initialize(HWND hwndAttach) noexcept {
 		Logger::Get().Error("Get XeSSFG frame latency object failed");
 		return false;
 	}
-	impl->factory->MakeWindowAssociation(hwndAttach, DXGI_MWA_NO_ALT_ENTER);
+	const HRESULT associationHr = impl->factory->MakeWindowAssociation(hwndAttach, DXGI_MWA_NO_ALT_ENTER);
+	_vrr.AltEnterDisabled(SUCCEEDED(associationHr));
+	if (FAILED(associationHr)) Logger::Get().ComWarn("XeSSFG MakeWindowAssociation failed", associationHr);
 
 	result = xefgSwapChainSetNumInterpolatedFrames(impl->xefg, interpolatedFrames);
 	if (!XeFGSucceeded(result)) {
@@ -968,12 +979,10 @@ bool XeSSFGPresenter::EndFrame(bool waitForGpu) noexcept {
 
 	xellAddMarkerData(impl.xell, impl.frameId, XELL_RENDERSUBMIT_END);
 	xellAddMarkerData(impl.xell, impl.frameId, XELL_PRESENT_START);
-	const UINT flags = ScalingWindow::Get().Options().isVRREnabled && _deviceResources->IsTearingSupported()
-		? DXGI_PRESENT_ALLOW_TEARING : 0;
 	const auto presentStart = std::chrono::steady_clock::now();
 	const auto tracePresent = FrameTrace::Tick();
 	const auto extraBefore = XeSSFGCompatibility::Pacing::extraWaitNs.load(std::memory_order_relaxed);
-	hr = impl.swapChain->Present(0, flags);
+	hr = _PresentWithVRR(impl.swapChain.get(), false);
 	impl.presentMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - presentStart).count();
 	impl.extraWaitMs = static_cast<double>(XeSSFGCompatibility::Pacing::extraWaitNs.load(std::memory_order_relaxed) - extraBefore) / 1000000.0;
 	FrameTrace::Presentation(tracePresent, FrameTrace::Tick(), hr,
@@ -1084,8 +1093,8 @@ bool XeSSFGPresenter::OnResize() noexcept {
 	ReleaseSizeDependentResources(impl);
 	impl.frameLatencyGate.Reset();
 	impl.frameLatencyWaitableObject.reset();
-	const UINT flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT |
-		(_deviceResources->IsTearingSupported() && ScalingWindow::Get().Options().isVRREnabled ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0);
+	_RefreshVRREnvironment(true);
+	const UINT flags = _vrr.ResizeFlags();
 	HRESULT hr = impl.swapChain->ResizeBuffers(
 		BUFFER_COUNT, width, height, ColorFormat(impl.hdrEnabled), flags);
 	if (FAILED(hr)) {

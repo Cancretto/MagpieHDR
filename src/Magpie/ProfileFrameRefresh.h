@@ -36,6 +36,7 @@ inline FrameRefreshSettings ReadProfileFrameRefresh(
 		enumeration("cursorSupplement", result.cursorSupplement, 1);
 		rate("cursorRate", result.cursorRate);
 		boolean("idleEnabled", result.idleEnabled);
+		boolean("vrrEnabled", result.vrrEnabled);
 		rate("idleRate", result.idleRate);
 		rate("legacyContentLimit", result.legacyContentLimit);
 		if (const auto value = fields.FindMember("legacySourceTarget"); value != fields.MemberEnd() && value->value.IsNumber()) {
@@ -98,6 +99,7 @@ void WriteProfileFrameRefresh(Writer& writer, const FrameRefreshSettings& settin
 	writer.Key("cursorSupplement"); writer.Uint(uint32_t(s.cursorSupplement));
 	writer.Key("cursorRate"); writer.Double(s.cursorRate);
 	writer.Key("idleEnabled"); writer.Bool(s.idleEnabled);
+	writer.Key("vrrEnabled"); writer.Bool(s.vrrEnabled);
 	writer.Key("idleRate"); writer.Double(s.idleRate);
 	writer.Key("legacyContentLimit"); writer.Double(s.legacyContentLimit);
 	writer.Key("legacySourceTarget"); writer.Double(s.legacySourceTarget);

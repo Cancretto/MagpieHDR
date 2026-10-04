@@ -55,6 +55,9 @@ for lang in ("en-US", "zh-Hans", "zh-Hant"):
             continue
         if n.tag in (local + "SettingsCard", local + "SettingsExpander", local + "SettingsGroup"):
             assert resources[uid + ".Header"] and resources[uid + ".Description"], (lang, uid)
+        elif n.tag.endswith("ToggleSwitch"):
+            assert resources[uid + ".OffContent"] and resources[uid + ".OnContent"], (lang, uid)
+            assert resources[uid + ".[using:Windows.UI.Xaml.Automation]AutomationProperties.Name"], (lang, uid)
         elif n.tag.endswith(("NumberBox", "ComboBox")):
             assert resources[uid + "_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" if not uid.endswith("_Input") else uid + ".[using:Windows.UI.Xaml.Automation]AutomationProperties.Name"], (lang, uid)
         else:
