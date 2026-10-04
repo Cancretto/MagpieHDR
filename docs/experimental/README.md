@@ -20,6 +20,8 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [参数焦点交接与会话窗口判定 TODO](todos/20261004-parameter-focus-coordination-TODO.md)：已在 `fix/069-uwp-window-owner` 完成根窗口判定、输入所有权、宿主层级及停止／重建协调，通过自动回归和测试窗口的原生层级验证；完整产品编译部署及游戏／GPU／VRR 验收待独立会话。
+
 - **0.6.9 UWP 窗口兼容与死锁保护**：`fix/069-uwp-window-owner` 已实现两种协作模式、首帧准入与完整退役边界，保留 Win32 owner 和 NGX 防护，通过离线回归。完整构建／部署和实机验收待独立会话。[当前 TODO](todos/20261004-v0.6.9-uwp-window-coordination-and-lifecycle-TODO.md)、[第二阶段实施记录](reviews/20261004-v0.6.9-uwp-coordination-implementation.md)、[原定位](todos/20261004-v0.6.9-issues-65-67-uwp-window-owner-TODO.md)、[阶段 1 记录](reviews/20261004-v0.6.9-uwp-window-owner.md)。
 
 - **Beta2 按钮与刷新控件样式对齐**：四个操作采用效果组／效果器的普通中性填充、零边框；六个下拉框与三组数值统一为 225 DIP，提供行内步进，并统一窄窗口换行与条件提示。完整 Release、原生标题／刷新控件测量及模型回归通过，已部署到原 Beta2；主窗口启动与三个现有配置保留检查通过。[TODO 与验证范围](todos/20261002-v0.6.9-beta2-ui-style-alignment-TODO.md)、[实施与部署记录](reviews/20261002-v0.6.9-beta2-ui-style-alignment.md)。
