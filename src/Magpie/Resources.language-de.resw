@@ -1066,5 +1066,33 @@
   <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>Zurücksetzen</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>Grafikkarte für Rendering</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Grafikkarte für Rendering</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Automatisch</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>Keine verfügbare Grafikkarte gefunden</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>Gewählte Grafikkarte vorübergehend nicht verfügbar</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>Keine verfügbare Grafikkarte gefunden</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Beim Aktivieren der Effekte wird CPU-Rendering versucht. Prüfen Sie den Grafiktreiber.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>Gewählte Grafikkarte vorübergehend nicht verfügbar</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Effekte verwenden automatisch eine verfügbare Grafikkarte. Sobald die gewählte Karte wieder verfügbar ist, wird sie erneut verwendet.</value>
+  </data>
+
   <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>Weitere Optionen</value></data>
 </root>

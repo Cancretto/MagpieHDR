@@ -1066,5 +1066,33 @@
   <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>மீட்டமை</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>ரெண்டரிங் GPU</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>ரெண்டரிங் GPU</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>தானியங்கு</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>கிடைக்கக்கூடிய GPU இல்லை</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>தேர்ந்தெடுத்த GPU தற்காலிகமாகக் கிடைக்கவில்லை</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>கிடைக்கக்கூடிய GPU இல்லை</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>விளைவுகளை இயக்கும்போது CPU ரெண்டரிங் முயற்சிக்கப்படும். கிராபிக்ஸ் இயக்கியைச் சரிபார்க்கவும்.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>தேர்ந்தெடுத்த GPU தற்காலிகமாகக் கிடைக்கவில்லை</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>விளைவுகள் கிடைக்கக்கூடிய GPU-ஐத் தானாகப் பயன்படுத்தும். தேர்ந்தெடுத்த GPU மீண்டும் கிடைக்கும்போது பயன்படுத்தப்படும்.</value>
+  </data>
+
   <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>மேலும் விருப்பங்கள்</value></data>
 </root>

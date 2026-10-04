@@ -934,5 +934,33 @@
   <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>Restablecer</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>Tarjeta gráfica de renderizado</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Tarjeta gráfica de renderizado</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Automático</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>No se encontró una tarjeta gráfica disponible</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>La tarjeta seleccionada no está disponible temporalmente</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>No se encontró una tarjeta gráfica disponible</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Al activar los efectos se intentará renderizar con la CPU. Comprueba el controlador gráfico.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>La tarjeta seleccionada no está disponible temporalmente</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Los efectos usarán automáticamente una tarjeta disponible. La tarjeta seleccionada se volverá a usar cuando esté disponible.</value>
+  </data>
+
   <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>Mas opciones</value></data>
 </root>

@@ -823,7 +823,7 @@
     <value>Restore the source window and enable the effect group again. If capture still fails, open View details to check the capture step and error code.</value>
   </data>
   <data name="Message_CreateFenceFailed" xml:space="preserve">
-    <value>The selected graphics card could not create synchronization resources. Open the profile below, go to Performance → Graphics card and select another available card. If it still fails, update its driver and provide details and logs.</value>
+    <value>The selected graphics card could not create synchronization resources. Open the profile below, go to Performance → Rendering GPU and select another available card. If it still fails, update its driver and provide details and logs.</value>
   </data>
   <data name="Message_NvidiaVsrPathUnsupported" xml:space="preserve">
     <value>NVIDIA VSR did not start (error -2). Exit Magpie, extract the complete package to a folder such as C:\Magpie\, then run Magpie.exe from that folder and retry. Path compatibility is a possible cause. If it still fails, copy the details and include the logs.</value>
@@ -1805,6 +1805,34 @@
     <value>Config folder</value>
   </data>
   <data name="FrameRefresh_DuplicateDetection_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Duplicate frame detection</value></data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>Rendering GPU</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Rendering GPU</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Automatic</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>No available GPU found</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>Selected GPU temporarily unavailable</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>No available GPU found</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Enabling effects will attempt CPU rendering. Check your graphics driver.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>Selected GPU temporarily unavailable</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Effects will automatically use an available GPU. The selected GPU will be used again when it returns.</value>
+  </data>
+
   <data name="FrameRefresh_VRR.Header" xml:space="preserve"><value>Variable refresh rate (experimental)</value></data>
   <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>Request VRR with supported displays and drivers. Re-enable scaling to apply; G-SYNC activation needs verification.</value></data>
   <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>Off</value></data>

@@ -43,9 +43,10 @@ namespace Magpie {
 		Double CustomInitialWindowedScaleFactor;
 
 		IVector<IInspectable> GraphicsCards { get; };
-		Int32 GraphicsCard;
-		Boolean IsShowGraphicsCardSettingsCard { get; };
+		IInspectable GraphicsCard;
+		Boolean IsGraphicsCardSelectionEnabled { get; };
 		Boolean IsNoGraphicsCard { get; };
+		Boolean ShowGraphicsCardUnavailableWarning { get; };
 
 		Int32 ContentFrameRateModeIndex;
 		Double ContentFrameRate;
