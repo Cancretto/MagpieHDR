@@ -1,5 +1,6 @@
 #pragma once
 #include "FrameGuidanceTypes.h"
+#include "VRRPresentationPolicy.h"
 
 namespace Magpie {
 
@@ -77,6 +78,11 @@ protected:
 	virtual bool _Initialize(HWND hwndAttach) noexcept = 0;
 
 	void _WaitForGpu() noexcept;
+	void _RefreshVRREnvironment(bool force = false) noexcept;
+	void _LogVRRState(std::string_view event) noexcept;
+	void _VRRPathAvailable(bool available) noexcept;
+	HRESULT _PresentWithVRR(IDXGISwapChain4* swapChain, bool retryWithoutTearing) noexcept;
+	VRRPresentationPolicy _vrr;
 
 	static uint32_t _CalcBufferCount() noexcept;
 
@@ -85,6 +91,12 @@ protected:
 	std::chrono::steady_clock::time_point _lastSubmissionTime{};
 
 private:
+	VRRUnavailableReason _QualifyVRROutput() const noexcept;
+	HWND _vrrWindow = NULL;
+	HMONITOR _vrrMonitor = NULL;
+	HMONITOR _lastLoggedVRRMonitor = NULL;
+	std::chrono::steady_clock::time_point _vrrNextProbe{};
+	std::optional<VRRPresentationPolicy> _lastLoggedVRR;
 	winrt::com_ptr<ID3D11Fence> _fence;
 	uint64_t _fenceValue = 0;
 	wil::unique_event_nothrow _fenceEvent;

@@ -547,8 +547,8 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	options.IsFP16Disabled(settings.IsFP16Disabled());
 	options.frameSyncProfileIdentity = profile.runtimeIdentity;
 	_activeFrameSyncProfile = profile.runtimeIdentity;
-	// VRR remains deferred while its settings card is hidden.
-	options.isVRREnabled = false;
+	// ApplyFrameRefreshSettings supplies an explicit, default-off profile VRR
+	// request. The dormant global vrr setting remains ignored.
 
 	options.fullscreenInitialToolbarState = settings.FullscreenInitialToolbarState();
 	options.windowedInitialToolbarState = settings.WindowedInitialToolbarState();

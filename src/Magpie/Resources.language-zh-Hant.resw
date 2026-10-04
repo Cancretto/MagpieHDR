@@ -1756,4 +1756,9 @@
     <value>重設</value>
   </data>
   <data name="FrameRefresh_DuplicateDetection_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>重複影格偵測</value></data>
+  <data name="FrameRefresh_VRR.Header" xml:space="preserve"><value>可變更新率（實驗）</value></data>
+  <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>請求 VRR，需顯示器與驅動支援；重新啟用縮放後生效，G-SYNC 啟動情況仍需驗證。</value></data>
+  <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>關閉</value></data>
+  <data name="FrameRefresh_VRR_Input.OnContent" xml:space="preserve"><value>開啟</value></data>
+  <data name="FrameRefresh_VRR_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>可變更新率</value></data>
 </root>

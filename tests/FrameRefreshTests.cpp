@@ -29,6 +29,19 @@ static std::string Write(FrameRefreshSettings s) {
 }
 int main() {
 	const FrameRefreshSettings defaults;
+	Check(!defaults.vrrEnabled, "New profile unexpectedly enables VRR");
+	Check(!Read(R"({"vrr":true})").vrrEnabled, "Dormant global VRR silently became active");
+	Check(!Read(R"({"vrr":true,"frameRefresh":{}})").vrrEnabled, "Partial refresh schema imported global VRR");
+	for (const char* invalid : {"0", "1", "null", "\"true\"", "{}"}) {
+		Check(!Read(std::string("{\"frameRefresh\":{\"vrrEnabled\":") + invalid + "}}").vrrEnabled,
+			"Malformed VRR opt-in accepted");
+	}
+	auto vrr = defaults; vrr.vrrEnabled = true;
+	Check(Read(Write(vrr)) == vrr, "Profile VRR opt-in lost on roundtrip");
+	auto stale = defaults, edited = defaults, merged = vrr;
+	edited.contentRate = 45;
+	Check(MergeFrameRefreshSettings(merged, stale, edited) && merged.vrrEnabled && merged.contentRate == 45,
+		"Stale runtime panel cleared a newer profile VRR opt-in");
 	Check(defaults.IsValid() && defaults.contentMode == ContentFrameRateMode::Custom &&
 		defaults.contentRate == 60 && defaults.pacing == FrameSyncMode::FrontEdge &&
 		defaults.cursorMode == CursorRefreshMode::Supplement && defaults.cursorRate == 60 &&

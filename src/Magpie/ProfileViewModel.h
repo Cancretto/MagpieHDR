@@ -135,6 +135,8 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 	bool ShowFrameRefreshNotice() const noexcept;
 	hstring FrameRefreshNotice() const noexcept;
 	void ResetFrameRefresh();
+	bool IsVRREnabled() const noexcept;
+	void IsVRREnabled(bool value);
 
 	bool IsCaptureTitleBar() const noexcept;
 	void IsCaptureTitleBar(bool value);
