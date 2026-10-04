@@ -160,7 +160,7 @@ private:
 	ScalingWindow() noexcept;
 	~ScalingWindow() noexcept;
 
-	ScalingError _StartImpl(HWND hwndSrc) noexcept;
+	ScalingError _StartImpl(HWND hwndSrc, bool& rendererInitializationFailed) noexcept;
 	void _CancelParameterRestart() noexcept;
 
 	// 确保渲染窗口长宽比不变，且限制最小和最大尺寸。必须提供 width 和 height 之一，另一个

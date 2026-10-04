@@ -8,6 +8,7 @@
 #include "Renderer.h"
 #include "NgxRuntimeGuard.h"
 #include "ScalingWindowOwner.h"
+#include "StrHelper.h"
 #include "EffectParameterValue.h"
 #include "HdrDisplayPreflight.h"
 #include "Win32Helper.h"
@@ -87,7 +88,18 @@ static ScalingError CheckCapturePrerequisites(CaptureMethod method) noexcept {
 	}
 }
 
-ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
+static std::string DescribeScalingWindowOwner(const char* step, HWND window, HWND source, HWND owner,
+	const ScalingWindowOwnerResult& result) noexcept {
+	return fmt::format("Scaling window owner: step={} status={} system={} sourceClass={} outputClass={} "
+		"output={:#x} requested={:#x} actual={:#x} continueUnowned={}", step, result.StatusName(),
+		result.systemError, StrHelper::UTF16ToUTF8(Win32Helper::GetWindowClassName(source)),
+		StrHelper::UTF16ToUTF8(Win32Helper::GetWindowClassName(window)),
+		reinterpret_cast<uintptr_t>(window), reinterpret_cast<uintptr_t>(owner), reinterpret_cast<uintptr_t>(result.actualOwner),
+		result.CanContinueUnowned());
+}
+
+ScalingError ScalingWindow::_StartImpl(HWND hwndSrc, bool& rendererInitializationFailed) noexcept {
+	rendererInitializationFailed = false;
 	if (_options.effects.empty()) return ScalingError::ScalingModeEmpty;
 	if (ValidateFrameGenerationChain(_options.effects).HasConflict()) {
 		Logger::Get().Error("Scaling preflight: keep one frame-generation effect in the group");
@@ -379,6 +391,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 	_renderer = std::make_unique<class Renderer>();
 	ScalingError error = _renderer->Initialize(_hwndRenderer, _options.overlayOptions);
 	if (error != ScalingError::NoError) {
+		rendererInitializationFailed = true;
 		Logger::Get().Error("初始化 Renderer 失败");
 		return error;
 	}
@@ -389,14 +402,30 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc) noexcept {
 		// 应在 Renderer 初始化后调用。推迟到缩放窗口显示后再显示
 		_UpdateTouchHoleWindows(true);
 	}
-	if (!IsWindow(hwndSrc)) return ScalingError::SourceWindowClosed;
-	if (Win32Helper::IsWindowHung(hwndSrc)) return ScalingError::SourceWindowUnresponsive;
-	if (!SetScalingWindowOwner(Handle(), hwndSrc)) {
-		Logger::Get().Win32Error("Set scaling window owner after initialization failed");
-		return ScalingError::ScalingWindowCreationFailed;
+	if (!IsWindow(hwndSrc)) {
+		Logger::Get().Error("Source window closed after renderer initialization");
+		return ScalingError::SourceWindowClosed;
 	}
-	if (!AttachThreadInput(GetCurrentThreadId(), GetWindowThreadProcessId(hwndSrc, nullptr), FALSE)) {
-		Logger::Get().Win32Warn("Detach source input queue after setting window owner failed");
+	if (Win32Helper::IsWindowHung(hwndSrc)) {
+		Logger::Get().Error("Source window unresponsive after renderer initialization");
+		return ScalingError::SourceWindowUnresponsive;
+	}
+	const auto ownerResult = TrySetScalingWindowOwner(Handle(), hwndSrc);
+	const std::string ownerDiagnostic = DescribeScalingWindowOwner("initialize", Handle(), hwndSrc, hwndSrc, ownerResult);
+	if (ownerResult.IsApplied()) {
+		Logger::Get().Info(ownerDiagnostic);
+		if (!AttachThreadInput(GetCurrentThreadId(), GetWindowThreadProcessId(hwndSrc, nullptr), FALSE)) {
+			Logger::Get().Win32Warn("Detach source input queue after setting window owner failed");
+		}
+	} else if (ownerResult.CanContinueUnowned()) {
+		// Keep the existing source tracking and focus/Z-order management. An
+		// optional owner refusal must not tear down a successfully initialized renderer.
+		Logger::Get().Warn(ownerDiagnostic);
+	} else {
+		SetLastError(ownerResult.systemError);
+		Logger::Get().Win32Error(ownerDiagnostic);
+		return ownerResult.status == ScalingWindowOwnerStatus::InvalidOwner ?
+			ScalingError::SourceWindowClosed : ScalingError::ScalingWindowCreationFailed;
 	}
 
 	return ScalingError::NoError;
@@ -430,12 +459,13 @@ void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 	if (&options != &_options) _options = std::move(options);
 
 	Logger::DiagnosticCapture startupDiagnostic;
-	ScalingError error = _StartImpl(hwndSrc);
+	bool rendererInitializationFailed = false;
+	ScalingError error = _StartImpl(hwndSrc, rendererInitializationFailed);
 	if (error != ScalingError::NoError) {
 		if (_options.reportErrorDetails) {
 			_options.reportErrorDetails(hwndSrc, error,
-				_renderer ? _renderer->InitializationContext() : startupDiagnostic.Details(),
-				_renderer ? _renderer->InitializationSystemError() : startupDiagnostic.SystemError());
+				rendererInitializationFailed ? _renderer->InitializationContext() : startupDiagnostic.Details(),
+				rendererInitializationFailed ? _renderer->InitializationSystemError() : startupDiagnostic.SystemError());
 		} else {
 			_options.showError(hwndSrc, error);
 		}
@@ -1233,8 +1263,13 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 	}
 	case WM_DESTROY:
 	{
-		if (!SetScalingWindowOwner(Handle(), nullptr)) {
-			Logger::Get().Win32Warn("Detach scaling window owner before teardown failed");
+		const auto ownerResult = TrySetScalingWindowOwner(Handle(), nullptr);
+		const std::string ownerDiagnostic = DescribeScalingWindowOwner(
+			"teardown", Handle(), _srcTracker.Handle(), nullptr, ownerResult);
+		if (ownerResult.IsApplied()) {
+			Logger::Get().Info(ownerDiagnostic);
+		} else {
+			Logger::Get().Warn(ownerDiagnostic);
 		}
 		const bool ngxWasFaulted = NgxRuntimeGuard::IsFaulted();
 		++_runId;
