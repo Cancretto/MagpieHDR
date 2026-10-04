@@ -278,7 +278,8 @@ void OverlayDrawer::ToolbarState(Magpie::ToolbarState value) noexcept {
 OverlaySessionState OverlayDrawer::CaptureSessionState() const noexcept {
 	OverlaySessionState result{ _isToolbarVisible, _isToolbarPinned, _isProfilerVisible, _isEffectParametersVisible };
 	if (_parameterFocusSwitchingEnabled) {
-		result.parameterPanelState = IsEditingParameters() ? _pendingParameterPanelState : _parameterPanelState;
+		result.parameterPanelState = _parameterEditPending ? ParameterPanelState::Edit :
+			IsEditingParameters() ? _pendingParameterPanelState : _parameterPanelState;
 		result.effectParametersVisible = result.parameterPanelState != ParameterPanelState::Closed;
 	}
 	result.toolbarPosition = _toolbarPlacement.state;
@@ -290,8 +291,15 @@ void OverlayDrawer::RestoreSessionState(const OverlaySessionState& state) noexce
 	_toolbarPlacement.state = state.toolbarPosition;
 	_isToolbarVisible = state.toolbarVisible;
 	_isToolbarPinned = state.toolbarPinned;
-	_SetParameterPanelState(state.parameterPanelState == ParameterPanelState::Closed && state.effectParametersVisible
-		? ParameterPanelState::Preview : state.parameterPanelState, false);
+	const auto parameterState = state.parameterPanelState == ParameterPanelState::Closed && state.effectParametersVisible
+		? ParameterPanelState::Preview : state.parameterPanelState;
+	// A restart can restore intent before the first valid frame admits/shows
+	// the output. Input ownership is always acquired anew after that boundary.
+	const bool waitForOutput = _parameterFocusSwitchingEnabled && parameterState == ParameterPanelState::Edit &&
+		!IsWindowVisible(ScalingWindow::Get().Handle()) && _HasParameterForeground();
+	_SetParameterPanelState(waitForOutput ? ParameterPanelState::Preview : parameterState, false, "session restore");
+	_parameterEditPending = waitForOutput;
+	_parameterEditRunId = waitForOutput ? ScalingWindow::RunId() : 0;
 	if (_isProfilerVisible != state.profilerVisible) InvokeAction(OverlayAction::Profiler);
 	_overlayDirty = true;
 	_ClearStatesIfNoVisibleWindow();

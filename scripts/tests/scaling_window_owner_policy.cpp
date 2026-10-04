@@ -81,7 +81,7 @@ struct Options {
     std::function<void(HWND,ScalingError)> showError;
     bool IsTopmostDisabled() const { return false; }
 } _options;
-struct SourceTracker { HWND Handle() const { return _sourceCoordinator.Source().capture; } bool IsFocused() const { return false; } } _srcTracker;
+struct SourceTracker { HWND Handle() const { return _sourceCoordinator.Source().capture; } bool IsSessionForeground() const { return false; } } _srcTracker;
 struct Renderer {
     void OnSourceFocusChanged() {}
     std::string InitializationContext() const { return "capture initialization failed"; }
@@ -139,7 +139,46 @@ static void Prepare(HWND source) {
         ++reports; reportedContext=context; reportedError=error;
     };
 }
+static void CheckParameterLayers() {
+    HWND root=Window(), child=Window(root), view=Window(), host=Window(nullptr,view), other=Window();
+    SourceWindowIdentity identity; assert(identity.Read(child) && identity.root==root && child!=root);
+    constexpr UINT flags=SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE|SWP_SHOWWINDOW|SWP_NOOWNERZORDER;
+    for (bool nativeOwner : {false,true}) {
+        assert(SetScalingWindowOwner(view,nativeOwner?root:nullptr));
+        for (HWND h : {root,child,view,host,other}) assert(SetWindowPos(h,HWND_TOP,0,0,0,0,flags));
+        assert(ClassifySourceForeground(root,identity.Matches(),child,root,view,host)==SourceForegroundKind::Source);
+        assert(ClassifySourceForeground(host,identity.Matches(),child,root,view,host)==SourceForegroundKind::ParameterHost);
+        assert(ClassifySourceForeground(other,identity.Matches(),child,root,view,host)==SourceForegroundKind::External);
+        const LONG_PTR rootStyle=GetWindowLongPtrW(root,GWL_EXSTYLE);
+        const RECT rect{-32000,-32000,-31968,-31968};
+        for (bool topmost : {false,true,false}) {
+            assert(SetWindowPos(view,topmost?HWND_TOPMOST:HWND_NOTOPMOST,0,0,0,0,flags));
+            assert(SetWindowPos(other,HWND_TOPMOST,0,0,0,0,flags));
+            assert(PositionParameterInputHost(host,view,rect));
+            assert(GetWindow(view,GW_HWNDPREV)==host);
+            bool externalAhead=false;
+            for (HWND h=GetWindow(host,GW_HWNDPREV); h; h=GetWindow(h,GW_HWNDPREV))
+                if (h==other) { externalAhead=true; break; }
+            assert(externalAhead);
+            assert(bool(GetWindowLongPtrW(host,GWL_EXSTYLE)&WS_EX_TOPMOST)==topmost);
+            assert(bool(GetWindowLongPtrW(view,GWL_EXSTYLE)&WS_EX_TOPMOST)==topmost);
+            assert(GetWindowLongPtrW(root,GWL_EXSTYLE)==rootStyle);
+            assert(GetWindow(view,GW_OWNER)==(nativeOwner?root:nullptr));
+            assert(!EnabledSourcePopup(root,view));
+        }
+        ShowWindow(view,SW_HIDE); assert(!PositionParameterInputHost(host,view,rect));
+    }
+    HWND popup=Window(nullptr,root); ShowWindow(popup,SW_SHOWNOACTIVATE);
+    EnableWindow(root,FALSE); assert(EnabledSourcePopup(root,view)==popup);
+    assert(ClassifySourceForeground(popup,true,child,root,view,host)==SourceForegroundKind::SourcePopup);
+    assert(ClassifySourceForeground(host,false,child,root,view,host)==SourceForegroundKind::InvalidSource);
+    assert(SetScalingWindowOwner(host,nullptr));
+    assert(ClassifySourceForeground(host,true,child,root,view,host)==SourceForegroundKind::External);
+    for (HWND h : {popup,host,view,other,child,root}) Close(h);
+    std::cout << "PASS: native source/root and host identity, both output owner modes, host layers follow actual output, preserve root styles and remain below external windows\n";
+}
 int main() {
+    CheckParameterLayers();
     HWND source=Window(); alternate=Window(); Prepare(source);
     auto result=TrySetScalingWindowOwner(output,source);
     assert(result.IsApplied() && result.actualOwner==source);

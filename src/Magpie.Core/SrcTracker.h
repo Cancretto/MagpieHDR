@@ -60,8 +60,9 @@ public:
 		return _srcRect;
 	}
 
-	bool IsFocused() const noexcept {
-		return _isFocused;
+	bool IsSessionForeground() const noexcept {
+		// Logical source/root/parameter-host membership, not game keyboard focus.
+		return _isSessionForeground;
 	}
 
 	bool UpdateForeground(HWND foreground) noexcept;
@@ -94,7 +95,8 @@ private:
 	RECT _srcRect{};
 	SrcWindowKind _windowKind = SrcWindowKind::Native;
 
-	bool _isFocused = false;
+	bool _isSessionForeground = false;
+	bool _isSourceForeground = false;
 	bool _isMaximized = false;
 	bool _isMoving = false;
 };

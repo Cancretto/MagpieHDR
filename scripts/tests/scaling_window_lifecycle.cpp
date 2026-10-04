@@ -118,7 +118,7 @@ public:
     bool _frameTraceStarted=false;
 };
 struct Cursor { void BeginShutdown() {} ~Cursor() { assert(!IsWindow(retiringOutput)); } };
-struct Source { HWND source=nullptr; HWND Handle() const { return source; } bool IsFocused() const { return true; } };
+struct Source { HWND source=nullptr; HWND Handle() const { return source; } bool IsSessionForeground() const { return true; } };
 struct Coordinator { void RetireOutput() {} };
 struct Base { HWND _hWnd=nullptr; HWND Handle() const { return _hWnd; } };
 class TestWindow : public Base {

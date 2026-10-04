@@ -46,6 +46,8 @@ public:
 	bool SourceIdentityValid() const noexcept { return _sourceCoordinator.Ready(); }
 	HWND SourceRoot() const noexcept { return _sourceCoordinator.Source().root; }
 	SourceForegroundKind ClassifyForeground(HWND foreground) const noexcept;
+	bool IsSessionForeground(HWND foreground) const noexcept;
+	bool IsSourceForeground() const noexcept { return ClassifyForeground(GetForegroundWindow()) == SourceForegroundKind::Source; }
 	bool IsParameterForeground(HWND foreground, bool outputTransition = false) const noexcept;
 	HWND SourceActivationTarget() const noexcept;
 	void RequestStop(uint32_t runId) noexcept {

@@ -58,4 +58,28 @@ inline SourceForegroundKind ClassifySourceForeground(HWND foreground, bool sourc
 	return SourceForegroundKind::External;
 }
 
+inline bool PositionParameterInputHost(HWND host, HWND output, const RECT& rect) noexcept {
+	if (!IsWindow(host) || !IsWindow(output) || !IsWindowVisible(output) ||
+		GetWindow(host, GW_OWNER) != output) return false;
+	constexpr UINT flags = SWP_NOACTIVATE | SWP_NOOWNERZORDER;
+	const auto outputTopmost = GetWindowLongPtrW(output, GWL_EXSTYLE) & WS_EX_TOPMOST;
+	RECT current{};
+	if (GetWindowRect(host, &current) && EqualRect(&current, &rect) && IsWindowVisible(host) &&
+		GetWindow(output, GW_HWNDPREV) == host &&
+		(GetWindowLongPtrW(host, GWL_EXSTYLE) & WS_EX_TOPMOST) == outputTopmost) return true;
+	if ((GetWindowLongPtrW(host, GWL_EXSTYLE) & WS_EX_TOPMOST) != outputTopmost &&
+		!SetWindowPos(host, outputTopmost ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0,
+			flags | SWP_NOMOVE | SWP_NOSIZE)) return false;
+	// Move only the host, immediately ahead of the already ordered output.
+	// In particular, do not raise it over source popups or unrelated windows.
+	const HWND previous = GetWindow(output, GW_HWNDPREV);
+	if (!SetWindowPos(host, previous ? previous : HWND_TOP, rect.left, rect.top,
+		rect.right - rect.left, rect.bottom - rect.top,
+		flags | SWP_SHOWWINDOW | (previous == host ? SWP_NOZORDER : 0))) return false;
+	return IsWindow(output) && IsWindowVisible(output) && IsWindowVisible(host) &&
+		GetWindow(host, GW_OWNER) == output && GetWindow(output, GW_HWNDPREV) == host &&
+		(GetWindowLongPtrW(host, GWL_EXSTYLE) & WS_EX_TOPMOST) == outputTopmost &&
+		(GetWindowLongPtrW(output, GWL_EXSTYLE) & WS_EX_TOPMOST) == outputTopmost;
+}
+
 }

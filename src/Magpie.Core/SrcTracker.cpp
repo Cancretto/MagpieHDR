@@ -80,7 +80,8 @@ ScalingError SrcTracker::Set(HWND hWnd, const ScalingOptions& options, bool& isI
 	}
 
 	// Initialized from the validated capture/root identity after Prepare.
-	_isFocused = false;
+	_isSessionForeground = false;
+	_isSourceForeground = false;
 	_isMoving = IsWindowMoving(_hWnd);
 
 	if (!GetWindowRect(hWnd, &_windowRect)) {
@@ -459,8 +460,17 @@ static bool GetClientRectOfUWP(HWND hWnd, RECT& rect) noexcept {
 }
 
 bool SrcTracker::UpdateForeground(HWND foreground) noexcept {
-	const bool focused = IsSourceSessionForeground(ScalingWindow::Get().ClassifyForeground(foreground));
-	return std::exchange(_isFocused, focused) != focused;
+	auto& scaling = ScalingWindow::Get();
+	const auto kind = scaling.ClassifyForeground(foreground);
+	const bool sourceForeground = kind == SourceForegroundKind::Source;
+	const bool focused = scaling.IsSessionForeground(foreground);
+	if (sourceForeground != _isSourceForeground || focused != _isSessionForeground) {
+		Logger::Get().Info(fmt::format("Source foreground changed: run={} kind={} source={} session={} capture={:#x} root={:#x} foreground={:#x}",
+			ScalingWindow::RunId(), int(kind), sourceForeground, focused, uintptr_t(_hWnd),
+			uintptr_t(scaling.SourceRoot()), uintptr_t(foreground)));
+	}
+	_isSourceForeground = sourceForeground;
+	return std::exchange(_isSessionForeground, focused) != focused;
 }
 
 bool SrcTracker::SetFocus(HWND expectedForeground) const noexcept {
