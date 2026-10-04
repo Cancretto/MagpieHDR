@@ -1,5 +1,6 @@
 #pragma once
 #include "Event.h"
+#include "ScalingOptions.h"
 #include "ProfileViewModel.g.h"
 
 namespace Magpie {
@@ -102,12 +103,13 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 
 	IVector<IInspectable> GraphicsCards() const noexcept;
 
-	int GraphicsCard() const noexcept;
-	void GraphicsCard(int value);
+	IInspectable GraphicsCard() const noexcept;
+	void GraphicsCard(IInspectable const& value);
 
-	bool IsShowGraphicsCardSettingsCard() const noexcept;
+	bool IsGraphicsCardSelectionEnabled() const noexcept;
 
 	bool IsNoGraphicsCard() const noexcept;
+	bool ShowGraphicsCardUnavailableWarning() const noexcept;
 
 	int32_t ContentFrameRateModeIndex() const noexcept;
 	void ContentFrameRateModeIndex(int32_t value);
@@ -189,7 +191,8 @@ private:
 	void _SaveFrameRefresh();
 	fire_and_forget _LoadIcon();
 
-	void _AdaptersService_AdaptersChanged();
+	void _BuildGraphicsCards();
+	void _RefreshGraphicsCardSettings();
 
 	void _BuildMonitorOptions();
 
@@ -209,12 +212,14 @@ private:
 
 	IconElement _icon{ nullptr };
 	IVector<IInspectable> _monitorOptions{ nullptr };
+	IVector<IInspectable> _graphicsCards{ nullptr };
+	std::vector<::Magpie::GraphicsCardId> _graphicsCardOptions;
 	std::vector<std::wstring> _monitorIds;
 	std::vector<std::wstring> _monitorNames;
 
 	const bool _isDefaultProfile = true;
 	bool _isRenameConfirmButtonEnabled = false;
-	// 用于防止 ComboBox 可见性变化时错误修改 GraphicsCard 配置
+	// Ignore binding writes while rebuilding the list; stale item identities are also rejected.
 	bool _isHandlingAdapterChanged = false;
 };
 

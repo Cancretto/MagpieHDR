@@ -772,4 +772,31 @@
   <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
     <value>Ripristina</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>GPU di rendering</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>GPU di rendering</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Automatico</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>Nessuna GPU disponibile</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>GPU selezionata temporaneamente non disponibile</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>Nessuna GPU disponibile</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Attivando gli effetti verrà tentato il rendering con la CPU. Controlla il driver grafico.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>GPU selezionata temporaneamente non disponibile</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Gli effetti useranno automaticamente una GPU disponibile. La GPU selezionata verrà riutilizzata quando sarà disponibile.</value>
+  </data>
 </root>

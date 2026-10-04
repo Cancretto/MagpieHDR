@@ -67,9 +67,10 @@ ProfileViewModel::ProfileViewModel(int profileIdx, bool initializePageData)
 		_NotifyFrameRefreshChanged();
 	});
 	_BuildMonitorOptions();
+	_BuildGraphicsCards();
 
 	_adaptersChangedRevoker = AdaptersService::Get().AdaptersChanged(auto_revoke,
-		std::bind_front(&ProfileViewModel::_AdaptersService_AdaptersChanged, this));
+		std::bind_front(&ProfileViewModel::_RefreshGraphicsCardSettings, this));
 }
 
 ProfileViewModel::~ProfileViewModel() {}
@@ -611,76 +612,86 @@ void ProfileViewModel::CustomInitialWindowedScaleFactor(double value) {
 }
 
 IVector<IInspectable> ProfileViewModel::GraphicsCards() const noexcept {
+	return _graphicsCards;
+}
+
+void ProfileViewModel::_BuildGraphicsCards() {
 	std::vector<IInspectable> graphicsCards;
+	std::vector<GraphicsCardId> options;
+	const auto& adapterInfos = AdaptersService::Get().AdapterInfos();
+	ResourceLoader resources = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
+	const auto add = [&](hstring const& label, GraphicsCardId id) {
+		graphicsCards.push_back(box_value(label));
+		options.push_back(id);
+	};
 
-	if (IsShowGraphicsCardSettingsCard()) {
-		const std::vector<AdapterInfo>& adapterInfos = AdaptersService::Get().AdapterInfos();
-		graphicsCards.reserve(adapterInfos.size() + 1);
-
-		ResourceLoader resourceLoader =
-			ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
-		hstring defaultStr = resourceLoader.GetString(L"Profile_General_CaptureMethod_Default");
-
-		// “默认”选项中显示实际使用的显卡
-		graphicsCards.push_back(box_value(
-			StrHelper::Concat(defaultStr, L" (", adapterInfos[0].description, L")")));
-
-		for (const AdapterInfo& adapterInfo : adapterInfos) {
-			graphicsCards.push_back(box_value(adapterInfo.description));
+	if (adapterInfos.empty()) {
+		// A disabled placeholder must not erase a saved, temporarily absent GPU.
+		add(resources.GetString(L"Profile_General_GraphicsCard_None"), _data->graphicsCardId);
+	} else {
+		add(resources.GetString(L"Profile_General_GraphicsCard_Auto"), {});
+		for (const AdapterInfo& ai : adapterInfos) {
+			add(hstring(ai.description), { (int)ai.idx, ai.vendorId, ai.deviceId });
+		}
+		if (ShowGraphicsCardUnavailableWarning()) {
+			add(resources.GetString(L"Profile_General_GraphicsCard_Unavailable"), _data->graphicsCardId);
 		}
 	}
-
-	return single_threaded_vector(std::move(graphicsCards));
+	_graphicsCardOptions = std::move(options);
+	_graphicsCards = single_threaded_vector(std::move(graphicsCards));
 }
 
-int ProfileViewModel::GraphicsCard() const noexcept {
-	if (_data->graphicsCardId.idx < 0) {
-		return 0;
+IInspectable ProfileViewModel::GraphicsCard() const noexcept {
+	if (!_graphicsCards) {
+		return nullptr;
 	}
-
-	// 不要把 graphicsCardId.idx 当作位序使用，AdaptersService 会过滤掉不支持 FL11 的显卡
-	const std::vector<AdapterInfo>& adapterInfos = AdaptersService::Get().AdapterInfos();
-	auto it = std::find_if(adapterInfos.begin(), adapterInfos.end(),
-		[&](const AdapterInfo& ai) { return (int)ai.idx == _data->graphicsCardId.idx; });
-	if (it == adapterInfos.end()) {
-		assert(false);
-		return 0;
+	const auto& id = _data->graphicsCardId;
+	for (uint32_t i = 0; i < _graphicsCardOptions.size(); ++i) {
+		const auto& option = _graphicsCardOptions[i];
+		if (option.idx == id.idx && option.vendorId == id.vendorId && option.deviceId == id.deviceId) {
+			return _graphicsCards.GetAt(i);
+		}
 	}
-
-	return int(it - adapterInfos.begin()) + 1;
+	return nullptr;
 }
 
-void ProfileViewModel::GraphicsCard(int value) {
-	if (value < 0 || _isHandlingAdapterChanged) {
+void ProfileViewModel::GraphicsCard(IInspectable const& value) {
+	if (!value || !_graphicsCards || _isHandlingAdapterChanged || IsNoGraphicsCard()) {
 		return;
 	}
-
-	GraphicsCardId& gcid = _data->graphicsCardId;
-
-	const std::vector<AdapterInfo>& adapterInfos = AdaptersService::Get().AdapterInfos();
-	if (value == 0 || value - 1 >= (int)adapterInfos.size()) {
-		// 设为默认显卡，并清空 vendorId 和 deviceId
-		gcid.idx = -1;
-		gcid.vendorId = 0;
-		gcid.deviceId = 0;
-	} else {
-		const AdapterInfo& ai = adapterInfos[size_t(value - 1)];
-		gcid.idx = ai.idx;
-		gcid.vendorId = ai.vendorId;
-		gcid.deviceId = ai.deviceId;
+	// Bind to item identity, not its shifting list index. Deferred writes from an
+	// earlier list (including its Auto item) must never modify the current intent.
+	uint32_t index = 0;
+	if (!_graphicsCards.IndexOf(value, index)) {
+		return;
 	}
-	
+	const auto selected = _graphicsCardOptions[index];
+	const auto& current = _data->graphicsCardId;
+	if (selected.idx == current.idx && selected.vendorId == current.vendorId && selected.deviceId == current.deviceId) {
+		return;
+	}
+	_data->graphicsCardId = selected;
 	AppSettings::Get().SaveAsync();
-
-	RaisePropertyChanged(L"GraphicsCard");
+	_RefreshGraphicsCardSettings();
 }
 
-bool ProfileViewModel::IsShowGraphicsCardSettingsCard() const noexcept {
-	return AdaptersService::Get().AdapterInfos().size() > 1;
+bool ProfileViewModel::IsGraphicsCardSelectionEnabled() const noexcept {
+	return !IsNoGraphicsCard();
 }
 
 bool ProfileViewModel::IsNoGraphicsCard() const noexcept {
 	return AdaptersService::Get().AdapterInfos().empty();
+}
+
+bool ProfileViewModel::ShowGraphicsCardUnavailableWarning() const noexcept {
+	const auto& id = _data->graphicsCardId;
+	const auto& adapters = AdaptersService::Get().AdapterInfos();
+	if (adapters.empty() || (id.idx < 0 && id.vendorId == 0 && id.deviceId == 0)) {
+		return false;
+	}
+	return std::none_of(adapters.begin(), adapters.end(), [&](const AdapterInfo& ai) {
+		return (int)ai.idx == id.idx && ai.vendorId == id.vendorId && ai.deviceId == id.deviceId;
+	});
 }
 
 void ProfileViewModel::_NotifyFrameRefreshChanged() {
@@ -1134,13 +1145,15 @@ fire_and_forget ProfileViewModel::_LoadIcon() {
 	RaisePropertyChanged(L"Icon");
 }
 
-void ProfileViewModel::_AdaptersService_AdaptersChanged() {
+void ProfileViewModel::_RefreshGraphicsCardSettings() {
 	_isHandlingAdapterChanged = true;
-	RaisePropertyChanged(L"IsShowGraphicsCardSettingsCard");
+	auto reset = wil::scope_exit([this]() { _isHandlingAdapterChanged = false; });
+	_BuildGraphicsCards();
+	RaisePropertyChanged(L"IsGraphicsCardSelectionEnabled");
 	RaisePropertyChanged(L"IsNoGraphicsCard");
+	RaisePropertyChanged(L"ShowGraphicsCardUnavailableWarning");
 	RaisePropertyChanged(L"GraphicsCards");
 	RaisePropertyChanged(L"GraphicsCard");
-	_isHandlingAdapterChanged = false;
 }
 
 }

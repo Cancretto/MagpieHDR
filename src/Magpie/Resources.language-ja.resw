@@ -1066,4 +1066,31 @@
   <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
     <value>リセット</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>レンダリング用 GPU</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>レンダリング用 GPU</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>自動</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>利用可能な GPU が見つかりません</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>指定した GPU は一時的に利用できません</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>利用可能な GPU が見つかりません</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>エフェクトの開始時に CPU レンダリングを試みます。グラフィックスドライバーを確認してください。</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>指定した GPU は一時的に利用できません</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>エフェクトの開始時に利用可能な GPU を自動選択します。指定した GPU が復帰すると再び使用します。</value>
+  </data>
 </root>
