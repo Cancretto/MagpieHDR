@@ -56,7 +56,9 @@ bool hookCreated = false, hookInitialized = false;
 ForegroundWindowIdentity Identity(HWND window) noexcept {
 	ForegroundWindowIdentity result;
 	result.window = uintptr_t(window);
-	result.tid = GetWindowThreadProcessId(window, &result.pid);
+	DWORD processId = 0;
+	result.tid = GetWindowThreadProcessId(window, &processId);
+	result.pid = processId;
 	result.atom = GetClassLongPtrW(window, GCW_ATOM);
 	return result;
 }
