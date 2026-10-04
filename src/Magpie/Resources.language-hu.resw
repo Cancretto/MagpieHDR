@@ -370,4 +370,31 @@
   <data name="Profile_General_HdrCompatibility.Description" xml:space="preserve">
     <value>Engedélyezi a kísérleti HDR-rögzítés és effektusok közötti kompatibilitási útvonalat. Csak HDR-támogatás tesztelésekor kapcsold be.</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>Renderelési GPU</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Renderelési GPU</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Automatikus</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>Nem található elérhető GPU</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>A kiválasztott GPU átmenetileg nem érhető el</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>Nem található elérhető GPU</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Az effektusok bekapcsolásakor a program CPU-val próbál renderelni. Ellenőrizze a grafikus illesztőprogramot.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>A kiválasztott GPU átmenetileg nem érhető el</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Az effektusok automatikusan egy elérhető GPU-t használnak. A kiválasztott GPU ismét használatba kerül, amikor elérhetővé válik.</value>
+  </data>
 </root>

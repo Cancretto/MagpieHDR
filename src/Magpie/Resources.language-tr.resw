@@ -1066,4 +1066,31 @@
   <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
     <value>Sıfırla</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>İşleme GPU’su</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>İşleme GPU’su</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Otomatik</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>Kullanılabilir GPU bulunamadı</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>Seçilen GPU geçici olarak kullanılamıyor</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>Kullanılabilir GPU bulunamadı</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Efektler etkinleştirildiğinde CPU ile işleme denenecek. Grafik sürücüsünü kontrol edin.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>Seçilen GPU geçici olarak kullanılamıyor</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Efektler otomatik olarak kullanılabilir bir GPU kullanır. Seçilen GPU kullanılabilir olduğunda yeniden kullanılır.</value>
+  </data>
 </root>

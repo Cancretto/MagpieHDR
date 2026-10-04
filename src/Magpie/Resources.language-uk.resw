@@ -733,4 +733,31 @@
   <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
     <value>Скинути</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>Відеокарта для рендерингу</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Відеокарта для рендерингу</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Автоматично</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>Доступну відеокарту не знайдено</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>Вибрана відеокарта тимчасово недоступна</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>Доступну відеокарту не знайдено</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Під час увімкнення ефектів буде спроба рендерингу на CPU. Перевірте графічний драйвер.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>Вибрана відеокарта тимчасово недоступна</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Ефекти автоматично використають доступну відеокарту. Вибрана карта знову використовуватиметься, коли стане доступною.</value>
+  </data>
 </root>
