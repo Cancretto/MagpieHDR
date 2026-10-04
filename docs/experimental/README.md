@@ -22,6 +22,8 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [参数焦点交接与会话窗口判定 TODO](todos/20261004-parameter-focus-coordination-TODO.md)：已在 `fix/069-uwp-window-owner` 完成根窗口判定、输入所有权、宿主层级及停止／重建协调，通过自动回归和测试窗口的原生层级验证；完整产品编译部署及游戏／GPU／VRR 验收待独立会话。
+
 - [0.6.10 G-SYNC 输出前台身份兼容 TODO](todos/20261004-v0.6.10-gsync-output-foreground-TODO.md)：按焦点根因假设接入默认关闭的查询兼容、真实业务查询隔离、生命周期及短时真实前台参考入口。静态与依赖图检查通过；C++ 编译／执行、部署和硬件验收交给单独会话。[源码实施与交接](reviews/20261004-v0.6.10-gsync-foreground-source-development.md)。
 
 - [0.6.10 Beta1 VRR／G-SYNC 焦点诊断](reviews/20261004-v0.6.10-vrr-gsync-focus-diagnosis.md)：运行日志支持标准 DXGI 请求完整，但用户未看到指示器；非前台输出是首要待验证原因。真实前台对照、查询伪装／消息分离和 PresentMon 尚未执行，本轮仅调查与文档记录。
