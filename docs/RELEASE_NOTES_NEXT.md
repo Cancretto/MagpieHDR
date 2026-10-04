@@ -8,9 +8,9 @@
 
 ## 0.6.10 Beta2 本地整合 / Local integration
 
-本地分支 `release/0.6.10-beta2` 继承 Beta1，整合参数焦点与宿主生命周期、默认关闭的 NVIDIA G-SYNC 前台兼容原型，以及保留在“性能”分组的渲染显卡选择。见 [本版中英说明](RELEASE_NOTES_v0.6.10-beta2.md)。实际构建与回归以本地审计和运行包清单为准，公开入口保持 0.6.9，实机验收继续保留。
+本地分支 `release/0.6.10-beta2` 继承 Beta1，累计整合参数焦点与宿主生命周期、保留在“性能”分组的渲染显卡选择，以及 2026-10-05 的统一 VRR／DLSS 与 XeSS 补帧前台兼容开发。产品使用一个默认关闭的 VRR 开关，按实际输出合同判定资格。见 [本版中英说明](RELEASE_NOTES_v0.6.10-beta2.md)。实际构建与回归以本地审计和运行包清单为准，公开入口保持 0.6.9，实机验收继续保留。
 
-Local branch `release/0.6.10-beta2` retains Beta1 and integrates parameter focus/host lifecycle, the default-off NVIDIA foreground compatibility prototype, and rendering GPU selection in the Performance group. See the [Beta2 notes](RELEASE_NOTES_v0.6.10-beta2.md). Local audits/manifests record build and regression results; the public entry remains 0.6.9 and hardware acceptance remains pending.
+Local branch `release/0.6.10-beta2` retains Beta1, parameter focus/host lifecycle and GPU selection in the Performance group, and adds the 2026-10-05 unified VRR/DLSS/XeSS foreground compatibility development. One default-off VRR control derives qualification from the actual output contract. See the [Beta2 notes](RELEASE_NOTES_v0.6.10-beta2.md). Local audits/manifests record build and regression results; the public entry remains 0.6.9 and hardware acceptance remains pending.
 
 ## 0.6.10 Beta1 本地整合 / Local integration
 
