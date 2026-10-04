@@ -20,7 +20,7 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
-- **0.6.9 UWP 窗口 owner 回归**：独立分支 `fix/069-uwp-window-owner` 已实现可选 owner 拒绝后的启动降级、实际关系回读与启动阶段诊断选择；针对性隐藏窗口、双进程死锁、NGX 和捕获关闭回归通过。完整产品编译、部署、照片／Forza 实测交给后续会话。[TODO](todos/20261004-v0.6.9-issues-65-67-uwp-window-owner-TODO.md)、[实施与交接记录](reviews/20261004-v0.6.9-uwp-window-owner.md)。
+- **0.6.9 UWP 窗口兼容与死锁保护**：`fix/069-uwp-window-owner` 的阶段 1 候选已通过针对性测试；新方案要求保留正常 Win32 owner 和 NGX 防护，明确接管 UWP 无 owner 路径的层级／源生命周期，并补齐完整停止调用链及解除失败兜底。方案待实施，完整编译部署与实机验收继续交给独立会话。[当前方案 TODO](todos/20261004-v0.6.9-uwp-window-coordination-and-lifecycle-TODO.md)、[原定位](todos/20261004-v0.6.9-issues-65-67-uwp-window-owner-TODO.md)、[阶段 1 记录](reviews/20261004-v0.6.9-uwp-window-owner.md)。
 
 - **Beta2 按钮与刷新控件样式对齐**：四个操作采用效果组／效果器的普通中性填充、零边框；六个下拉框与三组数值统一为 225 DIP，提供行内步进，并统一窄窗口换行与条件提示。完整 Release、原生标题／刷新控件测量及模型回归通过，已部署到原 Beta2；主窗口启动与三个现有配置保留检查通过。[TODO 与验证范围](todos/20261002-v0.6.9-beta2-ui-style-alignment-TODO.md)、[实施与部署记录](reviews/20261002-v0.6.9-beta2-ui-style-alignment.md)。
 
