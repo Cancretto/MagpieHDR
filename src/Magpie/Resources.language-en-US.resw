@@ -823,7 +823,7 @@
     <value>Restore the source window and enable the effect group again. If capture still fails, open View details to check the capture step and error code.</value>
   </data>
   <data name="Message_CreateFenceFailed" xml:space="preserve">
-    <value>The selected graphics card could not create synchronization resources. Open the profile below, go to General → Rendering GPU and select another available card. If it still fails, update its driver and provide details and logs.</value>
+    <value>The selected graphics card could not create synchronization resources. Open the profile below, go to Performance → Rendering GPU and select another available card. If it still fails, update its driver and provide details and logs.</value>
   </data>
   <data name="Message_NvidiaVsrPathUnsupported" xml:space="preserve">
     <value>NVIDIA VSR did not start (error -2). Exit Magpie, extract the complete package to a folder such as C:\Magpie\, then run Magpie.exe from that folder and retry. Path compatibility is a possible cause. If it still fails, copy the details and include the logs.</value>
