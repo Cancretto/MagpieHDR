@@ -245,16 +245,16 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>启动</value>
   </data>
-  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
     <value>导出</value>
   </data>
-  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
     <value>导入</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
-    <value>更多选项</value>
+    <value>其他选项</value>
   </data>
-  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>重置</value>
   </data>
   <data name="ScalingModes_ResetDialog_Title" xml:space="preserve">
@@ -823,7 +823,7 @@
     <value>请还原目标窗口，再启用效果组。若仍无法捕获，请打开“查看详情”，核对捕获步骤和错误码。</value>
   </data>
   <data name="Message_CreateFenceFailed" xml:space="preserve">
-    <value>所选显示卡未能创建同步资源。请打开下方配置 → 性能 → 显示卡，选择另一张可用显示卡后重试；若仍失败，可更新对应驱动，并提供详情和日志。</value>
+    <value>所选显示卡未能创建同步资源。请打开下方配置 → 性能 → 渲染显卡，选择另一张可用显示卡后重试；若仍失败，可更新对应驱动，并提供详情和日志。</value>
   </data>
   <data name="Message_NvidiaVsrPathUnsupported" xml:space="preserve">
     <value>NVIDIA VSR 暂未启动（错误 -2）。请退出 Magpie，把完整发行包重新解压到例如 C:\Magpie\ 的目录，再从该目录运行 Magpie.exe 并重试。路径兼容性是可能原因；若仍失败，请复制详情并附上日志。</value>
@@ -1642,19 +1642,19 @@
   <data name="Profile_Advanced_ParameterFocusSwitching.Description" xml:space="preserve"><value>参数实时调整时启用焦点切换，但在部分窗口上运行时可能不稳定。</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Header" xml:space="preserve"><value>切屏时自动停用生效效果组</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Description" xml:space="preserve"><value>如果在使用 DLSSNR 时进行切屏，会让你感觉像吃了毒蘑菇，你可以尝试启用它。</value></data>
-  <data name="EffectPicker_CustomSummary" xml:space="preserve"><value>自定义效果器；请参考作者说明。</value></data>
-  <data name="EffectPicker_CustomDetails" xml:space="preserve"><value>此效果器尚无用途评审。请参考作者提供的用途、参数与组合说明。HDR 兼容性待验证。</value></data>
+  <data name="EffectPicker_CustomSummary" xml:space="preserve"><value>自定义效果器；用途与参数请参考作者说明。</value></data>
+  <data name="EffectPicker_CustomDetails" xml:space="preserve"><value>请按作者说明选择参数、输出尺寸和组合位置。HDR 输入、所需运行库及显卡条件也应由作者说明确认。</value></data>
   <data name="EffectPicker_All" xml:space="preserve"><value>全部</value></data>
   <data name="EffectPicker_AllDescription" xml:space="preserve"><value>查看已安装效果器的用途、适用场景和组合建议。</value></data>
   <data name="EffectPicker_DetailScrollHint" xml:space="preserve"><value>Ctrl + 滚轮：滚动说明</value></data>
   <data name="EffectPicker_NameSeparator" xml:space="preserve"><value>，</value></data>
   <data name="EffectPicker_EffectCountSuffix" xml:space="preserve"><value> 个效果器</value></data>
   <data name="EffectPicker_GettingStarted" xml:space="preserve"><value>入门</value></data>
-  <data name="EffectPicker_GettingStartedDescription" xml:space="preserve"><value>按适用场景选择容易上手的效果器，先从一个开始比较画面。</value></data>
+  <data name="EffectPicker_GettingStartedDescription" xml:space="preserve"><value>按场景选择容易上手的方案；标签表示建议的尝试顺序，不代表实测画质排名。</value></data>
   <data name="EffectPicker_Advanced" xml:space="preserve"><value>进阶</value></data>
   <data name="EffectPicker_AdvancedDescription" xml:space="preserve"><value>视频超分、补帧、AI 画面重塑与帧率调节，按显卡条件和目标画面选择。</value></data>
   <data name="EffectPicker_CustomCategory" xml:space="preserve"><value>自定义／未归类</value></data>
-  <data name="EffectPicker_CustomCategoryDescription" xml:space="preserve"><value>已安装但尚无用途说明的效果器。请参考作者说明选择参数和组合位置。</value></data>
+  <data name="EffectPicker_CustomCategoryDescription" xml:space="preserve"><value>目录中没有收录的已安装效果器；请参考作者说明选择参数、尺寸与组合位置。</value></data>
   <data name="EffectPicker_SearchPlaceholder" xml:space="preserve"><value>搜索效果器、用途或关键词……</value></data>
   <data name="EffectPicker_SearchAutomationName" xml:space="preserve"><value>搜索全部效果器</value></data>
   <data name="EffectPicker_JumpTo" xml:space="preserve"><value>定位 </value></data>
@@ -1801,10 +1801,38 @@
   <data name="FrameRefresh_IdleRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>空闲重绘率</value></data>
   <data name="FrameRefresh_LegacyCapNotice" xml:space="preserve"><value>保留的旧上限：{} FPS</value></data>
 
-  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+  <data name="ScalingModes_General_ConfigFolder.Text" xml:space="preserve">
     <value>配置文件夹</value>
   </data>
   <data name="FrameRefresh_DuplicateDetection_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>重复帧检测</value></data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>渲染显卡</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>渲染显卡</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>自动</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>未找到可用显卡</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>指定显卡暂不可用</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>未找到可用显卡</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>启用效果时将尝试 CPU 渲染。请检查显卡驱动。</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>指定显卡暂不可用</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>启用效果时将自动选择可用显卡；该显卡恢复后会重新使用。</value>
+  </data>
+
   <data name="FrameRefresh_VRR.Header" xml:space="preserve"><value>可变刷新率（实验）</value></data>
   <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>请求 VRR，需显示器与驱动支持；重新启用缩放后生效，G-SYNC 激活情况仍需验证。</value></data>
   <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>关闭</value></data>
@@ -1815,4 +1843,7 @@
   <data name="FrameRefresh_NvidiaForeground_Input.OffContent" xml:space="preserve"><value>关闭</value></data>
   <data name="FrameRefresh_NvidiaForeground_Input.OnContent" xml:space="preserve"><value>开启</value></data>
   <data name="FrameRefresh_NvidiaForeground_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>NVIDIA G-SYNC 前台兼容（实验）</value></data>
+
+
+  <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>其他选项</value></data>
 </root>

@@ -195,10 +195,10 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>Avvia</value>
   </data>
-  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
     <value>Esporta</value>
   </data>
-  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
     <value>Importa</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
@@ -766,10 +766,39 @@
   <data name="Home_TouchSupport_Info.Title" xml:space="preserve">
     <value>Se il supporto touch fallisce, Magpie potrebbe richiedere privilegi di amministratore prima di effettuare il ridimensionamento per eseguire riparazioni.</value>
   </data>
-  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+  <data name="ScalingModes_General_ConfigFolder.Text" xml:space="preserve">
     <value>Cartella config.</value>
   </data>
-  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>Ripristina</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>GPU di rendering</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>GPU di rendering</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Automatico</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>Nessuna GPU disponibile</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>GPU selezionata temporaneamente non disponibile</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>Nessuna GPU disponibile</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Attivando gli effetti verrà tentato il rendering con la CPU. Controlla il driver grafico.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>GPU selezionata temporaneamente non disponibile</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Gli effetti useranno automaticamente una GPU disponibile. La GPU selezionata verrà riutilizzata quando sarà disponibile.</value>
+  </data>
+
+  <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>Altre opzioni</value></data>
 </root>

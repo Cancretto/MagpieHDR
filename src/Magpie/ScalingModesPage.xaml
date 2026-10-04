@@ -9,10 +9,8 @@
 	<Page.Resources>
 		<Style x:Key="ScalingModesHeaderButtonStyle" TargetType="Button"
 		       BasedOn="{StaticResource DefaultButtonStyle}">
-			<Setter Property="FontSize" Value="12" />
 			<Setter Property="MinWidth" Value="0" />
-			<Setter Property="MinHeight" Value="32" />
-			<Setter Property="Padding" Value="6,4" />
+			<Setter Property="Height" Value="{StaticResource PaneToggleButtonHeight}" />
 			<Setter Property="BorderThickness" Value="0" />
 		</Style>
 		<Style x:Key="EffectPickerPresenterStyle" TargetType="FlyoutPresenter"
@@ -277,18 +275,26 @@
 						</ResourceDictionary.ThemeDictionaries>
 					</ResourceDictionary>
 				</local:SimpleStackPanel.Resources>
-				<Button x:Uid="ScalingModes_General_Import"
-				        Click="{x:Bind ViewModel.Import}"
-				        Style="{StaticResource ScalingModesHeaderButtonStyle}" />
-				<Button x:Uid="ScalingModes_General_Export"
-				        Click="{x:Bind ViewModel.Export}"
-				        Style="{StaticResource ScalingModesHeaderButtonStyle}" />
-				<Button x:Uid="ScalingModes_General_ConfigFolder"
-				        Click="OpenConfigFolderButton_Click"
-				        Style="{StaticResource ScalingModesHeaderButtonStyle}" />
-				<Button x:Uid="ScalingModes_General_Reset"
-				        Click="ResetScalingModesButton_Click"
-				        Style="{StaticResource ScalingModesHeaderButtonStyle}" />
+				<Button x:Uid="ScalingModes_General_MoreOptions"
+				        Style="{StaticResource ScalingModesHeaderButtonStyle}">
+					<Button.Flyout>
+						<MenuFlyout Placement="Bottom" ShouldConstrainToRootBounds="False">
+							<MenuFlyoutItem x:Uid="ScalingModes_General_Import" Click="{x:Bind ViewModel.Import}">
+								<MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8B5;" /></MenuFlyoutItem.Icon>
+							</MenuFlyoutItem>
+							<MenuFlyoutItem x:Uid="ScalingModes_General_Export" Click="{x:Bind ViewModel.Export}">
+								<MenuFlyoutItem.Icon><FontIcon Glyph="&#xEDE1;" /></MenuFlyoutItem.Icon>
+							</MenuFlyoutItem>
+							<MenuFlyoutItem x:Uid="ScalingModes_General_ConfigFolder" Click="OpenConfigFolderButton_Click">
+								<MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8B7;" /></MenuFlyoutItem.Icon>
+							</MenuFlyoutItem>
+							<MenuFlyoutSeparator />
+							<MenuFlyoutItem x:Uid="ScalingModes_General_Reset" Click="ResetScalingModesButton_Click">
+								<MenuFlyoutItem.Icon><FontIcon Glyph="&#xE777;" /></MenuFlyoutItem.Icon>
+							</MenuFlyoutItem>
+						</MenuFlyout>
+					</Button.Flyout>
+				</Button>
 			</local:SimpleStackPanel>
 		</local:PageFrame.HeaderAction>
 

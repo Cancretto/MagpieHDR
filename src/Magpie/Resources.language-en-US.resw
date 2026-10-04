@@ -245,16 +245,16 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>Launch</value>
   </data>
-  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
     <value>Export</value>
   </data>
-  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
     <value>Import</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
-    <value>More options</value>
+    <value>Other options</value>
   </data>
-  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>Reset</value>
   </data>
   <data name="ScalingModes_ResetDialog_Title" xml:space="preserve">
@@ -823,7 +823,7 @@
     <value>Restore the source window and enable the effect group again. If capture still fails, open View details to check the capture step and error code.</value>
   </data>
   <data name="Message_CreateFenceFailed" xml:space="preserve">
-    <value>The selected graphics card could not create synchronization resources. Open the profile below, go to Performance → Graphics card and select another available card. If it still fails, update its driver and provide details and logs.</value>
+    <value>The selected graphics card could not create synchronization resources. Open the profile below, go to Performance → Rendering GPU and select another available card. If it still fails, update its driver and provide details and logs.</value>
   </data>
   <data name="Message_NvidiaVsrPathUnsupported" xml:space="preserve">
     <value>NVIDIA VSR did not start (error -2). Exit Magpie, extract the complete package to a folder such as C:\Magpie\, then run Magpie.exe from that folder and retry. Path compatibility is a possible cause. If it still fails, copy the details and include the logs.</value>
@@ -1642,19 +1642,19 @@
   <data name="Profile_Advanced_ParameterFocusSwitching.Description" xml:space="preserve"><value>Enable focus switching during live parameter adjustment. This may be unstable with some windows.</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Header" xml:space="preserve"><value>Disable active effects when switching tasks</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Description" xml:space="preserve"><value>If switching tasks while using DLSSNR makes you feel like you have eaten poisonous mushrooms, try enabling this.</value></data>
-  <data name="EffectPicker_CustomSummary" xml:space="preserve"><value>Custom effect; see the author's documentation.</value></data>
-  <data name="EffectPicker_CustomDetails" xml:space="preserve"><value>This effect has not been reviewed yet. See the author's documentation for its purpose, parameters, and recommended position in an effect chain. HDR compatibility has not been verified.</value></data>
+  <data name="EffectPicker_CustomSummary" xml:space="preserve"><value>Custom effect; see the author's guidance.</value></data>
+  <data name="EffectPicker_CustomDetails" xml:space="preserve"><value>Follow the author's guidance for parameters, output size, and chain placement. Also check the documented HDR support, runtime dependencies, and GPU requirements.</value></data>
   <data name="EffectPicker_All" xml:space="preserve"><value>All</value></data>
   <data name="EffectPicker_AllDescription" xml:space="preserve"><value>Browse the purpose, recommended scenarios, and combination guidance for installed effects.</value></data>
   <data name="EffectPicker_DetailScrollHint" xml:space="preserve"><value>Ctrl + wheel: scroll description</value></data>
   <data name="EffectPicker_NameSeparator" xml:space="preserve"><value>, </value></data>
   <data name="EffectPicker_EffectCountSuffix" xml:space="preserve"><value> effects</value></data>
   <data name="EffectPicker_GettingStarted" xml:space="preserve"><value>Getting started</value></data>
-  <data name="EffectPicker_GettingStartedDescription" xml:space="preserve"><value>Choose an approachable effect for your scenario, then compare the image before adding more.</value></data>
+  <data name="EffectPicker_GettingStartedDescription" xml:space="preserve"><value>Choose an approachable effect for your content. Tags guide where to start; they do not rank measured image quality.</value></data>
   <data name="EffectPicker_Advanced" xml:space="preserve"><value>Advanced</value></data>
   <data name="EffectPicker_AdvancedDescription" xml:space="preserve"><value>Video super resolution, frame generation, AI image enhancement, and frame-rate control. Choose according to your GPU and target image.</value></data>
   <data name="EffectPicker_CustomCategory" xml:space="preserve"><value>Custom / uncategorized</value></data>
-  <data name="EffectPicker_CustomCategoryDescription" xml:space="preserve"><value>Installed effects without catalog guidance. See the author's documentation for parameters and chain placement.</value></data>
+  <data name="EffectPicker_CustomCategoryDescription" xml:space="preserve"><value>Installed effects outside this catalog; follow the author's guidance for parameters, size, and chain placement.</value></data>
   <data name="EffectPicker_SearchPlaceholder" xml:space="preserve"><value>Search effects, purposes, or keywords…</value></data>
   <data name="EffectPicker_SearchAutomationName" xml:space="preserve"><value>Search all effects</value></data>
   <data name="EffectPicker_JumpTo" xml:space="preserve"><value>Jump to </value></data>
@@ -1801,10 +1801,38 @@
   <data name="FrameRefresh_IdleRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Idle redraw rate</value></data>
   <data name="FrameRefresh_LegacyCapNotice" xml:space="preserve"><value>Retained legacy cap: {} FPS</value></data>
 
-  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+  <data name="ScalingModes_General_ConfigFolder.Text" xml:space="preserve">
     <value>Config folder</value>
   </data>
   <data name="FrameRefresh_DuplicateDetection_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Duplicate frame detection</value></data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>Rendering GPU</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Rendering GPU</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Automatic</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>No available GPU found</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>Selected GPU temporarily unavailable</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>No available GPU found</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Enabling effects will attempt CPU rendering. Check your graphics driver.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>Selected GPU temporarily unavailable</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Effects will automatically use an available GPU. The selected GPU will be used again when it returns.</value>
+  </data>
+
   <data name="FrameRefresh_VRR.Header" xml:space="preserve"><value>Variable refresh rate (experimental)</value></data>
   <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>Request VRR with supported displays and drivers. Re-enable scaling to apply; G-SYNC activation needs verification.</value></data>
   <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>Off</value></data>
@@ -1815,4 +1843,7 @@
   <data name="FrameRefresh_NvidiaForeground_Input.OffContent" xml:space="preserve"><value>Off</value></data>
   <data name="FrameRefresh_NvidiaForeground_Input.OnContent" xml:space="preserve"><value>On</value></data>
   <data name="FrameRefresh_NvidiaForeground_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>NVIDIA G-SYNC foreground compatibility (experimental)</value></data>
+
+
+  <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>Other options</value></data>
 </root>

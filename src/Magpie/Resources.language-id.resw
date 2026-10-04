@@ -216,10 +216,10 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>Jalankan</value>
   </data>
-  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
     <value>Ekspor</value>
   </data>
-  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
     <value>Impor</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
@@ -1060,10 +1060,39 @@
   <data name="Home_Advanced_DeveloperOptions_DisableTopmost.Content" xml:space="preserve">
     <value>Nonaktifkan selalu-di-atas</value>
   </data>
-  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+  <data name="ScalingModes_General_ConfigFolder.Text" xml:space="preserve">
     <value>Folder konfigurasi</value>
   </data>
-  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>Reset</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>GPU untuk rendering</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>GPU untuk rendering</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Otomatis</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>Tidak ditemukan GPU yang tersedia</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>GPU yang dipilih sementara tidak tersedia</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>Tidak ditemukan GPU yang tersedia</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Saat efek diaktifkan, rendering dengan CPU akan dicoba. Periksa driver grafis.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>GPU yang dipilih sementara tidak tersedia</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Efek akan otomatis menggunakan GPU yang tersedia. GPU yang dipilih akan digunakan kembali setelah tersedia.</value>
+  </data>
+
+  <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>Opsi lainnya</value></data>
 </root>

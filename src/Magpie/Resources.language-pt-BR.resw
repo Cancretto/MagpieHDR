@@ -189,10 +189,10 @@
   <data name="ToggleSwitch.OnContent" xml:space="preserve">
     <value>Ativado</value>
   </data>
-  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
     <value>Exportar</value>
   </data>
-  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
     <value>Importar</value>
   </data>
   <data name="Home_UpdateCard_AutoCheckForUpdates.Content" xml:space="preserve">
@@ -892,10 +892,39 @@
   <data name="Home_Toolbar_StateToggle.Header" xml:space="preserve">
     <value>Atalho para alternar o estado da barra de ferramentas</value>
   </data>
-  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+  <data name="ScalingModes_General_ConfigFolder.Text" xml:space="preserve">
     <value>Pasta de config.</value>
   </data>
-  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>Redefinir</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>GPU de renderização</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>GPU de renderização</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Automático</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>Nenhuma GPU disponível encontrada</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>GPU selecionada temporariamente indisponível</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>Nenhuma GPU disponível encontrada</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Ao ativar os efeitos, será feita uma tentativa de renderização pela CPU. Verifique o driver gráfico.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>GPU selecionada temporariamente indisponível</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Os efeitos usarão automaticamente uma GPU disponível. A GPU selecionada será usada novamente quando estiver disponível.</value>
+  </data>
+
+  <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>Mais opções</value></data>
 </root>

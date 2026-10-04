@@ -19,11 +19,22 @@ frame = page.find('local:PageFrame', ns)
 actions = frame.find('local:PageFrame.HeaderAction/local:SimpleStackPanel', ns)
 expected = ['Import', 'Export', 'ConfigFolder', 'Reset']
 buttons = actions.findall('p:Button', ns)
-assert [node.get(uid) for node in buttons] == ['ScalingModes_General_' + key for key in expected]
-assert [node.get('Click') for node in buttons] == [
+assert len(buttons) == 1 and buttons[0].get(uid) == 'ScalingModes_General_MoreOptions'
+menu = buttons[0].find('p:Button.Flyout/p:MenuFlyout', ns)
+items = menu.findall('p:MenuFlyoutItem', ns)
+assert [node.get(uid) for node in items] == ['ScalingModes_General_' + key for key in expected]
+assert [node.get('Click') for node in items] == [
     '{x:Bind ViewModel.Import}', '{x:Bind ViewModel.Export}',
     'OpenConfigFolderButton_Click', 'ResetScalingModesButton_Click']
-assert not actions.findall('.//p:Button.Flyout', ns)
+assert [node.tag.rsplit('}', 1)[-1] for node in menu] == [
+    'MenuFlyoutItem', 'MenuFlyoutItem', 'MenuFlyoutItem', 'MenuFlyoutSeparator', 'MenuFlyoutItem']
+assert all(item.find('p:MenuFlyoutItem.Icon/p:FontIcon', ns) is not None for item in items)
+menu_fixture = deepcopy(menu)
+for item in menu_fixture.findall('p:MenuFlyoutItem', ns):
+    key = item.attrib.pop(uid)
+    del item.attrib['Click']
+    item.set('Text', key.removeprefix('ScalingModes_General_'))
+menu_xaml = ET.tostring(menu_fixture, encoding='unicode')
 style = page.find("p:Page.Resources/p:Style[@x:Key='ScalingModesHeaderButtonStyle']", ns)
 frame_doc = ET.parse(repo / 'src/Magpie/PageFrame.xaml').getroot()
 frame_resources = ''.join(ET.tostring(node, encoding='unicode')
@@ -68,21 +79,27 @@ for language in supported:
     nodes = ET.parse(resources[language]).getroot().findall('data')
     values = {node.get('name'): node.findtext('value') for node in nodes}
     assert len(values) == len(nodes), f'Duplicate resource key in {language}'
-    labels = [values.get('ScalingModes_General_' + key + '.Content') for key in expected]
-    assert all(labels), f'Missing Content resource in {language}'
+    labels = [values.get('ScalingModes_General_MoreOptions.Content')]
+    assert all(labels), f'Missing entrance Content resource in {language}'
+    menu_labels = [values.get('ScalingModes_General_' + key + '.Text') for key in expected]
+    assert all(menu_labels), language
+    assert not any(values.get('ScalingModes_General_' + key + '.Content') for key in expected), language
     title = values['ScalingModes_PageFrame.Title']
-    cases.append('{' + ','.join('L"' + text.replace('\\', '\\\\').replace('"', '\\"') + '"'
-                              for text in [language, title, *labels]) + '}')
+    def wide(text):
+        return 'L"' + text.replace('\\', '\\\\').replace('"', '\\"') + '"'
+    cases.append('{' + ','.join(map(wide, [language, title, *labels])) +
+                 ',{' + ','.join(map(wide, menu_labels)) + '}}')
 fixture = '\n'.join([
     '#pragma once',
     'constexpr auto HeaderStyleXaml = LR"fixture(' + style_xaml + ')fixture";',
     'constexpr auto HeaderActionResourcesXaml = LR"fixture(' + action_resources_xaml + ')fixture";',
     'constexpr auto HeaderGridXaml = LR"fixture(' + header_xaml + ')fixture";',
+    'constexpr auto OptionsMenuXaml = LR"fixture(' + menu_xaml + ')fixture";',
     'constexpr auto NewButtonXaml = LR"fixture(' + button_xaml + ')fixture";',
     'constexpr double HeaderSpacing = ' + actions.get('Spacing') + ';',
     'constexpr winrt::Thickness ListPadding{' + ','.join(map(str, padding)) + '};',
     'constexpr winrt::Thickness FooterMargin{' + ','.join(map(str, margin)) + '};',
-    'struct LanguageCase { const wchar_t* language; const wchar_t* title; const wchar_t* labels[4]; };',
+    'struct LanguageCase { const wchar_t* language; const wchar_t* title; const wchar_t* labels[1]; const wchar_t* menuLabels[4]; };',
     'constexpr LanguageCase LanguageCases[]{' + ',\n'.join(cases) + '};',
 ])
 (output / 'EffectGroupsPageFixture.h').write_text(fixture, encoding='utf-8')
@@ -94,4 +111,4 @@ while depth:
     depth += (source[end] == '{') - (source[end] == '}')
     end += 1
 (output / 'ConfigFolderHandler.inc').write_text(source[start:end], encoding='utf-8')
-print(f'Extracted production header/footer and Content resources for {len(cases)} languages.')
+print(f'Extracted production menu/header/footer and Content/Text resources for {len(cases)} languages.')

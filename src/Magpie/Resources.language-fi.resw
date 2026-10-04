@@ -181,10 +181,10 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>Käynnistä</value>
   </data>
-  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
     <value>Vienti</value>
   </data>
-  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
     <value>Tuonti</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
@@ -1001,10 +1001,39 @@
   <data name="Home_Advanced_DeveloperOptions_DisableTopmost.Content" xml:space="preserve">
     <value>Poista "aina-päällä" -toiminto käytöstä</value>
   </data>
-  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+  <data name="ScalingModes_General_ConfigFolder.Text" xml:space="preserve">
     <value>Asetuskansio</value>
   </data>
-  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>Palauta</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>Renderöinnin näytönohjain</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Renderöinnin näytönohjain</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Automaattinen</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>Käytettävissä olevaa näytönohjainta ei löytynyt</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>Valittu näytönohjain ei ole tilapäisesti käytettävissä</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>Käytettävissä olevaa näytönohjainta ei löytynyt</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Tehosteita käynnistettäessä yritetään renderöintiä suorittimella. Tarkista näytönohjaimen ajuri.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>Valittu näytönohjain ei ole tilapäisesti käytettävissä</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Tehosteet käyttävät automaattisesti käytettävissä olevaa näytönohjainta. Valittua ohjainta käytetään jälleen, kun se on saatavilla.</value>
+  </data>
+
+  <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>Lisää asetuksia</value></data>
 </root>

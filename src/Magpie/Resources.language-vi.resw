@@ -466,10 +466,10 @@
   <data name="Profile_SourceWindow_CustomCropping_Top.Header" xml:space="preserve">
     <value>Trên</value>
   </data>
-  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
     <value>Xuất</value>
   </data>
-  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
     <value>Nhập</value>
   </data>
   <data name="ScalingModes_General_MoreOptions.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
@@ -1060,10 +1060,39 @@
   <data name="Overlay_Toolbar_Profiler" xml:space="preserve">
     <value>Cửa sổ Profiler</value>
   </data>
-  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+  <data name="ScalingModes_General_ConfigFolder.Text" xml:space="preserve">
     <value>Thư mục cấu hình</value>
   </data>
-  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>Đặt lại</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>GPU kết xuất</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>GPU kết xuất</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Tự động</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>Không tìm thấy GPU khả dụng</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>GPU đã chọn tạm thời không khả dụng</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>Không tìm thấy GPU khả dụng</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Khi bật hiệu ứng, chương trình sẽ thử kết xuất bằng CPU. Hãy kiểm tra trình điều khiển đồ họa.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>GPU đã chọn tạm thời không khả dụng</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Hiệu ứng sẽ tự động dùng GPU khả dụng. GPU đã chọn sẽ được dùng lại khi khả dụng.</value>
+  </data>
+
+  <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>Tùy chọn</value></data>
 </root>

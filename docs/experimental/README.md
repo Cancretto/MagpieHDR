@@ -1,10 +1,12 @@
-# Magpie 实验分支文档索引
+﻿# Magpie 实验分支文档索引
+
+当前公开版本为 [Magpie Experimental v0.6.9](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.9-experimental)：[完整中英 Release Note](../RELEASE_NOTES_v0.6.9-experimental.md)、[分发准备记录](reviews/20261002-v0.6.9-release-preparation.md)。默认分支 `experimental` 已同步完整 0.6.9 源码，`version.json` 指向该版本。发布标签及运行包的准确构建提交为 `27c5df91177a29b33be612e98274169f3d2fca49`；后续文档与版本入口更新保留为独立提交。
 
 帧同步当前状态：保留 Front Edge 默认，普通效果与 DLSS FG 支持 Async／Reflex 驱动基础限帧，XeSS FG 由 XeLL 接管；自动回退仅记简短日志，实时参数面板不显示运行状态。见 [使用指南](../FRAME_SYNC_GUIDE.md) 与 [实施记录](reviews/20260909-v0.6.7-frame-sync-modes.md)。
 
 HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关保持关闭；效果器选择器新增「HDR 组件」分类，仅显式转换链按节点启用 HDR 捕获／输出。见 [HDR 组件实施记录](reviews/20260908-v0.6.7-hdr-conversion-effects-plan.md)。
 
-`068` 已合并到 `experimental`，正在准备 [0.6.8 更新说明（Draft 待审核）](../RELEASE_NOTES_v0.6.8-experimental.md)。分发沿用 067 的完整主包、DLSSNR DLL 选项包和 NGX OTA 工具；本轮授权推送源码及创建 Draft，不发布。构建、附件及远端检查见 [0.6.8 分发准备记录](reviews/20260914-v0.6.8-release-preparation.md)。
+历史版本 [Magpie Experimental v0.6.8](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.8-experimental.1) 的[更新说明](../RELEASE_NOTES_v0.6.8-experimental.md)与[分发准备记录](reviews/20260914-v0.6.8-release-preparation.md)保留供查阅。下方 Beta、TODO 与部署状态均为当时的历史记录，具体使用说明以当前版本 Release Note 为准。
 
 当前功能已包含 Beta 1–6 的全部迭代，见 [Beta 6 TODO](todos/20260910-v0.6.7-beta6-TODO.md)、[Reflex 驱动限帧](reviews/20260910-beta6-reflex-pacing.md)、[HDR 组件](reviews/20260908-v0.6.7-hdr-conversion-effects-plan.md) 与 [参数输入验证](testing/PARAMETER-INPUT.md)。历史 [Beta 6 说明](../RELEASE_NOTES_v0.6.7-beta6.md)、[Beta 1 说明](../RELEASE_NOTES_v0.6.7-beta1.md)、[0.6.6 说明](../RELEASE_NOTES_v0.6.6-experimental.md) 保留。
 
@@ -24,11 +26,24 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 - [0.6.10 G-SYNC 输出前台身份兼容 TODO](todos/20261004-v0.6.10-gsync-output-foreground-TODO.md)：第一版查询兼容、真实业务查询隔离、生命周期及短时真实前台参考入口已由单独会话集成到 Beta2。后续双开关与 FG 扩展按上方新 TODO 推进；[初次源码实施与交接](reviews/20261004-v0.6.10-gsync-foreground-source-development.md)保留原型阶段记录。
 
+- **0.6.10 Beta2 本地整合**：`release/0.6.10-beta2` 继承 Beta1，合入参数焦点／输入所有权、NVIDIA 前台兼容原型和“性能”分组渲染显卡选择。见 [本版中英说明](../RELEASE_NOTES_v0.6.10-beta2.md)。下方功能分支交接状态保留当时的开发记录；本版验证以整合审计与包清单为准，实际游戏、输入和 G-SYNC 验收继续保留。
+
+- [069 渲染显卡常驻与选择状态整理 TODO](todos/20261004-v0.6.9-rendering-gpu-selection-TODO.md)：已在 `feature/069-rendering-gpu-selection` 实现“性能”分组中的常驻显卡选择、单卡自动／指定选项及设备缺失提示；79 项选择回归、51 项原有适配器回归、20 种语言资源合同和当前 IDL／XAML／页面语法检查通过。完整 Release 编译部署与实际 UI／热插拔／GPU 验收交给后续独立会话。[实施记录](reviews/20261004-v0.6.9-rendering-gpu-selection.md)。
+
+- [参数焦点交接与会话窗口判定 TODO](todos/20261004-parameter-focus-coordination-TODO.md)：已在 `fix/069-uwp-window-owner` 完成根窗口判定、输入所有权、宿主层级及停止／重建协调，通过自动回归和测试窗口的原生层级验证；完整产品编译部署及游戏／GPU／VRR 验收待独立会话。
+
 - [0.6.10 Beta1 VRR／G-SYNC 焦点诊断](reviews/20261004-v0.6.10-vrr-gsync-focus-diagnosis.md)：运行日志支持标准 DXGI 请求完整，但用户未看到指示器；非前台输出是首要待验证原因。真实前台对照、查询伪装／消息分离和 PresentMon 尚未执行，本轮仅调查与文档记录。
+
+- **0.6.10 Beta1 本地整合**：`release/0.6.10-beta1` 以公开 0.6.9 源码为基线，合入当前 UWP 与标准 DXGI VRR 分支。见 [本版中英说明](../RELEASE_NOTES_v0.6.10-beta1.md)。下方 0.6.9 功能分支交接文档保留原开发阶段记录；本版构建与回归以整合审计及包清单为准，实机验收继续保留。
 
 - [069 VRR／G-SYNC 标准呈现源码开发](reviews/20261004-v0.6.9-vrr-gsync-source-development.md)：`feature/069-vrr-gsync` 接入默认关闭的配置选项和共享 DXGI 策略。[TODO](todos/20261004-v0.6.9-vrr-gsync-nofocusloss-TODO.md) 保留 NoFocusLoss、最终输出预算及硬件验收；本轮未编译、部署或合并主线。
 
 - **0.6.9 UWP 窗口兼容与死锁保护**：`fix/069-uwp-window-owner` 已实现两种协作模式、首帧准入与完整退役边界，保留 Win32 owner 和 NGX 防护，通过离线回归。完整构建／部署和实机验收待独立会话。[当前 TODO](todos/20261004-v0.6.9-uwp-window-coordination-and-lifecycle-TODO.md)、[第二阶段实施记录](reviews/20261004-v0.6.9-uwp-coordination-implementation.md)、[原定位](todos/20261004-v0.6.9-issues-65-67-uwp-window-owner-TODO.md)、[阶段 1 记录](reviews/20261004-v0.6.9-uwp-window-owner.md)。
+
+
+- [069 “其他选项”按钮样式协调 TODO](todos/20261002-v0.6.9-effect-options-button-style-TODO.md)：已继承普通按钮的 14 号字与默认留白，保留 36 DIP 高度、纯文字、中性填充和零边框。144 组原生页头布局及页脚、容器和配置目录检查通过；单线程完整 Release 与包／编译资源校验通过。按用户明确授权关闭 Magpie 后，已归档旧完整目录、保留最新配置并替换至原 Beta3 路径，替换后的实际文件校验通过；Magpie 保持关闭，实际界面验收待完成。[实施与部署记录](reviews/20261002-v0.6.9-effect-options-button-style.md)。
+
+- [069 效果组其他选项菜单与效果器说明 Review TODO](todos/20261002-v0.6.9-effect-options-and-description-review-TODO.md)：菜单源码与全部 162 项双语说明审查完成，入口沿用旧版 36 DIP 高度及当前普通按钮外观；目录生成、144 组原生页头布局、选择器模型与页面语法检查通过。已按单线程、低优先级和单逻辑核心完成 Beta3 构建部署及包／编译资源校验，游戏期间未启动应用；实际主窗口操作、完整 DPI 和安装后选择器验收仍待完成。[实施与验证](reviews/20261002-v0.6.9-effect-options-and-description-review.md)、[Beta3 部署记录](reviews/20261002-v0.6.9-beta3-deployment.md)。
 
 - **Beta2 按钮与刷新控件样式对齐**：四个操作采用效果组／效果器的普通中性填充、零边框；六个下拉框与三组数值统一为 225 DIP，提供行内步进，并统一窄窗口换行与条件提示。完整 Release、原生标题／刷新控件测量及模型回归通过，已部署到原 Beta2；主窗口启动与三个现有配置保留检查通过。[TODO 与验证范围](todos/20261002-v0.6.9-beta2-ui-style-alignment-TODO.md)、[实施与部署记录](reviews/20261002-v0.6.9-beta2-ui-style-alignment.md)。
 

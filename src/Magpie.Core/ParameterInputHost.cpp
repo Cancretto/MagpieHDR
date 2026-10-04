@@ -18,8 +18,24 @@ bool OverlayDrawer::_HasParameterForeground() const noexcept {
 	if (!_parameterFocusSwitchingEnabled) return false;
 	auto& scaling = ScalingWindow::Get();
 	const HWND foreground = Win32Helper::GetRealForegroundWindow();
-	return foreground && (foreground == scaling.SrcTracker().Handle() || foreground == scaling.Handle() ||
-		foreground == _hwndParameterInput);
+	return scaling.IsParameterForeground(foreground, _parameterInputTransition ||
+		std::chrono::steady_clock::now() < _parameterFocusSettlesAt);
+}
+
+bool OverlayDrawer::_OwnsParameterInput() const noexcept {
+	return _parameterInputOwned && _parameterInputRunId == ScalingWindow::RunId() &&
+		_hwndParameterInput && Win32Helper::GetRealForegroundWindow() == _hwndParameterInput &&
+		GetFocus() == _hwndParameterInput && _HasParameterForeground();
+}
+
+bool OverlayDrawer::_PositionParameterInputHost(const RECT& rect) noexcept {
+	const bool positioned = PositionParameterInputHost(_hwndParameterInput, ScalingWindow::Get().Handle(), rect);
+	if (!positioned) {
+		if (!_parameterLayerFailed) Logger::Get().Warn("Parameter input host hidden: output layer unavailable");
+		if (_hwndParameterInput) ShowWindow(_hwndParameterInput, SW_HIDE);
+	}
+	_parameterLayerFailed = !positioned;
+	return positioned;
 }
 
 bool OverlayDrawer::_EnsureParameterInputHost() noexcept {
@@ -48,18 +64,24 @@ bool OverlayDrawer::_EnsureParameterInputHost() noexcept {
 	return true;
 }
 
-bool OverlayDrawer::_BeginParameterInput() noexcept {
+bool OverlayDrawer::_BeginParameterInput(const char* request) noexcept {
 	// An asynchronous restart must never activate over an unrelated application.
 	if (!_HasParameterForeground()) {
 		Logger::Get().Info("Parameter editing activation skipped: foreground is outside the scaling session");
 		return false;
 	}
+	if (_parameterHostCanceled) _EndParameterInput(false);
+	const uint32_t runId = ScalingWindow::RunId();
 	_parameterInputTransition = true;
 	if (!_EnsureParameterInputHost()) {
 		_parameterInputTransition = false;
 		return false;
 	}
 	auto& scaling = ScalingWindow::Get();
+	if (runId != ScalingWindow::RunId() || !scaling.SourceIdentityValid()) {
+		_parameterInputTransition = false;
+		return false;
+	}
 	_parameterPanelState = ParameterPanelState::Edit;
 	_parameterFocusSettlesAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
 	_pendingParameterPanelState = ParameterPanelState::Edit;
@@ -69,14 +91,23 @@ bool OverlayDrawer::_BeginParameterInput() noexcept {
 	_parameterInheritedKeys.fill(false);
 	ClearStates();
 	const RECT& rect = scaling.RendererRect();
-	SetWindowPos(_hwndParameterInput, HWND_TOPMOST, rect.left, rect.top,
-		rect.right - rect.left, rect.bottom - rect.top, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+	bool positioned = _PositionParameterInputHost(rect);
 	const HWND currentForeground = Win32Helper::GetRealForegroundWindow();
-	if (currentForeground == scaling.SrcTracker().Handle() || currentForeground == scaling.Handle() ||
-		currentForeground == _hwndParameterInput) SetForegroundWindow(_hwndParameterInput);
-	const bool activated = Win32Helper::GetRealForegroundWindow() == _hwndParameterInput;
+	if (positioned && runId == ScalingWindow::RunId() && scaling.IsParameterForeground(currentForeground, true))
+		SetForegroundWindow(_hwndParameterInput);
+	if (Win32Helper::GetRealForegroundWindow() == _hwndParameterInput && runId == ScalingWindow::RunId()) SetFocus(_hwndParameterInput);
+	// Activation itself can raise a window within its band. Restore the host's
+	// relation to the output before accepting input ownership.
+	if (positioned && runId == ScalingWindow::RunId() &&
+		scaling.IsParameterForeground(Win32Helper::GetRealForegroundWindow(), true) &&
+		Win32Helper::GetRealForegroundWindow() == _hwndParameterInput && GetFocus() == _hwndParameterInput)
+		positioned = _PositionParameterInputHost(rect);
+	const bool activated = positioned && runId == ScalingWindow::RunId() &&
+		scaling.IsParameterForeground(Win32Helper::GetRealForegroundWindow(), true) &&
+		Win32Helper::GetRealForegroundWindow() == _hwndParameterInput && GetFocus() == _hwndParameterInput;
+	_parameterInputOwned = activated;
+	_parameterInputRunId = activated ? runId : 0;
 	if (activated) {
-		SetFocus(_hwndParameterInput);
 		ClipCursor(nullptr);
 		_imguiImpl.ParameterEditing(true);
 		for (int key : { VK_CONTROL, VK_SHIFT, VK_MENU, VK_LWIN, VK_RWIN }) {
@@ -89,11 +120,17 @@ bool OverlayDrawer::_BeginParameterInput() noexcept {
 		}
 		scaling.CursorManager().Update();
 		SetTimer(_hwndParameterInput, 1, 16, nullptr);
-		Logger::Get().Info("Parameter panel entered Edit with foreground input ownership");
+		Logger::Get().Info(fmt::format("Parameter Edit acquired: request={} run={} capture={:#x} root={:#x} host={:#x} foreground={:#x} threadFocus={:#x} settleMs=100",
+			request, runId, uintptr_t(scaling.SrcTracker().Handle()), uintptr_t(scaling.SourceRoot()),
+			uintptr_t(_hwndParameterInput), uintptr_t(Win32Helper::GetRealForegroundWindow()), uintptr_t(GetFocus())));
 	} else {
+		if (runId == ScalingWindow::RunId() && Win32Helper::GetRealForegroundWindow() == _hwndParameterInput)
+			scaling.SrcTracker().SetFocus(_hwndParameterInput);
 		ShowWindow(_hwndParameterInput, SW_HIDE);
 		_parameterPanelState = ParameterPanelState::Preview;
-		Logger::Get().Warn("Parameter editing activation failed; input host did not become foreground");
+		Logger::Get().Warn(fmt::format("Parameter editing activation failed: request={} run={} kind={} capture={:#x} root={:#x} host={:#x} foreground={:#x} threadFocus={:#x}",
+			request, runId, int(scaling.ClassifyForeground(Win32Helper::GetRealForegroundWindow())), uintptr_t(scaling.SrcTracker().Handle()),
+			uintptr_t(scaling.SourceRoot()), uintptr_t(_hwndParameterInput), uintptr_t(Win32Helper::GetRealForegroundWindow()), uintptr_t(GetFocus())));
 	}
 	_parameterInputTransition = false;
 	return activated;
@@ -103,6 +140,11 @@ void OverlayDrawer::_EndParameterInput(bool returnFocus) noexcept {
 	if (!_parameterFocusSwitchingEnabled) return;
 	_parameterInputTransition = true;
 	const bool ownedFocus = _hwndParameterInput && Win32Helper::GetRealForegroundWindow() == _hwndParameterInput;
+	_parameterInputOwned = false;
+	_parameterHostCanceled = false;
+	_parameterInputRunId = 0;
+	_parameterEditPending = false;
+	_parameterEditRunId = 0;
 	_imguiImpl.ParameterEditing(false);
 	ClearStates();
 	if (_hwndParameterInput) {
@@ -110,9 +152,12 @@ void OverlayDrawer::_EndParameterInput(bool returnFocus) noexcept {
 		if (GetCapture() == _hwndParameterInput) ReleaseCapture();
 		if (ownedFocus && Win32Helper::GetRealForegroundWindow() == _hwndParameterInput) ClipCursor(nullptr);
 		if (ownedFocus && returnFocus && Win32Helper::GetRealForegroundWindow() == _hwndParameterInput &&
-			IsWindow(ScalingWindow::Get().SrcTracker().Handle())) {
+			ScalingWindow::Get().SourceIdentityValid()) {
 			auto& scaling = ScalingWindow::Get();
-			_parameterFocusFailed = !scaling.SrcTracker().SetFocus();
+			const HWND target = scaling.SourceActivationTarget();
+			_parameterFocusFailed = !scaling.SrcTracker().SetFocus(_hwndParameterInput);
+			Logger::Get().Info(fmt::format("Parameter input return: run={} target={:#x} foreground={:#x} restored={}",
+				ScalingWindow::RunId(), uintptr_t(target), uintptr_t(Win32Helper::GetRealForegroundWindow()), !_parameterFocusFailed));
 			if (_parameterFocusFailed) scaling.ShowToast(scaling.GetLocalizedString(L"Overlay_Parameters_FocusFailed"));
 		}
 		ShowWindow(_hwndParameterInput, SW_HIDE);
@@ -122,7 +167,8 @@ void OverlayDrawer::_EndParameterInput(bool returnFocus) noexcept {
 	_parameterInheritedKeys.fill(false);
 	_returnClickPending = _escapePending = _parameterResumeClickPending = false;
 	_parameterInputTransition = false;
-	_parameterFocusSettlesAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+	_parameterFocusSettlesAt = ownedFocus && returnFocus
+		? std::chrono::steady_clock::now() + std::chrono::milliseconds(100) : std::chrono::steady_clock::time_point{};
 }
 
 void OverlayDrawer::_UpdateParameterPreviewHost() noexcept {
@@ -131,7 +177,7 @@ void OverlayDrawer::_UpdateParameterPreviewHost() noexcept {
 	if (_parameterInputTransition || IsEditingParameters() || _parameterResumeClickPending) return;
 	const auto rect = _imguiImpl.PresentedParameterRect();
 	if (_parameterPanelState != ParameterPanelState::Preview || !_isEffectParametersVisible ||
-		!_HasParameterForeground() || !rect) {
+		!_HasParameterForeground() || !rect || !IsWindowVisible(ScalingWindow::Get().Handle())) {
 		if (_hwndParameterInput) ShowWindow(_hwndParameterInput, SW_HIDE);
 		if (!_HasParameterForeground()) _previewEscapeCanClose = _previewClosePending = false;
 		return;
@@ -150,14 +196,7 @@ void OverlayDrawer::_UpdateParameterPreviewHost() noexcept {
 		return;
 	}
 	if (!_EnsureParameterInputHost()) return;
-	RECT current{};
-	GetWindowRect(_hwndParameterInput, &current);
-	if (!EqualRect(&current, &target) || !IsWindowVisible(_hwndParameterInput)) {
-		// Do not activate during preview. Only a user click may activate this
-		// bounded window; game-area input stays outside its native hit region.
-		SetWindowPos(_hwndParameterInput, HWND_TOPMOST, target.left, target.top,
-			target.right - target.left, target.bottom - target.top, SWP_NOACTIVATE | SWP_SHOWWINDOW);
-	}
+	_PositionParameterInputHost(target);
 }
 
 bool OverlayDrawer::HandleParameterPreviewEscape(WPARAM message, const KBDLLHOOKSTRUCT& key) noexcept {
@@ -191,7 +230,8 @@ void OverlayDrawer::_ToggleParameterPanel() noexcept {
 	_SetParameterPanelState(_isEffectParametersVisible ? ParameterPanelState::Closed : ParameterPanelState::Edit);
 }
 
-void OverlayDrawer::_SetParameterPanelState(ParameterPanelState state, bool returnFocus) noexcept {
+void OverlayDrawer::_SetParameterPanelState(ParameterPanelState state, bool returnFocus, const char* request) noexcept {
+	_parameterEditPending = false;
 	if (!_parameterFocusSwitchingEnabled) {
 		_isEffectParametersVisible = state != ParameterPanelState::Closed;
 		_overlayDirty = true;
@@ -202,7 +242,7 @@ void OverlayDrawer::_SetParameterPanelState(ParameterPanelState state, bool retu
 	if (state == ParameterPanelState::Edit) {
 		_isEffectParametersVisible = true;
 		if (!IsEditingParameters()) {
-			_parameterFocusFailed = !_BeginParameterInput();
+			_parameterFocusFailed = !_BeginParameterInput(request);
 			if (_parameterFocusFailed) _parameterPanelState = ParameterPanelState::Preview;
 		}
 	} else if (IsEditingParameters() && returnFocus) {
@@ -236,8 +276,9 @@ void OverlayDrawer::_FinishParameterInput() noexcept {
 
 bool OverlayDrawer::HasHeldParameterInput() const noexcept {
 	if (!_parameterFocusSwitchingEnabled) return false;
+	if (!_HasParameterForeground()) return false;
 	if (_previewEscapeOwned || _parameterResumeClickPending) return true;
-	if (!IsEditingParameters()) return false;
+	if (!IsEditingParameters() || !_OwnsParameterInput()) return false;
 	if (_parameterHeldButtons || std::ranges::any_of(_parameterHeldKeys, [](bool held) { return held; })) return true;
 	// Shortcut callbacks can arrive before the invoking modifier messages.
 	for (int key : {VK_CONTROL, VK_SHIFT, VK_MENU, VK_LWIN, VK_RWIN}) {
@@ -259,6 +300,7 @@ void OverlayDrawer::_SyncInheritedParameterKeys() noexcept {
 
 void OverlayDrawer::ReleaseParameterInput() noexcept {
 	if (!_parameterFocusSwitchingEnabled) return;
+	_previewEscapeOwned = false;
 	_previewEscapeCanClose = _previewClosePending = false;
 	const bool editing = IsEditingParameters();
 	_EndParameterInput(true);
@@ -267,28 +309,37 @@ void OverlayDrawer::ReleaseParameterInput() noexcept {
 }
 
 void OverlayDrawer::SuspendParameterInput() noexcept {
-	if (!IsEditingParameters() || _parameterInputTransition) return;
+	if (_parameterInputTransition || (!IsEditingParameters() && !_parameterResumeClickPending)) return;
 	_SetParameterPanelState(ParameterPanelState::Preview, false);
 }
 
 void OverlayDrawer::UpdateParameterInputHost() noexcept {
 	if (!_parameterFocusSwitchingEnabled) return;
+	if (_parameterHostCanceled) {
+		// Retirement owns cleanup after the owner cut. A standalone host death
+		// can clear ImGui/cursor input here, after its destruction callback returns.
+		if (const auto renderer = ScalingWindow::Get().TryGetRenderer(); renderer && renderer->IsStopping()) return;
+		_EndParameterInput(false);
+	}
+	if (_parameterEditPending) {
+		if (_parameterEditRunId != ScalingWindow::RunId() || !_HasParameterForeground()) _parameterEditPending = false;
+		else if (IsWindowVisible(ScalingWindow::Get().Handle())) _SetParameterPanelState(ParameterPanelState::Edit, false, "restore after first display");
+	}
+	if (_parameterResumeClickPending && !_HasParameterForeground()) SuspendParameterInput();
 	if (std::exchange(_previewClosePending, false) &&
 		_parameterPanelState == ParameterPanelState::Preview && _HasParameterForeground())
 		_SetParameterPanelState(ParameterPanelState::Closed, false);
 	_UpdateParameterPreviewHost();
 	if (!IsEditingParameters() || _parameterInputTransition) return;
-	if (Win32Helper::GetRealForegroundWindow() != _hwndParameterInput) {
+	if (!_OwnsParameterInput() || !IsWindowVisible(ScalingWindow::Get().Handle())) {
+		Logger::Get().Info(fmt::format("Parameter input canceled: run={} currentRun={} foreground={:#x} threadFocus={:#x}",
+			_parameterInputRunId, ScalingWindow::RunId(), uintptr_t(Win32Helper::GetRealForegroundWindow()), uintptr_t(GetFocus())));
 		SuspendParameterInput();
 		return;
 	}
 	_SyncInheritedParameterKeys();
-	RECT current{};
-	GetWindowRect(_hwndParameterInput, &current);
 	const RECT& rect = ScalingWindow::Get().RendererRect();
-	if (!EqualRect(&rect, &current)) SetWindowPos(_hwndParameterInput, nullptr,
-		rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
-		SWP_NOACTIVATE | SWP_NOZORDER);
+	if (!_PositionParameterInputHost(rect)) { SuspendParameterInput(); return; }
 	_FinishParameterInput();
 }
 
@@ -301,6 +352,16 @@ std::optional<ImGuiInputResult> OverlayDrawer::_HandleParameterInputMessage(
 	if (!_parameterFocusSwitchingEnabled) return std::nullopt;
 	if (_parameterInputTransition) return std::nullopt;
 	const bool fromHost = sourceWindow && sourceWindow == _hwndParameterInput;
+	if (IsEditingParameters() && !_OwnsParameterInput()) {
+		SuspendParameterInput();
+		return ImGuiInputResult::Redraw;
+	}
+	if (IsEditingParameters() && !fromHost && (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN ||
+		msg == WM_KEYUP || msg == WM_SYSKEYUP || msg == WM_CHAR)) return ImGuiInputResult::Redraw;
+	if (msg == WM_CANCELMODE && fromHost) {
+		_SetParameterPanelState(ParameterPanelState::Preview, false);
+		return ImGuiInputResult::Urgent;
+	}
 	auto queue = [&](std::optional<POINT> point = std::nullopt) {
 		const auto result = _imguiImpl.MessageHandler(msg, wParam, lParam, point);
 		if (result != ImGuiInputResult::None) _overlayDirty = true;
@@ -326,7 +387,7 @@ std::optional<ImGuiInputResult> OverlayDrawer::_HandleParameterInputMessage(
 		if (down && _parameterPanelState == ParameterPanelState::Preview &&
 			!_parameterResumeClickPending && _HasParameterForeground() &&
 			_imguiImpl.IsParameterPreviewAt(point)) {
-			_SetParameterPanelState(ParameterPanelState::Edit);
+			_SetParameterPanelState(ParameterPanelState::Edit, true, "preview click");
 			_parameterResumeClickPending = !IsEditingParameters();
 			_parameterHeldButtons = 1u << button;
 			SetCapture(_hwndParameterInput);
@@ -360,8 +421,13 @@ std::optional<ImGuiInputResult> OverlayDrawer::_HandleParameterInputMessage(
 	}
 	if (msg == WM_CAPTURECHANGED && reinterpret_cast<HWND>(lParam) != _hwndParameterInput &&
 		reinterpret_cast<HWND>(lParam) != ScalingWindow::Get().Handle()) {
+		const bool lostPress = _parameterHeldButtons != 0 || _parameterResumeClickPending;
 		_parameterHeldButtons = 0;
 		_parameterResumeClickPending = false;
+		if (fromHost && lostPress) {
+			_SetParameterPanelState(ParameterPanelState::Preview, false);
+			return ImGuiInputResult::Urgent;
+		}
 	}
 	if (!IsEditingParameters()) return std::nullopt;
 	if (msg == WM_KILLFOCUS || (msg == WM_ACTIVATEAPP && !wParam)) {
@@ -420,11 +486,29 @@ LRESULT CALLBACK OverlayDrawer::_ParameterInputWndProc(HWND hwnd, UINT msg, WPAR
 	if (!self) return DefWindowProc(hwnd, msg, wParam, lParam);
 	if (msg == WM_NCDESTROY) {
 		self->_hwndParameterInput = nullptr;
+		self->_parameterHostCanceled = true;
+		self->_parameterInputOwned = false;
+		self->_parameterInputRunId = 0;
+		self->_parameterEditPending = false;
+		self->_previewEscapeOwned = false;
+		if (self->_parameterPanelState == ParameterPanelState::Edit || self->_parameterResumeClickPending) {
+			self->_parameterPanelState = self->_pendingParameterPanelState == ParameterPanelState::Closed
+				? ParameterPanelState::Closed : ParameterPanelState::Preview;
+			self->_isEffectParametersVisible = self->_parameterPanelState != ParameterPanelState::Closed;
+		}
+		self->_parameterHeldButtons = 0;
+		self->_parameterHeldKeys.fill(false);
+		self->_parameterInheritedKeys.fill(false);
+		self->_returnClickPending = self->_escapePending = self->_parameterResumeClickPending = false;
+		self->_overlayDirty = true;
 		SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
-	if (msg == WM_NCHITTEST) return HTCLIENT;
-	if (msg == WM_MOUSEACTIVATE) return MA_ACTIVATE;
+	if (msg == WM_NCHITTEST || msg == WM_MOUSEACTIVATE) {
+		const bool available = self->_HasParameterForeground() && IsWindowVisible(ScalingWindow::Get().Handle());
+		return msg == WM_NCHITTEST ? (available ? HTCLIENT : HTTRANSPARENT) :
+			(available ? MA_ACTIVATE : MA_NOACTIVATEANDEAT);
+	}
 	if (msg == WM_ERASEBKGND) return 1;
 	if (msg == WM_PAINT) { PAINTSTRUCT ps{}; BeginPaint(hwnd, &ps); EndPaint(hwnd, &ps); return 0; }
 	if (msg == WM_SETCURSOR) {

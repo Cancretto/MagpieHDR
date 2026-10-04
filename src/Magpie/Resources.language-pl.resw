@@ -449,7 +449,7 @@
   <data name="Settings_General_Theme_Dark.Content" xml:space="preserve">
     <value>Ciemny</value>
   </data>
-  <data name="ScalingModes_General_Export.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Export.Text" xml:space="preserve">
     <value>Eksportuj</value>
   </data>
   <data name="Settings_General_Theme_Light.Content" xml:space="preserve">
@@ -470,7 +470,7 @@
   <data name="Settings_Launch.Header" xml:space="preserve">
     <value>Uruchom</value>
   </data>
-  <data name="ScalingModes_General_Import.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Import.Text" xml:space="preserve">
     <value>Importuj</value>
   </data>
   <data name="ScalingModes_DragNotSupported.Text" xml:space="preserve">
@@ -959,10 +959,39 @@
   <data name="Overlay_Toolbar_Minimize" xml:space="preserve">
     <value>Minimalizuj</value>
   </data>
-  <data name="ScalingModes_General_ConfigFolder.Content" xml:space="preserve">
+  <data name="ScalingModes_General_ConfigFolder.Text" xml:space="preserve">
     <value>Folder konfiguracji</value>
   </data>
-  <data name="ScalingModes_General_Reset.Content" xml:space="preserve">
+  <data name="ScalingModes_General_Reset.Text" xml:space="preserve">
     <value>Resetuj</value>
   </data>
+  <data name="Profile_General_GraphicsCard.Header" xml:space="preserve">
+    <value>GPU do renderowania</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>GPU do renderowania</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Auto" xml:space="preserve">
+    <value>Automatycznie</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_None" xml:space="preserve">
+    <value>Nie znaleziono dostępnej karty graficznej</value>
+  </data>
+  <data name="Profile_General_GraphicsCard_Unavailable" xml:space="preserve">
+    <value>Wybrana karta jest chwilowo niedostępna</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Title" xml:space="preserve">
+    <value>Nie znaleziono dostępnej karty graficznej</value>
+  </data>
+  <data name="Profile_General_NoGraphicsCard.Message" xml:space="preserve">
+    <value>Włączenie efektów spowoduje próbę renderowania na CPU. Sprawdź sterownik graficzny.</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Title" xml:space="preserve">
+    <value>Wybrana karta jest chwilowo niedostępna</value>
+  </data>
+  <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
+    <value>Efekty automatycznie użyją dostępnej karty. Wybrana karta zostanie ponownie użyta, gdy będzie dostępna.</value>
+  </data>
+
+  <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>Więcej opcji</value></data>
 </root>

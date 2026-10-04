@@ -179,6 +179,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc, bool& rendererInitializatio
 		Logger::Get().Error("Source window identity changed before initialization");
 		return ScalingError::SourceWindowClosed;
 	}
+	_srcTracker.UpdateForeground(Win32Helper::GetRealForegroundWindow());
 	const auto& identity = _sourceCoordinator.Source();
 	Logger::Get().Info(fmt::format("Window coordination preparing: run={} epoch={} capture={:#x} root={:#x} "
 		"capturePid={} captureTid={} rootPid={} rootTid={} captureStyle={:#x} rootStyle={:#x}",
@@ -474,7 +475,7 @@ bool ScalingWindow::_EstablishWindowCoordination() noexcept {
 			} else {
 				Logger::Get().Info(context);
 				if (_sourceCoordinator.Mode() == WindowCoordinationMode::ManagedUnowned &&
-					!_sourceCoordinator.UpdateManagedOrder(_CalcTopmostState(), _srcTracker.IsFocused(), _options.IsTopmostDisabled())) {
+					!_sourceCoordinator.UpdateManagedOrder(_CalcTopmostState(), _srcTracker.IsSessionForeground(), _options.IsTopmostDisabled())) {
 					systemError = GetLastError();
 					context = "Managed coordination preparation failed before first display: " + context;
 					error = ScalingError::ScalingWindowCreationFailed;
@@ -651,7 +652,7 @@ void ScalingWindow::ToggleScaling(bool isWindowedMode) noexcept {
 		return;
 	}
 
-	if (_options.IsWindowedMode() == isWindowedMode || !_srcTracker.IsFocused()) {
+	if (_options.IsWindowedMode() == isWindowedMode || !_srcTracker.IsSessionForeground()) {
 		Stop();
 		return;
 	}
@@ -1160,8 +1161,8 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 		// 这时鼠标点击将激活源窗口
 		const HWND hwndForground = Win32Helper::GetRealForegroundWindow();
 		if (_renderer && _renderer->IsEditingParameters()) return 0;
-		if (hwndForground != _srcTracker.Handle()) {
-			if (!_srcTracker.SetFocus()) {
+		if (!IsSourceForeground()) {
+			if (!_srcTracker.SetFocus(hwndForground)) {
 				// 设置前台窗口失败，可能是因为前台窗口是开始菜单
 				if (WindowHelper::IsStartMenu(hwndForground)) {
 					using namespace std::chrono;
@@ -1214,7 +1215,7 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 	}
 	case WM_NCACTIVATE:
 	{
-		wParam = _srcTracker.IsFocused();
+		wParam = _srcTracker.IsSessionForeground();
 		break;
 	}
 	case WM_MOUSEACTIVATE:
@@ -1373,7 +1374,7 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 			// 焦点。进行下面的操作：调整缩放窗口尺寸，打开开始菜单然后关闭，缩放窗口便
 			// 得到焦点了。这应该是 OS 的 bug，下面的代码用于规避它。
 			if (!(windowPos.flags & SWP_NOACTIVATE) && (!_renderer || _renderer->AllowAutomaticSourceFocus())) {
-				_srcTracker.SetFocus();
+				_srcTracker.SetFocus(Handle());
 			}
 		}
 
@@ -1865,7 +1866,7 @@ bool ScalingWindow::_Show() noexcept {
 	}
 
 	// 如果源窗口位于前台则将缩放窗口置顶
-	if (_srcTracker.IsFocused()) _UpdateFocusStateAsync();
+	if (_srcTracker.IsSessionForeground()) _UpdateFocusStateAsync();
 	if (_isDestroying || HasPendingSourceTransition() || !_sourceCoordinator.Ready() || !IsWindowVisible(Handle())) return false;
 	// Broadcast only after the real first display and coordination succeeded.
 	PostMessage(HWND_BROADCAST, WM_MAGPIE_SCALINGCHANGED, 1, (LPARAM)Handle());
@@ -1944,7 +1945,7 @@ bool ScalingWindow::_UpdateSrcState(
 		// 缩放窗口不应该得到焦点，我们通过 WS_EX_NOACTIVATE 样式和处理 WM_MOUSEACTIVATE
 		// 等消息来做到这一点。但如果由于某种我们尚未了解的机制这些手段都失败了，这里
 		// 进行纠正。
-		_srcTracker.SetFocus();
+		_srcTracker.SetFocus(Handle());
 		hwndFore = Win32Helper::GetRealForegroundWindow();
 	}
 
@@ -2037,8 +2038,10 @@ bool ScalingWindow::_UpdateSrcState(
 // 返回真表示应继续缩放
 bool ScalingWindow::_CheckForegroundFor3DGameMode(HWND hwndFore) const noexcept {
 	if (NvidiaForegroundCompatibility::ReferenceOwnsForeground()) return true;
-	if (!hwndFore || hwndFore == _srcTracker.Handle() || IsParameterInputWindow(hwndFore) ||
-		(hwndFore == Handle() && _renderer && _renderer->IsParameterFocusSettling())) {
+	const auto kind = ClassifyForeground(hwndFore);
+	if (kind == SourceForegroundKind::InvalidSource) return false;
+	if (kind == SourceForegroundKind::None || IsSourceSessionForeground(kind,
+		_renderer && _renderer->IsParameterFocusSettling())) {
 		return true;
 	}
 
@@ -2062,8 +2065,29 @@ bool ScalingWindow::_CheckForegroundFor3DGameMode(HWND hwndFore) const noexcept 
 	return rectSize.cx < 8 || rectSize.cy < 8;
 }
 
+SourceForegroundKind ScalingWindow::ClassifyForeground(HWND foreground) const noexcept {
+	return ClassifySourceForeground(foreground, SourceIdentityValid(), SrcTracker().Handle(),
+		SourceRoot(), Handle(), _renderer ? _renderer->ParameterInputHandle() : nullptr);
+}
+
+bool ScalingWindow::IsSessionForeground(HWND foreground) const noexcept {
+	return IsSourceSessionForeground(ClassifyForeground(foreground), _renderer && _renderer->IsParameterFocusSettling());
+}
+
+bool ScalingWindow::IsParameterForeground(HWND foreground, bool outputTransition) const noexcept {
+	return !_isDestroying && IsSourceSessionForeground(ClassifyForeground(foreground), outputTransition) &&
+		IsWindowEnabled(SourceRoot()) && IsWindowEnabled(SrcTracker().Handle()) &&
+		!EnabledSourcePopup(SourceRoot(), Handle());
+}
+
+HWND ScalingWindow::SourceActivationTarget() const noexcept {
+	if (!SourceIdentityValid() || !IsWindowVisible(SourceRoot()) || IsIconic(SourceRoot())) return nullptr;
+	if (const HWND popup = EnabledSourcePopup(SourceRoot(), Handle())) return popup;
+	return IsWindowEnabled(SourceRoot()) && IsWindowEnabled(SrcTracker().Handle()) ? SourceRoot() : nullptr;
+}
+
 bool ScalingWindow::IsParameterInputWindow(HWND hwnd) const noexcept {
-	return hwnd && _renderer && hwnd == _renderer->ParameterInputHandle();
+	return ClassifyForeground(hwnd) == SourceForegroundKind::ParameterHost;
 }
 
 bool ScalingWindow::HasHeldParameterInput() const noexcept {
@@ -2559,19 +2583,19 @@ winrt::fire_and_forget ScalingWindow::_UpdateFocusStateAsync() const noexcept {
 	if (_options.IsWindowedMode()) {
 		// 根据源窗口状态绘制非客户区，我们必须自己控制非客户区是绘制成焦点状态还是非焦点
 		// 状态，因为缩放窗口实际上永远不会得到焦点。
-		DefWindowProc(Handle(), WM_NCACTIVATE, _srcTracker.IsFocused(), 0);
+		DefWindowProc(Handle(), WM_NCACTIVATE, _srcTracker.IsSessionForeground(), 0);
 	}
 
 	if (_isDestroying || !_sourceCoordinator.Ready()) co_return;
 	if (_sourceCoordinator.Mode() == WindowCoordinationMode::ManagedUnowned) {
 		if (!_options.IsDebugMode() && !_sourceCoordinator.UpdateManagedOrder(
-			_CalcTopmostState(), _srcTracker.IsFocused(), _options.IsTopmostDisabled())) {
+			_CalcTopmostState(), _srcTracker.IsSessionForeground(), _options.IsTopmostDisabled())) {
 			Logger::Get().Win32Error("Managed window order update failed");
 			_DelayedStop();
 			co_return;
 		}
 		PostMessage(HWND_BROADCAST, WM_MAGPIE_SCALINGCHANGED,
-			_srcTracker.IsFocused() ? 1 : 0, _srcTracker.IsFocused() ? LPARAM(Handle()) : 1);
+			_srcTracker.IsSessionForeground() ? 1 : 0, _srcTracker.IsSessionForeground() ? LPARAM(Handle()) : 1);
 		co_return;
 	}
 
@@ -2639,7 +2663,7 @@ winrt::fire_and_forget ScalingWindow::_UpdateFocusStateAsync() const noexcept {
 					co_await ScalingWindow::Get().Dispatcher();
 
 					// 等待时源窗口重新回到前台了应放弃后续操作
-					if (runId != ScalingWindow::RunId() || _isDestroying || !_sourceCoordinator.Ready() || _srcTracker.IsFocused()) {
+					if (runId != ScalingWindow::RunId() || _isDestroying || !_sourceCoordinator.Ready() || IsSessionForeground(Win32Helper::GetRealForegroundWindow())) {
 						co_return;
 					}
 				}
@@ -2680,7 +2704,7 @@ winrt::fire_and_forget ScalingWindow::_UpdateFocusStateAsync() const noexcept {
 		}
 	}
 
-	if (_srcTracker.IsFocused()) {
+	if (_srcTracker.IsSessionForeground()) {
 		PostMessage(HWND_BROADCAST, WM_MAGPIE_SCALINGCHANGED, 1, (LPARAM)Handle());
 	} else {
 		// lParam 传 1 表示转到后台而非结束缩放
@@ -2689,7 +2713,7 @@ winrt::fire_and_forget ScalingWindow::_UpdateFocusStateAsync() const noexcept {
 }
 
 bool ScalingWindow::_CalcTopmostState() const noexcept {
-	return _sourceCoordinator.NeedsTopmost(_srcTracker.IsFocused(), _options.IsTopmostDisabled());
+	return _sourceCoordinator.NeedsTopmost(_srcTracker.IsSessionForeground(), _options.IsTopmostDisabled());
 }
 
 bool ScalingWindow::_IsBorderless() const noexcept {

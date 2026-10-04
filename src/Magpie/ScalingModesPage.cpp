@@ -235,7 +235,7 @@ void ScalingModesPage::OpenConfigFolderButton_Click(IInspectable const&, RoutedE
 	const auto& configDir = AppSettings::Get().ConfigDir();
 	if (!Win32Helper::ShellOpen(configDir.c_str())) {
 		const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
-		ToastService::Get().ShowMessageInApp(loader.GetString(L"ScalingModes_General_ConfigFolder/Content"),
+		ToastService::Get().ShowMessageInApp(loader.GetString(L"ScalingModes_General_ConfigFolder/Text"),
 			fmt::format(L"{}\n{}", std::wstring_view(loader.GetString(L"ErrorDetails_OpenConfigFailed")), configDir.native()),
 			std::chrono::seconds(8));
 	}

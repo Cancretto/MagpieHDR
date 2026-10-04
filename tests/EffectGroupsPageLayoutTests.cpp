@@ -81,6 +81,17 @@ int main() {
 						buttons.push_back(button);
 					}
 					const auto presenter = header.FindName(L"HeaderActionPresenter").as<ContentControl>();
+					const auto menu = Markup::XamlReader::Load(OptionsMenuXaml).as<MenuFlyout>();
+					assert(menu.Items().Size() == 5 && menu.Items().GetAt(3).try_as<MenuFlyoutSeparator>());
+					assert(menu.Placement() == Primitives::FlyoutPlacementMode::Bottom);
+					assert(!menu.ShouldConstrainToRootBounds());
+					unsigned menuLabel = 0;
+					for (const auto index : {0u, 1u, 2u, 4u}) {
+						const auto item = menu.Items().GetAt(index).as<MenuFlyoutItem>();
+						item.Text(language.menuLabels[menuLabel++]);
+						assert(item.Icon().try_as<FontIcon>() && !item.Text().empty());
+					}
+					buttons.front().Flyout(menu);
 					presenter.Content(actions.as<IInspectable>());
 					for (const auto& child : header.Children()) {
 						if (const auto title = child.try_as<TextBlock>()) title.Text(language.title);
@@ -103,6 +114,7 @@ int main() {
 						const auto text = button.Content().as<TextBlock>();
 						assert(text.ActualWidth() > 0);
 						assert(std::isnan(button.Width()));
+						assert(button.IsTabStop() && button.UseSystemFocusVisuals());
 						assert(button.ActualHeight() >= 32);
 						assert(std::abs(button.ActualWidth() - button.DesiredSize().Width) < .1f);
 						const auto point = button.TransformToVisual(actions.as<UIElement>()).TransformPoint({ 0, 0 });
@@ -122,6 +134,11 @@ int main() {
 					presenter.Content(icon);
 					header.InvalidateMeasure(); header.Measure({ width, 150 });
 					assert(std::isfinite(icon.Width()) && icon.Width() > 0);
+					assert(buttons.front().Height() == icon.Height());
+					if (headerCases == 0) {
+						std::cout << "Legacy entrance height=" << icon.Height()
+							<< " DIP; options width=" << extent << " DIP.\n";
+					}
 					++headerCases;
 				}
 			}

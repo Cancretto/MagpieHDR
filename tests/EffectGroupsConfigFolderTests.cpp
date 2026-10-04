@@ -27,7 +27,7 @@ struct ResourceLoader {
 	static ResourceLoader GetForCurrentView(const wchar_t*) { return {}; }
 	std::wstring GetString(const wchar_t* key) const {
 		state.keys.emplace_back(key);
-		if (state.keys.back() == L"ScalingModes_General_ConfigFolder/Content") return L"Config folder";
+		if (state.keys.back() == L"ScalingModes_General_ConfigFolder/Text") return L"Config folder";
 		assert(state.keys.back() == L"ErrorDetails_OpenConfigFailed");
 		return L"The folder could not be opened.";
 	}

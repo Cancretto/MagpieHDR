@@ -74,15 +74,17 @@ public:
 
 private:
 	bool _parameterFocusSwitchingEnabled = false;
-	void _SetParameterPanelState(ParameterPanelState state, bool returnFocus = true) noexcept;
+	void _SetParameterPanelState(ParameterPanelState state, bool returnFocus = true, const char* request = "user action") noexcept;
 	void _ToggleParameterPanel() noexcept;
 	bool _EnsureParameterInputHost() noexcept;
 	void _UpdateParameterPreviewHost() noexcept;
 	bool _HasParameterForeground() const noexcept;
+	bool _OwnsParameterInput() const noexcept;
+	bool _PositionParameterInputHost(const RECT& rect) noexcept;
 	void _SyncInheritedParameterKeys() noexcept;
 	std::optional<ImGuiInputResult> _HandleParameterInputMessage(
 		HWND sourceWindow, UINT message, WPARAM wParam, LPARAM lParam) noexcept;
-	bool _BeginParameterInput() noexcept;
+	bool _BeginParameterInput(const char* request) noexcept;
 	void _EndParameterInput(bool returnFocus) noexcept;
 	void _FinishParameterInput() noexcept;
 	static LRESULT CALLBACK _ParameterInputWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
@@ -90,6 +92,12 @@ private:
 	ParameterPanelState _parameterPanelState = ParameterPanelState::Closed;
 	ParameterPanelState _pendingParameterPanelState = ParameterPanelState::Edit;
 	bool _parameterInputTransition = false;
+	bool _parameterInputOwned = false;
+	bool _parameterLayerFailed = false;
+	bool _parameterHostCanceled = false;
+	uint32_t _parameterInputRunId = 0;
+	bool _parameterEditPending = false;
+	uint32_t _parameterEditRunId = 0;
 	std::chrono::steady_clock::time_point _parameterFocusSettlesAt{};
 	bool _returnClickPending = false;
 	bool _escapePending = false;

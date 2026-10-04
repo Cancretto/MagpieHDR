@@ -87,6 +87,7 @@ struct ScalingWindow {
 	RendererMock renderer;
 	bool moving = false;
 	static ScalingWindow& Get() { static ScalingWindow s; return s; }
+	HWND Handle() const { return nullptr; }
 	const auto& Options() const { return options; }
 	const auto& CursorManager() const { return cursor; }
 	auto& Renderer() { return renderer; }
@@ -120,6 +121,8 @@ struct OverlayDrawer {
 	float _dpiScale = 1, _lastToolbarAlpha = 1;
 	bool _isToolbarPinned = true, _isToolbarVisible = true, _isProfilerVisible = false;
 	bool _isEffectParametersVisible = false, _parameterFocusSwitchingEnabled = false;
+	bool _parameterEditPending = false;
+	uint32_t _parameterEditRunId = 0;
 	bool _isCursorOnCaptionArea = false, _isToolbarItemActive = false, _isToolbarDragHovered = false, _overlayDirty = false;
 	ParameterPanelState _parameterPanelState = ParameterPanelState::Closed, _pendingParameterPanelState = ParameterPanelState::Edit;
 	std::optional<ImVec4> _stagedToolbarRect, _presentedToolbarRect;
@@ -134,7 +137,8 @@ struct OverlayDrawer {
 	OverlaySessionState CaptureSessionState() const noexcept;
 	void RestoreSessionState(const OverlaySessionState&) noexcept;
 	bool IsEditingParameters() const { return false; }
-	void _SetParameterPanelState(ParameterPanelState value, bool) { _parameterPanelState = value; _isEffectParametersVisible = value != ParameterPanelState::Closed; }
+	bool _HasParameterForeground() const { return false; }
+	void _SetParameterPanelState(ParameterPanelState value, bool, const char* = "test") { _parameterPanelState = value; _isEffectParametersVisible = value != ParameterPanelState::Closed; }
 	void _ClearStatesIfNoVisibleWindow() {}
 	void InvokeAction(OverlayAction action) { if (action == OverlayAction::EffectParameters) _isEffectParametersVisible = !_isEffectParametersVisible; else _isProfilerVisible = !_isProfilerVisible; }
 	std::string _GetResourceString(std::wstring_view) const { return "Hint"; }
