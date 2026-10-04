@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "NvidiaForegroundCompatibility.h"
 #include "DlssnrAutoHdr.h"
 #include "DLSSNRParameters.h"
 #include "RTXVideoParameters.h"
@@ -410,6 +411,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	_isXeSSFrameGenerationActive = xessVariant.has_value();
 
 	Logger::DiagnosticCapture frontendDiagnostic;
+	NvidiaForegroundCompatibility::Phase(ForegroundQueryPhase::Device);
 	if (!_frontendResources.Initialize(true)) {
 		Logger::Get().Error("初始化前端资源失败");
 		_backendInitContext = "Create output device\n" + frontendDiagnostic.Details();
@@ -419,6 +421,8 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 
 	const DXGI_ADAPTER_DESC1 adapterDesc =
 		LogAdapter(_frontendResources.GetGraphicsAdapter());
+	NvidiaForegroundCompatibility::DeviceInitialized(adapterDesc.VendorId, _hasFrameGeneration);
+	NvidiaForegroundCompatibility::Phase(ForegroundQueryPhase::SwapChain);
 
 	_EnsureGpuPriority(true);
 	_UpdateOverlayRefreshRate();

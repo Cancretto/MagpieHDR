@@ -195,6 +195,8 @@
     <ClInclude Include="PresenterBase.h">
       <Filter>Presenter</Filter>
     </ClInclude>
+    <ClInclude Include="ForegroundCompatibilityState.h" />
+    <ClInclude Include="NvidiaForegroundCompatibility.h" />
     <ClInclude Include="VRRPresentationPolicy.h">
       <Filter>Presenter</Filter>
     </ClInclude>
@@ -227,6 +229,7 @@
       <Filter>Helpers</Filter>
     </ClCompile>
     <ClCompile Include="ScalingWindow.cpp" />
+    <ClCompile Include="NvidiaForegroundCompatibility.cpp" />
     <ClCompile Include="CursorManager.cpp" />
     <ClCompile Include="GraphicsCaptureFrameSource.cpp">
       <Filter>Capture</Filter>

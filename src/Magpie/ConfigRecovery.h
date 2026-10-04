@@ -10,7 +10,7 @@
 namespace Magpie::ConfigRecovery {
 
 // Increment when the recovery policy changes, independently of release versions.
-inline constexpr uint32_t POLICY_VERSION = 5;
+inline constexpr uint32_t POLICY_VERSION = 6;
 enum class Kind { None, Backup, Partial, Defaults, Repaired };
 struct Plan {
 	rapidjson::Document document;
@@ -275,7 +275,7 @@ inline Plan Prepare(std::string_view source, std::string_view backup,
 				check(refresh, "legacySourceTarget", refreshPath, [](const auto& value) {
 					return value.IsNumber() && (value.GetDouble() == -1 || value.GetDouble() == 0 || FloatInRange(value, 1, 1000));
 				});
-				for (const char* field : { "idleEnabled", "vrrEnabled", "legacyLimiterOnly", "legacyResponsiveMinimum" })
+				for (const char* field : { "idleEnabled", "vrrEnabled", "nvidiaForegroundCompatibilityEnabled", "legacyLimiterOnly", "legacyResponsiveMinimum" })
 					check(refresh, field, refreshPath, [](const auto& value) { return value.IsBool(); });
 			}
 			number(profile, "customInitialWindowedScaleFactor", path, 1, 1e4);

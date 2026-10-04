@@ -79,7 +79,7 @@ ScalingError SrcTracker::Set(HWND hWnd, const ScalingOptions& options, bool& isI
 		return ScalingError::SourceWindowOffscreen;
 	}
 
-	_isFocused = GetForegroundWindow() == hWnd;
+	_isFocused = Win32Helper::GetRealForegroundWindow() == hWnd;
 	_isMoving = IsWindowMoving(_hWnd);
 
 	if (!GetWindowRect(hWnd, &_windowRect)) {

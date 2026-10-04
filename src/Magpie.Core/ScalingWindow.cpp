@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "FrameTrace.h"
 #include "ScalingWindow.h"
+#include "NvidiaForegroundCompatibility.h"
 #include "CommonSharedConstants.h"
 #include "CursorManager.h"
 #include "ExclModeHelper.h"
@@ -412,6 +413,8 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc, bool& rendererInitializatio
 	}
 
 	LogRects(_srcTracker.SrcRect(), _rendererRect, _windowRect);
+	NvidiaForegroundCompatibility::Prepare(_sourceCoordinator.Source(), _hwndRenderer, RunId(),
+		_options.isVRREnabled, _options.frameRefresh.nvidiaForegroundCompatibilityEnabled, _options.IsWindowedMode());
 
 	_renderer = std::make_unique<class Renderer>();
 	ScalingError error = _renderer->Initialize(_hwndRenderer, _options.overlayOptions);
@@ -549,6 +552,7 @@ void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 
 void ScalingWindow::Stop() noexcept {
 	if (_isDestroying) return;
+	NvidiaForegroundCompatibility::Retire();
 	if (HasHeldParameterInput()) {
 		// Finish the host's press/release pair before destroying its input HWND.
 		// Swallowing just a low-level release leaves Windows' async key state down.
@@ -577,6 +581,7 @@ void ScalingWindow::_BeginDestroy(HWND window) noexcept {
 	_stopRequested = false;
 	_pendingSourceTransition = 0;
 	_sourceStateCheckDeferred = false;
+	NvidiaForegroundCompatibility::Retire();
 	// Only atomic cancellation/event wakeups precede the owner cut.
 	if (_cursorManager) _cursorManager->BeginShutdown();
 	if (_renderer) _renderer->BeginShutdown();
@@ -585,6 +590,7 @@ void ScalingWindow::_BeginDestroy(HWND window) noexcept {
 	const auto diagnostic = DescribeScalingWindowOwner("retire-before-destroy", window, _srcTracker.Handle(), nullptr, result);
 	if (result.IsApplied()) {
 		Logger::Get().Info(diagnostic);
+		NvidiaForegroundCompatibility::ReleaseReferenceFocus();
 		// Focus restoration and USER32 calls can wait. Do them only after the
 		// relationship is verified absent; otherwise retain input resources too.
 		if (_renderer) _renderer->ReleaseParameterInput();
@@ -604,6 +610,7 @@ bool ScalingWindow::CompletePendingDestroy() noexcept {
 
 void ScalingWindow::PollSourceState() noexcept {
 	if (_isDestroying) return;
+	NvidiaForegroundCompatibility::Poll();
 	const bool dirty = _sourceCoordinator.TakeDirty();
 	const auto now = std::chrono::steady_clock::now();
 	if (!dirty && now < _nextSourceStateCheck) return;
@@ -629,6 +636,7 @@ void ScalingWindow::PollSourceState() noexcept {
 }
 
 void ScalingWindow::_HideOutputForSourceTransition() noexcept {
+	NvidiaForegroundCompatibility::Retire();
 	ShowWindow(Handle(), SW_HIDE);
 	for (const auto& helper : _hwndResizeHelpers) if (helper) ShowWindow(helper.get(), SW_HIDE);
 	// Touch holes are deliberately unowned; hiding/destroying the output
@@ -690,7 +698,7 @@ bool ScalingWindow::_PrepareFrontendRender() noexcept {
 			"Source transition requested: reason={} reposition={} foreground={:#x} inputHost={:#x} "
 			"editing={} focusSettling={} visible={} iconic={} rectValid={} "
 			"before=({},{},{},{}) current=({},{},{},{})",
-			_sourceStateChangeReason, isSrcRepositioning, uintptr_t(GetForegroundWindow()),
+			_sourceStateChangeReason, isSrcRepositioning, uintptr_t(Win32Helper::GetRealForegroundWindow()),
 			uintptr_t(_renderer->ParameterInputHandle()), _renderer->IsEditingParameters(),
 			_renderer->IsParameterFocusSettling(), IsWindowVisible(source), IsIconic(source), rectValid,
 			_sourceRectBeforeCheck.left, _sourceRectBeforeCheck.top,
@@ -969,6 +977,12 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 	}
 
 	switch (msg) {
+	case WM_TIMER:
+		if (wParam == NvidiaForegroundCompatibility::ReferenceTimer) {
+			NvidiaForegroundCompatibility::Poll();
+			return 0;
+		}
+		break;
 	case WM_CREATE:
 	{
 		// 防止缩放 UWP 窗口时无法遮挡任务栏
@@ -1144,7 +1158,7 @@ LRESULT ScalingWindow::_MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) n
 		// 1、未捕获光标且缩放后的位置未被遮挡而缩放前的位置被遮挡
 		// 2、光标位于叠加层或黑边上
 		// 这时鼠标点击将激活源窗口
-		const HWND hwndForground = GetForegroundWindow();
+		const HWND hwndForground = Win32Helper::GetRealForegroundWindow();
 		if (_renderer && _renderer->IsEditingParameters()) return 0;
 		if (hwndForground != _srcTracker.Handle()) {
 			if (!_srcTracker.SetFocus()) {
@@ -1444,6 +1458,7 @@ void ScalingWindow::_FinishDestroy() noexcept {
 	Logger::Get().Info("CursorManager 已析构");
 
 	_renderer.reset();
+	NvidiaForegroundCompatibility::FinishRetire();
 	Logger::Get().Info("Renderer 已析构");
 	if (!ngxWasFaulted && NgxRuntimeGuard::IsFaulted()) {
 		if (const auto report = _options.reportErrorDetails) {
@@ -1885,6 +1900,7 @@ bool ScalingWindow::_Show() noexcept {
 			}
 		})();
 	};
+	NvidiaForegroundCompatibility::OutputShown();
 	return !_isDestroying && !HasPendingSourceTransition();
 }
 
@@ -1917,16 +1933,19 @@ bool ScalingWindow::_UpdateSrcState(
 		return false;
 	}
 	_sourceRectBeforeCheck = _srcTracker.WindowRect();
-	HWND hwndFore = GetForegroundWindow();
+	HWND hwndFore = Win32Helper::GetRealForegroundWindow();
 	if (_renderer) _renderer->UpdateParameterInputHost();
-	hwndFore = GetForegroundWindow();
+	hwndFore = Win32Helper::GetRealForegroundWindow();
+	NvidiaForegroundCompatibility::FrontendSuspended(_renderer &&
+		(_renderer->IsEditingParameters() || _renderer->IsParameterFocusSettling()));
 
-	if (hwndFore == Handle() && (!_renderer || _renderer->AllowAutomaticSourceFocus())) {
+	if (hwndFore == Handle() && !NvidiaForegroundCompatibility::ReferenceOwnsForeground() &&
+		(!_renderer || _renderer->AllowAutomaticSourceFocus())) {
 		// 缩放窗口不应该得到焦点，我们通过 WS_EX_NOACTIVATE 样式和处理 WM_MOUSEACTIVATE
 		// 等消息来做到这一点。但如果由于某种我们尚未了解的机制这些手段都失败了，这里
 		// 进行纠正。
 		_srcTracker.SetFocus();
-		hwndFore = GetForegroundWindow();
+		hwndFore = Win32Helper::GetRealForegroundWindow();
 	}
 
 	// 在 3D 游戏模式下需检测前台窗口变化
@@ -1950,7 +1969,10 @@ bool ScalingWindow::_UpdateSrcState(
 	bool srcRectChanged = false;
 	bool srcSizeChanged = false;
 	bool srcMovingChanged = false;
-	if (!_srcTracker.UpdateState(hwndFore, _options.IsWindowedMode(), _isResizingOrMoving,
+	// Only the bounded reference preserves baseline ordering using source focus.
+	// All normal business decisions continue to read the real foreground HWND.
+	const HWND trackerForeground = NvidiaForegroundCompatibility::ReferenceOwnsForeground() ? _srcTracker.Handle() : hwndFore;
+	if (!_srcTracker.UpdateState(trackerForeground, _options.IsWindowedMode(), _isResizingOrMoving,
 		isSrcInvisibleOrMinimized, srcFocusedChanged, srcRectChanged, srcSizeChanged, srcMovingChanged)) {
 		_sourceStateChangeReason = "source tracker rejected window";
 		return false;
@@ -2014,6 +2036,7 @@ bool ScalingWindow::_UpdateSrcState(
 
 // 返回真表示应继续缩放
 bool ScalingWindow::_CheckForegroundFor3DGameMode(HWND hwndFore) const noexcept {
+	if (NvidiaForegroundCompatibility::ReferenceOwnsForeground()) return true;
 	if (!hwndFore || hwndFore == _srcTracker.Handle() || IsParameterInputWindow(hwndFore) ||
 		(hwndFore == Handle() && _renderer && _renderer->IsParameterFocusSettling())) {
 		return true;
@@ -2587,12 +2610,12 @@ winrt::fire_and_forget ScalingWindow::_UpdateFocusStateAsync() const noexcept {
 				const uint32_t runId = ScalingWindow::RunId();
 				bool isInBackground = false;
 
-				HWND hwndFore = GetForegroundWindow();
+				HWND hwndFore = Win32Helper::GetRealForegroundWindow();
 				if (!hwndFore) {
 					// 切换窗口时有一个瞬间无前台窗口，这里等待切换完成
 					co_await winrt::resume_after(1ms);
 					isInBackground = true;
-					hwndFore = GetForegroundWindow();
+					hwndFore = Win32Helper::GetRealForegroundWindow();
 				}
 
 				bool isForeMovable = true;
@@ -2650,7 +2673,7 @@ winrt::fire_and_forget ScalingWindow::_UpdateFocusStateAsync() const noexcept {
 					}
 				}
 
-				if (isForeMovable && hwndFore && GetForegroundWindow() == hwndFore) {
+				if (isForeMovable && hwndFore && Win32Helper::GetRealForegroundWindow() == hwndFore) {
 					SetWindowPos(hwndFore, HWND_TOP, 0, 0, 0, 0, SWP_NO_ACTIVATE_MOVE_SIZE);
 				}
 			}

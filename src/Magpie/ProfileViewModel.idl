@@ -65,6 +65,7 @@ namespace Magpie {
 		String FrameRefreshNotice { get; };
 		void ResetFrameRefresh();
 		Boolean IsVRREnabled;
+		Boolean IsNvidiaForegroundCompatibilityEnabled;
 
 		Boolean IsCaptureTitleBar;
 		Boolean CanCaptureTitleBar { get; };

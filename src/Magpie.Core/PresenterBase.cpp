@@ -3,6 +3,8 @@
 #include "DeviceResources.h"
 #include "Logger.h"
 #include "ScalingWindow.h"
+#include "NvidiaForegroundCompatibility.h"
+#include "Win32Helper.h"
 
 namespace Magpie {
 
@@ -29,6 +31,8 @@ bool PresenterBase::Initialize(HWND hwndAttach, const DeviceResources& deviceRes
 	}
 
 	const bool initialized = _Initialize(hwndAttach);
+	_vrrInitializationComplete = true;
+	_UpdateForegroundCompatibility();
 	_LogVRRState(initialized ? "initialize" : "initialize-failed");
 	return initialized;
 }
@@ -69,6 +73,7 @@ void PresenterBase::_RefreshVRREnvironment(bool force) noexcept {
 	_vrrNextProbe = now + std::chrono::milliseconds(500);
 	_vrrMonitor = MonitorFromWindow(_vrrWindow, MONITOR_DEFAULTTONULL);
 	_vrr.Environment(_QualifyVRROutput());
+	_UpdateForegroundCompatibility();
 	_LogVRRState("output-probe");
 }
 
@@ -80,9 +85,12 @@ void PresenterBase::_VRRPathAvailable(bool available) noexcept {
 }
 
 void PresenterBase::_LogVRRState(std::string_view event) noexcept {
-	if (_lastLoggedVRR && *_lastLoggedVRR == _vrr && _lastLoggedVRRMonitor == _vrrMonitor) return;
+	_UpdateForegroundCompatibility();
+	if (event != "first-present" && _lastLoggedVRR && *_lastLoggedVRR == _vrr && _lastLoggedVRRMonitor == _vrrMonitor &&
+		_lastLoggedVRRInitializationComplete == _vrrInitializationComplete) return;
 	_lastLoggedVRR = _vrr;
 	_lastLoggedVRRMonitor = _vrrMonitor;
+	_lastLoggedVRRInitializationComplete = _vrrInitializationComplete;
 	const char* reason = "none";
 	switch (_vrr.Reason()) {
 	case VRRUnavailableReason::None: break;
@@ -100,32 +108,51 @@ void PresenterBase::_LogVRRState(std::string_view event) noexcept {
 	case VRRUnavailableReason::SwapChainWithoutTearing: reason = "swap-chain-without-tearing-restart-required"; break;
 	case VRRUnavailableReason::StaleDisplayTopology: reason = "display-topology-stale-restart-required"; break;
 	}
+	if (!_vrrInitializationComplete && _vrr.Requested() && _vrr.TearingSupported() &&
+		(_vrr.Reason() == VRRUnavailableReason::PathUnavailable || _vrr.Reason() == VRRUnavailableReason::AltEnterUnsafe))
+		reason = "initializing";
 	DXGI_ADAPTER_DESC1 adapterDesc{};
 	if (auto adapter = _deviceResources->GetGraphicsAdapter()) adapter->GetDesc1(&adapterDesc);
 	Logger::Get().Info(fmt::format(
 		"VRR: event={} requested={} tearingSupported={} eligible={} creationFlags=0x{:x} "
-		"syncInterval=0 presentFlags=0x{:x} active=unknown vendorCompatibility=false "
-		"reason={} hwnd=0x{:x} monitor=0x{:x} adapterVendor=0x{:x} adapterLuid={:x}:{:x}",
+		"syncInterval=0 presentFlags=0x{:x} active=unknown vendorCompatibilityRequested={} "
+		"reason={} hwnd=0x{:x} monitor=0x{:x} adapterVendor=0x{:x} adapterLuid={:x}:{:x} realForeground=0x{:x}",
 		event, _vrr.Requested(), _vrr.TearingSupported(),
 		_vrr.Reason() == VRRUnavailableReason::None, _vrr.ResizeFlags(), _vrr.PresentFlags(),
+		ScalingWindow::Get().Options().frameRefresh.nvidiaForegroundCompatibilityEnabled,
 		reason, reinterpret_cast<uintptr_t>(_vrrWindow), reinterpret_cast<uintptr_t>(_vrrMonitor),
-		adapterDesc.VendorId, uint32_t(adapterDesc.AdapterLuid.HighPart), adapterDesc.AdapterLuid.LowPart));
+		adapterDesc.VendorId, uint32_t(adapterDesc.AdapterLuid.HighPart), adapterDesc.AdapterLuid.LowPart,
+		uintptr_t(Win32Helper::GetRealForegroundWindow())));
+}
+
+void PresenterBase::_UpdateForegroundCompatibility() noexcept {
+	const bool potential = _vrrInitializationComplete ? _vrr.PresentFlags() != 0 : _vrr.CreationFlags() != 0;
+	NvidiaForegroundCompatibility::PresentationState(potential, _vrr.PresentFlags() != 0);
 }
 
 HRESULT PresenterBase::_PresentWithVRR(IDXGISwapChain4* swapChain, bool retryWithoutTearing) noexcept {
 	_RefreshVRREnvironment();
 	const UINT flags = _vrr.PresentFlags();
+	_UpdateForegroundCompatibility();
+	NvidiaForegroundCompatibility::Phase(_firstPresentComplete ? ForegroundQueryPhase::Present : ForegroundQueryPhase::FirstPresent);
 	HRESULT hr = swapChain->Present(0, flags);
 	if (flags && hr == DXGI_ERROR_INVALID_CALL) {
 		// Device loss is deliberately excluded. Latch for this swap-chain session;
 		// ResizeBuffers must still retain its original immutable creation flags.
 		_vrr.RejectPresent();
+		_UpdateForegroundCompatibility();
 		Logger::Get().ComWarn("VRR Present contract rejected; disabling tearing submissions for this session", hr);
 		_LogVRRState("present-rejected");
 		// An SDK proxy may already have consumed its tagged FG input. Only the
 		// ordinary DXGI endpoint can safely retry the same image once here.
 		if (retryWithoutTearing) hr = swapChain->Present(0, 0);
 	}
+	if (FAILED(hr)) NvidiaForegroundCompatibility::Reject("present-failed");
+	if (!_firstPresentComplete && SUCCEEDED(hr)) {
+		_firstPresentComplete = true;
+		_LogVRRState("first-present");
+	}
+	NvidiaForegroundCompatibility::Phase(ForegroundQueryPhase::Present);
 	return hr;
 }
 

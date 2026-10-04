@@ -71,6 +71,7 @@ struct Logger {
     void Win32Error(const char*) {}
 };
 struct Win32Helper {
+    static HWND GetRealForegroundWindow() { return FakeForeground(); }
     template<class T> static T* LoadSystemFunction(const wchar_t*,const char*) { return nullptr; }
     static bool GetWindowFrameRect(HWND,RECT& r) { r={0,0,1000,1000};return true; }
     static bool IntersectRect(RECT& out,const RECT& a,const RECT& b) { return ::IntersectRect(&out,&a,&b); }
@@ -79,6 +80,10 @@ struct Win32Helper {
     static void OffsetRect(RECT& r,LONG x,LONG y) { r.left+=x;r.right+=x;r.top+=y;r.bottom+=y; }
 };
 struct WindowHelper { static bool IsForbiddenSystemWindow(HWND) { return false; } };
+struct NvidiaForegroundCompatibility {
+    static bool ReferenceOwnsForeground() { return false; }
+    static void FrontendSuspended(bool) {}
+};
 struct Options { bool windowed=false, game3d=false; bool IsWindowedMode() const { return windowed; } bool Is3DGameMode() const { return game3d; } bool IsTouchSupportEnabled() const { return false; } };
 struct Cursor { void Update() {} void OnSrcStartMove() {} void OnSrcEndMove() {} void OnSrcRectChanged() {} };
 enum class DLSSFGFrameRenderResult { Presented, Retry, Dropped };

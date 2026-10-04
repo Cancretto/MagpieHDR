@@ -105,6 +105,8 @@
     <ClInclude Include="include\Event.h" />
     <ClInclude Include="OverlayDrawer.h" />
     <ClInclude Include="PresenterBase.h" />
+    <ClInclude Include="ForegroundCompatibilityState.h" />
+    <ClInclude Include="NvidiaForegroundCompatibility.h" />
     <ClInclude Include="VRRPresentationPolicy.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="pch.h" />
@@ -232,6 +234,7 @@
     <ClCompile Include="ScalingOptions.cpp" />
     <ClCompile Include="ScalingRuntime.cpp" />
     <ClCompile Include="ScalingWindow.cpp" />
+    <ClCompile Include="NvidiaForegroundCompatibility.cpp" />
     <ClCompile Include="XeSSFGPresenter.cpp" />
     <ClCompile Include="ScreenshotHelper.cpp" />
     <ClCompile Include="SrcTracker.cpp" />

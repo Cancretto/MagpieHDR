@@ -25,6 +25,7 @@ struct FrameRefreshSettings {
 	float idleRate = 30.0f;
 	// Explicit per-profile opt-in. Do not migrate the dormant global vrr field.
 	bool vrrEnabled = false;
+	bool nvidiaForegroundCompatibilityEnabled = false;
 	// Migration-only constraints. Auto must remain dynamic when an old cap
 	// coexists with it. Explicit edits to content/cursor mode release these.
 	float legacyContentLimit = 0.0f;
@@ -89,6 +90,7 @@ inline bool MergeFrameRefreshSettings(FrameRefreshSettings& current,
 	MERGE_REFRESH(cursorMode); MERGE_REFRESH(cursorSupplement); MERGE_REFRESH(cursorRate);
 	MERGE_REFRESH(idleEnabled); MERGE_REFRESH(idleRate);
 	MERGE_REFRESH(vrrEnabled);
+	MERGE_REFRESH(nvidiaForegroundCompatibilityEnabled);
 	MERGE_REFRESH(legacyContentLimit); MERGE_REFRESH(legacyLimiterOnly); MERGE_REFRESH(legacyResponsiveMinimum);
 	MERGE_REFRESH(legacySourceTarget);
 #undef MERGE_REFRESH

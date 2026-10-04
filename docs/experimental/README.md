@@ -22,11 +22,16 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [0.6.10 G-SYNC 输出前台身份兼容 TODO](todos/20261004-v0.6.10-gsync-output-foreground-TODO.md)：按焦点根因假设接入默认关闭的查询兼容、真实业务查询隔离、生命周期及短时真实前台参考入口。静态与依赖图检查通过；C++ 编译／执行、部署和硬件验收交给单独会话。[源码实施与交接](reviews/20261004-v0.6.10-gsync-foreground-source-development.md)。
+
+- [0.6.10 Beta1 VRR／G-SYNC 焦点诊断](reviews/20261004-v0.6.10-vrr-gsync-focus-diagnosis.md)：运行日志支持标准 DXGI 请求完整，但用户未看到指示器；非前台输出是首要待验证原因。真实前台对照、查询伪装／消息分离和 PresentMon 尚未执行，本轮仅调查与文档记录。
+
 - **0.6.10 Beta1 本地整合**：`release/0.6.10-beta1` 以公开 0.6.9 源码为基线，合入当前 UWP 与标准 DXGI VRR 分支。见 [本版中英说明](../RELEASE_NOTES_v0.6.10-beta1.md)。下方 0.6.9 功能分支交接文档保留原开发阶段记录；本版构建与回归以整合审计及包清单为准，实机验收继续保留。
 
 - [069 VRR／G-SYNC 标准呈现源码开发](reviews/20261004-v0.6.9-vrr-gsync-source-development.md)：`feature/069-vrr-gsync` 接入默认关闭的配置选项和共享 DXGI 策略。[TODO](todos/20261004-v0.6.9-vrr-gsync-nofocusloss-TODO.md) 保留 NoFocusLoss、最终输出预算及硬件验收；本轮未编译、部署或合并主线。
 
 - **0.6.9 UWP 窗口兼容与死锁保护**：`fix/069-uwp-window-owner` 已实现两种协作模式、首帧准入与完整退役边界，保留 Win32 owner 和 NGX 防护，通过离线回归。完整构建／部署和实机验收待独立会话。[当前 TODO](todos/20261004-v0.6.9-uwp-window-coordination-and-lifecycle-TODO.md)、[第二阶段实施记录](reviews/20261004-v0.6.9-uwp-coordination-implementation.md)、[原定位](todos/20261004-v0.6.9-issues-65-67-uwp-window-owner-TODO.md)、[阶段 1 记录](reviews/20261004-v0.6.9-uwp-window-owner.md)。
+
 
 - [069 “其他选项”按钮样式协调 TODO](todos/20261002-v0.6.9-effect-options-button-style-TODO.md)：已继承普通按钮的 14 号字与默认留白，保留 36 DIP 高度、纯文字、中性填充和零边框。144 组原生页头布局及页脚、容器和配置目录检查通过；单线程完整 Release 与包／编译资源校验通过。按用户明确授权关闭 Magpie 后，已归档旧完整目录、保留最新配置并替换至原 Beta3 路径，替换后的实际文件校验通过；Magpie 保持关闭，实际界面验收待完成。[实施与部署记录](reviews/20261002-v0.6.9-effect-options-button-style.md)。
 
