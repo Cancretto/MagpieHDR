@@ -1,5 +1,7 @@
 // Filled with the production helper by prepare_vrr_present_test.py.
 #include "VRRPresentationPolicy.h"
+#include "ForegroundCompatibilityState.h"
+#include <string_view>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -21,9 +23,11 @@ struct Logger {
 };
 struct PresenterBase {
 	VRRPresentationPolicy _vrr;
-	unsigned probes = 0, transitions = 0;
+	unsigned probes = 0, transitions = 0, firstPresents = 0;
+	bool _firstPresentComplete = false;
 	void _RefreshVRREnvironment() { ++probes; }
-	void _LogVRRState(const char*) { ++transitions; }
+	void _UpdateForegroundCompatibility() {}
+	void _LogVRRState(std::string_view event) { if (event == "first-present") ++firstPresents; else ++transitions; }
 	HRESULT _PresentWithVRR(FakeSwapChain*, bool) noexcept;
 	PresenterBase() {
 		_vrr.Configure(true, true);
@@ -31,6 +35,7 @@ struct PresenterBase {
 		_vrr.Created(_vrr.CreationFlags()); _vrr.AltEnterDisabled(true);
 	}
 };
+struct NvidiaForegroundCompatibility { static void Phase(ForegroundQueryPhase) {} static void Reject(const char*) {} };
 /* PRODUCTION_PRESENT */
 static void Check(bool condition, const char* message) {
 	if (!condition) throw std::runtime_error(message);

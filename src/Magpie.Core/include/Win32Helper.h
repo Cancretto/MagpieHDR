@@ -6,6 +6,8 @@
 namespace Magpie {
 
 struct Win32Helper {
+	// Business logic always bypasses the process foreground compatibility hook.
+	static HWND GetRealForegroundWindow() noexcept;
 	struct DisplayMonitorInfo {
 		HMONITOR handle = nullptr;
 		RECT rect{};

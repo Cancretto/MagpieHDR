@@ -1810,4 +1810,9 @@
   <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>Off</value></data>
   <data name="FrameRefresh_VRR_Input.OnContent" xml:space="preserve"><value>On</value></data>
   <data name="FrameRefresh_VRR_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Variable refresh rate</value></data>
+  <data name="FrameRefresh_NvidiaForeground.Header" xml:space="preserve"><value>NVIDIA G-SYNC foreground compatibility (experimental)</value></data>
+  <data name="FrameRefresh_NvidiaForeground.Description" xml:space="preserve"><value>Requires VRR and an NVIDIA output GPU. Keeps the source app in the foreground. Restart scaling to apply; verify G-SYNC separately.</value></data>
+  <data name="FrameRefresh_NvidiaForeground_Input.OffContent" xml:space="preserve"><value>Off</value></data>
+  <data name="FrameRefresh_NvidiaForeground_Input.OnContent" xml:space="preserve"><value>On</value></data>
+  <data name="FrameRefresh_NvidiaForeground_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>NVIDIA G-SYNC foreground compatibility (experimental)</value></data>
 </root>

@@ -400,7 +400,7 @@ bool GraphicsCaptureFrameSource::_CaptureWindow(IGraphicsCaptureItemInterop* int
 				_taskbarList->AddTab(hwndSrc);
 
 				// 修正 Alt+Tab 切换顺序
-				if (GetForegroundWindow() == hwndSrc) {
+				if (Win32Helper::GetRealForegroundWindow() == hwndSrc) {
 					SetForegroundWindow(GetDesktopWindow());
 					SetForegroundWindow(hwndSrc);
 				}
@@ -615,7 +615,7 @@ GraphicsCaptureFrameSource::~GraphicsCaptureFrameSource() {
 		_taskbarList->AddTab(GetWindowOwner(hwndSrc));
 
 		// 修正任务栏焦点窗口和 Alt+Tab 切换顺序
-		if (GetForegroundWindow() == hwndSrc) {
+		if (Win32Helper::GetRealForegroundWindow() == hwndSrc) {
 			SetForegroundWindow(GetDesktopWindow());
 			SetForegroundWindow(hwndSrc);
 		}

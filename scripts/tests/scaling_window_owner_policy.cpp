@@ -43,6 +43,10 @@ static HWND ReadOwnerForTest(HWND window, UINT relation) {
 #undef SetWindowLongPtrW
 #include "CaptureTargetLifetime.h"
 using namespace Magpie;
+struct NvidiaForegroundCompatibility {
+    static void Poll() {}
+    static void Retire() {}
+};
 using namespace std::chrono_literals;
 enum class ScalingError { NoError, ScalingWindowCreationFailed, SourceWindowClosed, SourceWindowUnresponsive, LowIntegrityLevel, CaptureFailed };
 static SourceWindowCoordinator _sourceCoordinator;

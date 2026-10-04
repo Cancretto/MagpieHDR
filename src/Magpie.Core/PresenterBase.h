@@ -81,6 +81,7 @@ protected:
 	void _RefreshVRREnvironment(bool force = false) noexcept;
 	void _LogVRRState(std::string_view event) noexcept;
 	void _VRRPathAvailable(bool available) noexcept;
+	void _UpdateForegroundCompatibility() noexcept;
 	HRESULT _PresentWithVRR(IDXGISwapChain4* swapChain, bool retryWithoutTearing) noexcept;
 	VRRPresentationPolicy _vrr;
 
@@ -97,6 +98,8 @@ private:
 	HMONITOR _lastLoggedVRRMonitor = NULL;
 	std::chrono::steady_clock::time_point _vrrNextProbe{};
 	std::optional<VRRPresentationPolicy> _lastLoggedVRR;
+	bool _vrrInitializationComplete = false, _lastLoggedVRRInitializationComplete = false;
+	bool _firstPresentComplete = false;
 	winrt::com_ptr<ID3D11Fence> _fence;
 	uint64_t _fenceValue = 0;
 	wil::unique_event_nothrow _fenceEvent;

@@ -274,7 +274,7 @@ static bool IsReadyForScaling(HWND hwndFore) noexcept {
 
 void ScalingService::_CheckForegroundTimer_Tick(winrt::DispatcherQueueTimer const&, winrt::IInspectable const&) {
 	if (_isAutoScaleSuspended) return;
-	const HWND hwndFore = GetForegroundWindow();
+	const HWND hwndFore = Win32Helper::GetRealForegroundWindow();
 	if (!hwndFore || hwndFore == _hwndChecked) {
 		return;
 	}
@@ -312,7 +312,7 @@ void ScalingService::_ScalingRuntime_StateChanged(ScalingState value) {
 			// 缩放结束后源窗口位于前台则不要检查自动缩放，用户可能刚通过快捷键或
 			// 工具栏终止缩放。_CheckForegroundTimer_Tick 也实现了类似功能，但它
 			// 的触发频率较低，容易错过时机。
-			if (GetForegroundWindow() == _hwndCurSrc) {
+			if (Win32Helper::GetRealForegroundWindow() == _hwndCurSrc) {
 				_hwndChecked = _hwndCurSrc;
 			}
 
@@ -331,7 +331,7 @@ void ScalingService::_ScalingRuntime_StateChanged(ScalingState value) {
 }
 
 void ScalingService::_ScaleForegroundWindow(bool windowedMode) {
-	const HWND hWnd = GetForegroundWindow();
+	const HWND hWnd = Win32Helper::GetRealForegroundWindow();
 	if (!hWnd) {
 		return;
 	}

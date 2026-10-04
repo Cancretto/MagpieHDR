@@ -1810,4 +1810,9 @@
   <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>关闭</value></data>
   <data name="FrameRefresh_VRR_Input.OnContent" xml:space="preserve"><value>开启</value></data>
   <data name="FrameRefresh_VRR_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>可变刷新率</value></data>
+  <data name="FrameRefresh_NvidiaForeground.Header" xml:space="preserve"><value>NVIDIA G-SYNC 前台兼容（实验）</value></data>
+  <data name="FrameRefresh_NvidiaForeground.Description" xml:space="preserve"><value>需启用 VRR 并使用 NVIDIA 输出显卡，保留源应用前台与输入；重新启用缩放后生效，G-SYNC 需实测确认。</value></data>
+  <data name="FrameRefresh_NvidiaForeground_Input.OffContent" xml:space="preserve"><value>关闭</value></data>
+  <data name="FrameRefresh_NvidiaForeground_Input.OnContent" xml:space="preserve"><value>开启</value></data>
+  <data name="FrameRefresh_NvidiaForeground_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>NVIDIA G-SYNC 前台兼容（实验）</value></data>
 </root>

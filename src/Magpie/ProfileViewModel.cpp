@@ -685,6 +685,7 @@ bool ProfileViewModel::IsNoGraphicsCard() const noexcept {
 
 void ProfileViewModel::_NotifyFrameRefreshChanged() {
 	RaisePropertyChanged(L"IsVRREnabled");
+	RaisePropertyChanged(L"IsNvidiaForegroundCompatibilityEnabled");
 	RaisePropertyChanged(L"ContentFrameRateModeIndex");
 	RaisePropertyChanged(L"ContentFrameRate");
 	RaisePropertyChanged(L"FrameSyncModeIndex");
@@ -711,6 +712,15 @@ bool ProfileViewModel::IsVRREnabled() const noexcept { return _data->frameRefres
 void ProfileViewModel::IsVRREnabled(bool value) {
 	if (_data->frameRefresh.vrrEnabled == value) return;
 	_data->frameRefresh.vrrEnabled = value;
+	_SaveFrameRefresh();
+}
+
+bool ProfileViewModel::IsNvidiaForegroundCompatibilityEnabled() const noexcept {
+	return _data->frameRefresh.nvidiaForegroundCompatibilityEnabled;
+}
+void ProfileViewModel::IsNvidiaForegroundCompatibilityEnabled(bool value) {
+	if (_data->frameRefresh.nvidiaForegroundCompatibilityEnabled == value) return;
+	_data->frameRefresh.nvidiaForegroundCompatibilityEnabled = value;
 	_SaveFrameRefresh();
 }
 

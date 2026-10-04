@@ -727,7 +727,7 @@
     <PRIResource Include="Resources.language-vi.resw" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="conanfile.txt">
+    <Text Include="conanfile.py">
       <DeploymentContent>false</DeploymentContent>
     </Text>
   </ItemGroup>
@@ -744,6 +744,9 @@
       <Project>{0e5205ae-dfa9-4cb8-b662-e43cd6512e2a}</Project>
     </ProjectReference>
   </ItemGroup>
+  <Target Name="CopyMinHookLicense" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\docs\licenses\MINHOOK.txt" DestinationFiles="$(OutDir)\MINHOOK-LICENSE.txt" SkipUnchangedFiles="true" />
+  </Target>
   <Target Name="CopyDLSSSRRuntime" AfterTargets="Build" Condition="$(EnableDLSSSR) And '$(Platform)' == 'x64'">
     <Copy SourceFiles="$(DLSSSdkDir)\lib\Windows_x86_64\rel\nvngx_dlss.dll" DestinationFolder="$(OutDir)" />
     <Copy SourceFiles="$(DLSSSdkDir)\LICENSE.txt" DestinationFiles="$(OutDir)\NVIDIA-DLSS-LICENSE.txt" />

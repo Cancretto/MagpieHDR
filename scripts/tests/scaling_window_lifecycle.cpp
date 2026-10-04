@@ -23,6 +23,11 @@ static LONG_PTR SetOwnerForTest(HWND window,int index,LONG_PTR owner) {
 #include "ScalingWindowOwner.h"
 #undef SetWindowLongPtrW
 using namespace Magpie;
+struct NvidiaForegroundCompatibility {
+    static void Retire() {}
+    static void ReleaseReferenceFocus() {}
+    static void FinishRetire() {}
+};
 static HANDLE readyEvent,releaseEvent,lockHeldEvent;
 static int pausePhase=-1, saves, snapshots, resourceReleases, inputReleases;
 static HWND retiringOutput;

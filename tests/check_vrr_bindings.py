@@ -55,7 +55,7 @@ for name in ("AdaptivePresenter", "XeSSFGPresenter"):
 base = read("src/Magpie.Core/PresenterBase.cpp")
 assert "flags && hr == DXGI_ERROR_INVALID_CALL" in base
 assert "_vrr.RejectPresent();" in base
-assert "active=unknown vendorCompatibility=false" in base
+assert "active=unknown vendorCompatibilityRequested=" in base
 assert "_PresentWithVRR(impl.swapChain.get(), false)" in read("src/Magpie.Core/XeSSFGPresenter.cpp")
 assert "_PresentWithVRR(_dxgiSwapChain.get(), true)" in read("src/Magpie.Core/AdaptivePresenter.cpp")
 

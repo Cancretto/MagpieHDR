@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "FrameTrace.h"
 #include "Win32Helper.h"
+#include "NvidiaForegroundCompatibility.h"
 #include "StrHelper.h"
 #include <dcomp.h>
 #include <dwmapi.h>
@@ -14,6 +15,10 @@
 #include <span>
 
 namespace Magpie {
+
+HWND Win32Helper::GetRealForegroundWindow() noexcept {
+	return NvidiaForegroundCompatibility::RealForegroundWindow();
+}
 
 namespace {
 

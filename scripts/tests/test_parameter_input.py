@@ -138,7 +138,10 @@ struct Logger {
     template<class... T> void Win32Error(T&&...) {}
 };
 struct StrHelper { template<class... T> static std::string Concat(T&&... t) { std::string s; (s.append(t),...); return s; } };
-struct Win32Helper { static SIZE GetSizeOfRect(const RECT& r) { return {r.right-r.left,r.bottom-r.top}; } };
+struct Win32Helper {
+    static HWND GetRealForegroundWindow() { return FakeForeground(); }
+    static SIZE GetSizeOfRect(const RECT& r) { return {r.right-r.left,r.bottom-r.top}; }
+};
 }
 '''
 
