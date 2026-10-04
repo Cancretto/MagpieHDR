@@ -20,6 +20,8 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [0.6.10 G-SYNC 输出前台身份兼容 TODO](todos/20261004-v0.6.10-gsync-output-foreground-TODO.md)：按用户指定的焦点根因假设，准备默认关闭的进程内查询兼容、真实业务状态隔离及生命周期；短时真实前台仅作参考实验。开发、构建部署和硬件验收均未执行。
+
 - [0.6.10 Beta1 VRR／G-SYNC 焦点诊断](reviews/20261004-v0.6.10-vrr-gsync-focus-diagnosis.md)：运行日志支持标准 DXGI 请求完整，但用户未看到指示器；非前台输出是首要待验证原因。真实前台对照、查询伪装／消息分离和 PresentMon 尚未执行，本轮仅调查与文档记录。
 
 - [069 VRR／G-SYNC 标准呈现源码开发](reviews/20261004-v0.6.9-vrr-gsync-source-development.md)：`feature/069-vrr-gsync` 接入默认关闭的配置选项和共享 DXGI 策略。[TODO](todos/20261004-v0.6.9-vrr-gsync-nofocusloss-TODO.md) 保留 NoFocusLoss、最终输出预算及硬件验收；本轮未编译、部署或合并主线。
