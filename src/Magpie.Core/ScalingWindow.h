@@ -45,6 +45,9 @@ public:
 	void PollSourceState() noexcept;
 	bool SourceIdentityValid() const noexcept { return _sourceCoordinator.Ready(); }
 	HWND SourceRoot() const noexcept { return _sourceCoordinator.Source().root; }
+	SourceForegroundKind ClassifyForeground(HWND foreground) const noexcept;
+	bool IsParameterForeground(HWND foreground, bool outputTransition = false) const noexcept;
+	HWND SourceActivationTarget() const noexcept;
 	void RequestStop(uint32_t runId) noexcept {
 		if (Handle() && !_isDestroying && runId == RunId()) _stopRequested = true;
 	}

@@ -178,6 +178,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc, bool& rendererInitializatio
 		Logger::Get().Error("Source window identity changed before initialization");
 		return ScalingError::SourceWindowClosed;
 	}
+	_srcTracker.UpdateForeground(GetForegroundWindow());
 	const auto& identity = _sourceCoordinator.Source();
 	Logger::Get().Info(fmt::format("Window coordination preparing: run={} epoch={} capture={:#x} root={:#x} "
 		"capturePid={} captureTid={} rootPid={} rootTid={} captureStyle={:#x} rootStyle={:#x}",
@@ -2014,8 +2015,10 @@ bool ScalingWindow::_UpdateSrcState(
 
 // 返回真表示应继续缩放
 bool ScalingWindow::_CheckForegroundFor3DGameMode(HWND hwndFore) const noexcept {
-	if (!hwndFore || hwndFore == _srcTracker.Handle() || IsParameterInputWindow(hwndFore) ||
-		(hwndFore == Handle() && _renderer && _renderer->IsParameterFocusSettling())) {
+	const auto kind = ClassifyForeground(hwndFore);
+	if (kind == SourceForegroundKind::InvalidSource) return false;
+	if (kind == SourceForegroundKind::None || IsSourceSessionForeground(kind,
+		_renderer && _renderer->IsParameterFocusSettling())) {
 		return true;
 	}
 
@@ -2039,8 +2042,25 @@ bool ScalingWindow::_CheckForegroundFor3DGameMode(HWND hwndFore) const noexcept 
 	return rectSize.cx < 8 || rectSize.cy < 8;
 }
 
+SourceForegroundKind ScalingWindow::ClassifyForeground(HWND foreground) const noexcept {
+	return ClassifySourceForeground(foreground, SourceIdentityValid(), SrcTracker().Handle(),
+		SourceRoot(), Handle(), _renderer ? _renderer->ParameterInputHandle() : nullptr);
+}
+
+bool ScalingWindow::IsParameterForeground(HWND foreground, bool outputTransition) const noexcept {
+	return !_isDestroying && IsSourceSessionForeground(ClassifyForeground(foreground), outputTransition) &&
+		IsWindowEnabled(SourceRoot()) && IsWindowEnabled(SrcTracker().Handle()) &&
+		!EnabledSourcePopup(SourceRoot(), Handle());
+}
+
+HWND ScalingWindow::SourceActivationTarget() const noexcept {
+	if (!SourceIdentityValid() || !IsWindowVisible(SourceRoot()) || IsIconic(SourceRoot())) return nullptr;
+	if (const HWND popup = EnabledSourcePopup(SourceRoot(), Handle())) return popup;
+	return IsWindowEnabled(SourceRoot()) && IsWindowEnabled(SrcTracker().Handle()) ? SourceRoot() : nullptr;
+}
+
 bool ScalingWindow::IsParameterInputWindow(HWND hwnd) const noexcept {
-	return hwnd && _renderer && hwnd == _renderer->ParameterInputHandle();
+	return ClassifyForeground(hwnd) == SourceForegroundKind::ParameterHost;
 }
 
 bool ScalingWindow::HasHeldParameterInput() const noexcept {

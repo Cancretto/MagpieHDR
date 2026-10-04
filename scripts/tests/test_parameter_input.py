@@ -47,6 +47,8 @@ prefix = r'''
 namespace phmap { template<class K, class V> using flat_hash_map = std::unordered_map<K,V>; }
 namespace fmt { template<class... T> std::string format(const char* s, T&&...) { return s; } }
 static HWND game = (HWND)1, scaling = (HWND)2, foreground = game, capture = nullptr, inputHost = nullptr;
+static HWND sourceRoot = game, sourcePopup = nullptr;
+static bool sourceValid = true, sourceEnabled = true;
 static POINT cursor{100,100};
 static POINT messagePoint{100,100};
 static RECT hostRect{}, clipRect{};
@@ -86,7 +88,15 @@ static BOOL FakePosition(HWND, HWND, int x, int y, int w, int h, UINT flags) {
 static BOOL FakeRect(HWND, RECT* r) { *r = hostRect; return TRUE; }
 static BOOL FakeClientToScreen(HWND, POINT* p) { p->x+=hostRect.left; p->y+=hostRect.top; return TRUE; }
 static BOOL FakeShow(HWND, int command) { visibleHost = command != SW_HIDE; return TRUE; }
-static BOOL FakeVisible(HWND) { return visibleHost; }
+static BOOL FakeVisible(HWND hwnd) { return hwnd == inputHost ? visibleHost : TRUE; }
+static BOOL FakeEnabled(HWND hwnd) { return hwnd == game || hwnd == sourceRoot ? sourceEnabled : TRUE; }
+static HWND FakeWindow(HWND hwnd, UINT relation) {
+    if (relation == GW_ENABLEDPOPUP) return sourcePopup ? sourcePopup : hwnd;
+    if (relation == GW_OWNER) return hwnd == inputHost ? scaling :
+        (hwnd == scaling || hwnd == sourcePopup ? sourceRoot : nullptr);
+    return nullptr;
+}
+static BOOL FakeEnum(WNDENUMPROC proc, LPARAM data) { if (sourcePopup) proc(sourcePopup,data); return TRUE; }
 static BOOL FakePost(HWND, UINT, WPARAM, LPARAM) { return TRUE; }
 static BOOL FakeDestroy(HWND hwnd) { hostProc(hwnd,WM_NCDESTROY,0,0); inputHost=nullptr; visibleHost=false; return TRUE; }
 static HWND FakeFocus(HWND hwnd) { return hwnd; }
@@ -114,6 +124,11 @@ namespace ImGui { inline void FakePosition(ImGuiWindow* w, ImVec2 p) { SetWindow
 #define ClientToScreen FakeClientToScreen
 #define ShowWindow FakeShow
 #define IsWindowVisible FakeVisible
+#define IsWindowEnabled FakeEnabled
+#define IsIconic(hwnd) FALSE
+#define GetWindow FakeWindow
+#define EnumWindows FakeEnum
+#define GetWindowThreadProcessId(hwnd, pid) DWORD(1)
 #define PostMessageW FakePost
 #define DestroyWindow FakeDestroy
 #define SetFocus FakeFocus
@@ -123,6 +138,7 @@ namespace ImGui { inline void FakePosition(ImGuiWindow* w, ImVec2 p) { SetWindow
 #define GetMessageTime FakeMessageTime
 #define GetMessagePos FakeMessagePos
 #define IsWindow(hwnd) ((hwnd) != nullptr)
+#include "SourceWindowRelations.h"
 namespace Magpie {
 struct DeviceResources {};
 struct ImGuiBackend {
@@ -138,7 +154,12 @@ struct Logger {
     template<class... T> void Win32Error(T&&...) {}
 };
 struct StrHelper { template<class... T> static std::string Concat(T&&... t) { std::string s; (s.append(t),...); return s; } };
-struct Win32Helper { static SIZE GetSizeOfRect(const RECT& r) { return {r.right-r.left,r.bottom-r.top}; } };
+struct Win32Helper {
+    static SIZE GetSizeOfRect(const RECT& r) { return {r.right-r.left,r.bottom-r.top}; }
+    static bool GetWindowFrameRect(HWND, RECT& r) { r={0,0,800,600}; return true; }
+    static bool IntersectRect(RECT& out, const RECT& a, const RECT& b) { return ::IntersectRect(&out,&a,&b); }
+};
+struct WindowHelper { static bool IsForbiddenSystemWindow(HWND) { return false; } };
 }
 '''
 
@@ -194,14 +215,23 @@ struct TestRenderer {
     const RECT& DestRect() const { return rect; }
     HWND ParameterInputHandle() const { return overlay->_hwndParameterInput; }
     bool IsEditingParameters() const { return overlay->IsEditingParameters(); }
+    bool IsParameterFocusSettling() const { return overlay->_HasParameterForeground() &&
+        (overlay->_parameterInputTransition || std::chrono::steady_clock::now()<overlay->_parameterFocusSettlesAt); }
     bool IsParameterPreviewAt(POINT point) const { return overlay->_HasParameterForeground() && overlay->_imguiImpl.IsParameterPreviewAt(point); }
 };
 using Renderer = TestRenderer;
-struct TestSource { HWND Handle() const { return game; } bool SetFocus() const { return FakeSetForeground(game); } };
+struct TestSource {
+    HWND Handle() const { return game; }
+    bool _isFocused=false;
+    bool UpdateForeground(HWND foreground) noexcept;
+    bool SetFocus(HWND expectedForeground=nullptr) const noexcept;
+};
 class ScalingWindow {
 public:
     static ScalingWindow& Get() { static ScalingWindow window; return window; }
     TestRenderer renderer;
+    TestRenderer* _renderer=&renderer;
+    RECT _rendererRect{0,0,800,600};
     Magpie::CursorManager cursorManager;
     TestSource source;
     int toasts=0;
@@ -221,6 +251,13 @@ public:
     Magpie::CursorManager& CursorManager() { return cursorManager; }
     Magpie::CursorManager* TryGetCursorManager() { return &cursorManager; }
     TestSource& SrcTracker() { return source; }
+    const TestSource& SrcTracker() const { return source; }
+    bool SourceIdentityValid() const { return sourceValid; }
+    HWND SourceRoot() const { return sourceRoot; }
+    SourceForegroundKind ClassifyForeground(HWND) const noexcept;
+    bool IsParameterForeground(HWND, bool outputTransition=false) const noexcept;
+    HWND SourceActivationTarget() const noexcept;
+    bool _CheckForegroundFor3DGameMode(HWND) const noexcept;
     bool IsParameterInputWindow(HWND hwnd) { return hwnd && hwnd==overlay->_hwndParameterInput; }
     bool IsResizingOrMoving() const { return false; }
     std::wstring GetLocalizedString(std::wstring_view s) { return std::wstring(s); }
@@ -654,7 +691,51 @@ int RunToolbarEdgeInput() {
     std::cout << "PASS toolbar edge input: raw queued positions, top/bottom inward hit adjustment, owned urgent moves outside the toolbar, cancel and application deactivation release capture\n";
     return 0;
 }
-int main() { RunFocusMode(); RunLegacyMode(); return RunToolbarEdgeInput(); }
+int RunSourceForeground() {
+    foreground=sourceRoot=(HWND)4; sourceValid=sourceEnabled=true; sourcePopup=nullptr;
+    inputHost=capture=nullptr; visibleHost=false; keys.fill(false); windows.clear();
+    OverlayDrawer panel; overlay=&panel; panel._parameterFocusSwitchingEnabled=true;
+    panel._imguiImpl.ParameterFocusSwitchingEnabled(true);
+    DeviceResources resources; assert(panel._imguiImpl.Initialize(resources));
+    auto& io=ImGui::GetIO(); unsigned char* pixels; int w,h;
+    io.Fonts->GetTexDataAsRGBA32(&pixels,&w,&h); io.DisplaySize={800,600}; io.DeltaTime=1.0f/60;
+    auto& window=ScalingWindow::Get(); window.alive=true;
+    assert(window.ClassifyForeground(sourceRoot)==SourceForegroundKind::Source);
+    assert(window.ClassifyForeground(game)==SourceForegroundKind::Source);
+    window.SrcTracker().UpdateForeground(sourceRoot); assert(window.SrcTracker()._isFocused);
+    assert(window._CheckForegroundFor3DGameMode(sourceRoot));
+    assert(!window._CheckForegroundFor3DGameMode((HWND)9));
+    assert(window._CheckForegroundFor3DGameMode(nullptr));
+    panel._SetParameterPanelState(ParameterPanelState::Edit); Frames();
+    assert(panel.IsEditingParameters() && foreground==inputHost);
+    assert(window.ClassifyForeground(inputHost)==SourceForegroundKind::ParameterHost);
+    assert(window._CheckForegroundFor3DGameMode(inputHost));
+    panel._SetParameterPanelState(ParameterPanelState::Preview); Frames(); panel.UpdateParameterInputHost();
+    assert(foreground==sourceRoot && visibleHost && !panel.IsEditingParameters());
+    assert(panel._HasParameterForeground());
+    assert(PreviewEscape(WM_KEYDOWN)); assert(PreviewEscape(WM_KEYUP)); panel.UpdateParameterInputHost();
+    assert(!panel._isEffectParametersVisible);
+    sourceEnabled=false; assert(!window.SourceActivationTarget());
+    assert(!window.SrcTracker().SetFocus());
+    sourcePopup=(HWND)5;
+    assert(window.SourceActivationTarget()==sourcePopup);
+    assert(!window.IsParameterForeground(sourceRoot));
+    foreground=sourceRoot; const int attempts=focusAttempts;
+    panel._SetParameterPanelState(ParameterPanelState::Edit); assert(!panel.IsEditingParameters());
+    assert(focusAttempts==attempts && !visibleHost);
+    assert(window.SrcTracker().SetFocus() && foreground==sourcePopup);
+    sourcePopup=nullptr; sourceEnabled=true; foreground=sourceRoot;
+    assert(!window.SrcTracker().SetFocus((HWND)9) && foreground==sourceRoot);
+    sourceValid=false;
+    assert(window.ClassifyForeground(sourceRoot)==SourceForegroundKind::InvalidSource);
+    assert(!window._CheckForegroundFor3DGameMode(sourceRoot));
+    assert(!window.SourceActivationTarget());
+    panel.UpdateParameterInputHost(); assert(!visibleHost);
+    sourceValid=true; sourceRoot=foreground=game;
+    std::cout << "PASS shared production foreground rules: distinct capture/root activation, preview/Esc, session tracking, 3D overlap, disabled/modal source, expected-foreground guard and retired identity\n";
+    return 0;
+}
+int main() { RunFocusMode(); RunLegacyMode(); RunToolbarEdgeInput(); return RunSourceForeground(); }
 
 '''
 
@@ -691,8 +772,14 @@ numeric_desc = (core / 'include/EffectDesc.h').read_text(encoding='utf-8-sig')
 numeric_types = numeric_desc[numeric_desc.index('template <typename T>'):numeric_desc.index('struct EffectPassFlags')]
 numeric_code = 'namespace Magpie {\n' + numeric_types + '\n}\n' + body('include/EffectParameterValue.h') + '\nnamespace Magpie {\n' + method(drawer_cpp, 'static bool DrawEffectParameterSlider(') + '\n}\n'
 stop_code = 'namespace Magpie {\n' + method(scaling_cpp, 'void ScalingWindow::Stop() noexcept') + '\n}\n'
+tracker_cpp = (core / 'SrcTracker.cpp').read_text(encoding='utf-8-sig')
+foreground_code = 'namespace Magpie {\n' + '\n'.join(method(scaling_cpp, marker) for marker in [
+    'SourceForegroundKind ScalingWindow::ClassifyForeground(', 'bool ScalingWindow::IsParameterForeground(',
+    'HWND ScalingWindow::SourceActivationTarget(', 'bool ScalingWindow::_CheckForegroundFor3DGameMode(']) + '\n' + \
+    '\n'.join(method(tracker_cpp, marker).replace('SrcTracker::', 'TestSource::') for marker in [
+    'bool SrcTracker::UpdateForeground(', 'bool SrcTracker::SetFocus(']) + '\n}\n'
 
 output = Path(sys.argv[1]).resolve()
 output.mkdir(parents=True, exist_ok=True)
-(output / 'parameter_input.cpp').write_text(prefix + body('ImGuiImpl.h') + fixture + body('ImGuiImpl.cpp') + body('ParameterInputHost.cpp') + cursor_code + stop_code + session_code + numeric_code + tests, encoding='utf-8')
+(output / 'parameter_input.cpp').write_text(prefix + body('ImGuiImpl.h') + fixture + foreground_code + body('ImGuiImpl.cpp') + body('ParameterInputHost.cpp') + cursor_code + stop_code + session_code + numeric_code + tests, encoding='utf-8')
 print(output / 'parameter_input.cpp')

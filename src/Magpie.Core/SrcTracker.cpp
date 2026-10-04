@@ -79,7 +79,8 @@ ScalingError SrcTracker::Set(HWND hWnd, const ScalingOptions& options, bool& isI
 		return ScalingError::SourceWindowOffscreen;
 	}
 
-	_isFocused = GetForegroundWindow() == hWnd;
+	// Initialized from the validated capture/root identity after Prepare.
+	_isFocused = false;
 	_isMoving = IsWindowMoving(_hWnd);
 
 	if (!GetWindowRect(hWnd, &_windowRect)) {
@@ -221,11 +222,7 @@ bool SrcTracker::UpdateState(
 
 	// Internal parameter input keeps the scaling session active while the actual
 	// Windows keyboard focus belongs exclusively to its input host.
-	if (_isFocused != (hwndFore == _hWnd || hwndFore == ScalingWindow::Get().SourceRoot() ||
-		ScalingWindow::Get().IsParameterInputWindow(hwndFore))) {
-		_isFocused = !_isFocused;
-		focusedChanged = true;
-	}
+	if (UpdateForeground(hwndFore)) focusedChanged = true;
 
 	const bool oldMaximized = _isMaximized;
 
@@ -461,19 +458,18 @@ static bool GetClientRectOfUWP(HWND hWnd, RECT& rect) noexcept {
 	return true;
 }
 
-bool SrcTracker::SetFocus() const noexcept {
-	// 不要把被禁用的窗口设为前台，检查是否存在弹窗
-	if (IsWindowEnabled(_hWnd)) {
-		return SetForegroundWindow(_hWnd);
-	}
+bool SrcTracker::UpdateForeground(HWND foreground) noexcept {
+	const bool focused = IsSourceSessionForeground(ScalingWindow::Get().ClassifyForeground(foreground));
+	return std::exchange(_isFocused, focused) != focused;
+}
 
-	const HWND hwndPopup = GetWindow(_hWnd, GW_ENABLEDPOPUP);
-	if (hwndPopup && IsWindowEnabled(hwndPopup)) {
-		return SetForegroundWindow(hwndPopup);
-	}
-
-	// 源窗口被禁用视为成功
-	return true;
+bool SrcTracker::SetFocus(HWND expectedForeground) const noexcept {
+	auto& scaling = ScalingWindow::Get();
+	const HWND target = scaling.SourceActivationTarget();
+	if (!target || (expectedForeground && GetForegroundWindow() != expectedForeground)) return false;
+	SetForegroundWindow(target);
+	// Activation can be refused or reenter application window procedures.
+	return scaling.SourceActivationTarget() == target && GetForegroundWindow() == target;
 }
 
 ScalingError SrcTracker::_CalcSrcRect(

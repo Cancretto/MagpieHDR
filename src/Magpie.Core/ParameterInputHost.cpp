@@ -17,8 +17,8 @@ bool OverlayDrawer::_HasParameterForeground() const noexcept {
 	if (!_parameterFocusSwitchingEnabled) return false;
 	auto& scaling = ScalingWindow::Get();
 	const HWND foreground = GetForegroundWindow();
-	return foreground && (foreground == scaling.SrcTracker().Handle() || foreground == scaling.Handle() ||
-		foreground == _hwndParameterInput);
+	return scaling.IsParameterForeground(foreground, _parameterInputTransition ||
+		std::chrono::steady_clock::now() < _parameterFocusSettlesAt);
 }
 
 bool OverlayDrawer::_EnsureParameterInputHost() noexcept {
@@ -71,8 +71,7 @@ bool OverlayDrawer::_BeginParameterInput() noexcept {
 	SetWindowPos(_hwndParameterInput, HWND_TOPMOST, rect.left, rect.top,
 		rect.right - rect.left, rect.bottom - rect.top, SWP_NOACTIVATE | SWP_SHOWWINDOW);
 	const HWND currentForeground = GetForegroundWindow();
-	if (currentForeground == scaling.SrcTracker().Handle() || currentForeground == scaling.Handle() ||
-		currentForeground == _hwndParameterInput) SetForegroundWindow(_hwndParameterInput);
+	if (scaling.IsParameterForeground(currentForeground, true)) SetForegroundWindow(_hwndParameterInput);
 	const bool activated = GetForegroundWindow() == _hwndParameterInput;
 	if (activated) {
 		SetFocus(_hwndParameterInput);
@@ -111,7 +110,7 @@ void OverlayDrawer::_EndParameterInput(bool returnFocus) noexcept {
 		if (ownedFocus && returnFocus && GetForegroundWindow() == _hwndParameterInput &&
 			IsWindow(ScalingWindow::Get().SrcTracker().Handle())) {
 			auto& scaling = ScalingWindow::Get();
-			_parameterFocusFailed = !scaling.SrcTracker().SetFocus();
+			_parameterFocusFailed = !scaling.SrcTracker().SetFocus(_hwndParameterInput);
 			if (_parameterFocusFailed) scaling.ShowToast(scaling.GetLocalizedString(L"Overlay_Parameters_FocusFailed"));
 		}
 		ShowWindow(_hwndParameterInput, SW_HIDE);

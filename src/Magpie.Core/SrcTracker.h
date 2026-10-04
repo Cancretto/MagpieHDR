@@ -64,7 +64,8 @@ public:
 		return _isFocused;
 	}
 
-	bool SetFocus() const noexcept;
+	bool UpdateForeground(HWND foreground) noexcept;
+	bool SetFocus(HWND expectedForeground = nullptr) const noexcept;
 
 	// IsMaximized 已定义为宏
 	bool IsZoomed() const noexcept {

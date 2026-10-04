@@ -3,6 +3,13 @@
 
 namespace Magpie {
 
+enum class SourceForegroundKind { None, InvalidSource, Source, ParameterHost, Output, SourcePopup, External };
+
+inline bool IsSourceSessionForeground(SourceForegroundKind kind, bool outputTransition = false) noexcept {
+	return kind == SourceForegroundKind::Source || kind == SourceForegroundKind::ParameterHost ||
+		(outputTransition && kind == SourceForegroundKind::Output);
+}
+
 inline bool IsWindowInOwnerChain(HWND window, HWND owner) noexcept {
 	for (unsigned i = 0; window && i < 64; ++i, window = GetWindow(window, GW_OWNER)) {
 		if (window == owner) return true;
@@ -12,7 +19,8 @@ inline bool IsWindowInOwnerChain(HWND window, HWND owner) noexcept {
 
 inline HWND EnabledSourcePopup(HWND source, HWND excluded = nullptr) noexcept {
 	auto eligible = [&](HWND popup) {
-		return popup && popup != source && IsWindowVisible(popup) && IsWindowEnabled(popup) &&
+		return popup && popup != source && IsWindowInOwnerChain(popup, source) &&
+			IsWindowVisible(popup) && IsWindowEnabled(popup) &&
 			!(excluded && IsWindowInOwnerChain(popup, excluded));
 	};
 	const HWND popup = GetWindow(source, GW_ENABLEDPOPUP);
@@ -31,6 +39,23 @@ inline HWND EnabledSourcePopup(HWND source, HWND excluded = nullptr) noexcept {
 		return TRUE;
 	}, reinterpret_cast<LPARAM>(&search));
 	return search.found;
+}
+
+// Classification has no activation side effects. The caller supplies the
+// coordinator's validated identity and this session's actual helper HWNDs.
+inline SourceForegroundKind ClassifySourceForeground(HWND foreground, bool sourceValid,
+	HWND capture, HWND root, HWND output, HWND parameterHost) noexcept {
+	if (!sourceValid) return SourceForegroundKind::InvalidSource;
+	if (!foreground) return SourceForegroundKind::None;
+	if (foreground == capture || foreground == root) return SourceForegroundKind::Source;
+	if (foreground == output && IsWindow(output)) return SourceForegroundKind::Output;
+	if (foreground == parameterHost && IsWindow(parameterHost) && IsWindow(output) &&
+		GetWindow(parameterHost, GW_OWNER) == output &&
+		GetWindowThreadProcessId(parameterHost, nullptr) == GetWindowThreadProcessId(output, nullptr))
+		return SourceForegroundKind::ParameterHost;
+	if (IsWindowInOwnerChain(foreground, root) && !IsWindowInOwnerChain(foreground, output) &&
+		IsWindowVisible(foreground) && IsWindowEnabled(foreground)) return SourceForegroundKind::SourcePopup;
+	return SourceForegroundKind::External;
 }
 
 }
