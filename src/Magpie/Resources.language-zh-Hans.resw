@@ -1835,8 +1835,8 @@
 
   <data name="FrameRefresh_VRR.Header" xml:space="preserve"><value>VRR 可变刷新率</value></data>
   <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>让显示器刷新率跟随输出帧率，提升画面流畅度。</value></data>
-  <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>关闭</value></data>
-  <data name="FrameRefresh_VRR_Input.OnContent" xml:space="preserve"><value>开启</value></data>
+  <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>关</value></data>
+  <data name="FrameRefresh_VRR_Input.OnContent" xml:space="preserve"><value>开</value></data>
   <data name="FrameRefresh_VRR_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>VRR 可变刷新率</value></data>
 
 

@@ -226,7 +226,9 @@
 					</local:SettingsExpander.HeaderIcon>
 					<local:SettingsExpander.Items>
 						<local:SettingsCard x:Uid="FrameRefresh_VRR" IsWrapEnabled="True">
-							<ToggleSwitch x:Uid="FrameRefresh_VRR_Input" IsOn="{x:Bind ViewModel.IsVRREnabled, Mode=TwoWay}" />
+							<ToggleSwitch x:Uid="FrameRefresh_VRR_Input"
+							              Style="{StaticResource RightAlignedCompactToggleSwitchStyle}"
+							              IsOn="{x:Bind ViewModel.IsVRREnabled, Mode=TwoWay}" />
 						</local:SettingsCard>
 						<local:SettingsCard x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection" IsWrapEnabled="True">
 							<ComboBox x:Uid="FrameRefresh_DuplicateDetection_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.DuplicateFrameDetectionMode, Mode=TwoWay}">
