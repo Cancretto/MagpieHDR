@@ -9,6 +9,8 @@ enum class ScalingWindowOwnerStatus {
 	InvalidWindow,
 	InvalidOwner,
 	ChildWindow,
+	InvalidRelationship,
+	ApiFailure,
 	UnexpectedOwner
 };
 
@@ -16,6 +18,9 @@ struct ScalingWindowOwnerResult {
 	ScalingWindowOwnerStatus status;
 	DWORD systemError;
 	HWND actualOwner = nullptr;
+	LONG_PTR previousOwner = 0;
+	LONG_PTR outputStyle = 0;
+	LONG_PTR ownerStyle = 0;
 
 	bool IsApplied() const noexcept { return status == ScalingWindowOwnerStatus::Applied; }
 	bool CanContinueUnowned() const noexcept { return status == ScalingWindowOwnerStatus::Rejected; }
@@ -26,6 +31,8 @@ struct ScalingWindowOwnerResult {
 		case ScalingWindowOwnerStatus::InvalidWindow: return "invalid-output";
 		case ScalingWindowOwnerStatus::InvalidOwner: return "invalid-source";
 		case ScalingWindowOwnerStatus::ChildWindow: return "child-output";
+		case ScalingWindowOwnerStatus::InvalidRelationship: return "invalid-relationship";
+		case ScalingWindowOwnerStatus::ApiFailure: return "api-failure";
 		default: return "unexpected-owner";
 		}
 	}
@@ -42,12 +49,28 @@ inline ScalingWindowOwnerResult TrySetScalingWindowOwner(HWND window, HWND owner
 	if (owner && !IsWindow(owner)) {
 		return { ScalingWindowOwnerStatus::InvalidOwner, ERROR_INVALID_WINDOW_HANDLE };
 	}
+	if (owner) {
+		if (window == owner || (GetWindowLongPtrW(owner, GWL_STYLE) & WS_CHILD)) {
+			return { ScalingWindowOwnerStatus::InvalidRelationship, ERROR_INVALID_PARAMETER };
+		}
+		HWND ancestor = owner;
+		for (unsigned i = 0; ancestor; ++i, ancestor = GetWindow(ancestor, GW_OWNER)) {
+			if (ancestor == window || i == 64) {
+				return { ScalingWindowOwnerStatus::InvalidRelationship, ERROR_INVALID_PARAMETER };
+			}
+		}
+	}
 
 	SetLastError(ERROR_SUCCESS);
-	SetWindowLongPtrW(window, GWLP_HWNDPARENT,
+	const LONG_PTR previousOwner = SetWindowLongPtrW(window, GWLP_HWNDPARENT,
 		reinterpret_cast<LONG_PTR>(owner));
 	const DWORD systemError = GetLastError();
 	const HWND actualOwner = GetWindow(window, GW_OWNER);
+	const LONG_PTR outputStyle = GetWindowLongPtrW(window, GWL_STYLE);
+	const LONG_PTR ownerStyle = owner ? GetWindowLongPtrW(owner, GWL_STYLE) : 0;
+	auto result = [&](ScalingWindowOwnerStatus status, DWORD error) {
+		return ScalingWindowOwnerResult{ status, error, actualOwner, previousOwner, outputStyle, ownerStyle };
+	};
 	// A null readback also occurs for a destroyed HWND. Do not mistake that for
 	// successful detachment or a supported unowned session.
 	if (!IsWindow(window)) {
@@ -58,18 +81,22 @@ inline ScalingWindowOwnerResult TrySetScalingWindowOwner(HWND window, HWND owner
 		return { ScalingWindowOwnerStatus::InvalidOwner,
 			systemError ? systemError : ERROR_INVALID_WINDOW_HANDLE, actualOwner };
 	}
+	if (ownerStyle & WS_CHILD) {
+		return result(ScalingWindowOwnerStatus::InvalidRelationship, systemError);
+	}
 	if (GetWindowLongPtrW(window, GWL_STYLE) & WS_CHILD) {
 		return { ScalingWindowOwnerStatus::ChildWindow, ERROR_INVALID_PARAMETER, actualOwner };
 	}
 	if (actualOwner == owner) {
-		return { ScalingWindowOwnerStatus::Applied, systemError, actualOwner };
+		return result(ScalingWindowOwnerStatus::Applied, systemError);
 	}
 	if (owner && !actualOwner) {
-		// UWP/XAML sources can reject this optional relationship even when both
-		// windows are valid. Capture does not require an owner relationship.
-		return { ScalingWindowOwnerStatus::Rejected, systemError, actualOwner };
+		// Only the observed capability refusal is eligible. Permission, invalid
+		// handles, zero-error ambiguity and unknown errors must remain failures.
+		return result(systemError == ERROR_INVALID_PARAMETER && !(ownerStyle & WS_CHILD)
+			? ScalingWindowOwnerStatus::Rejected : ScalingWindowOwnerStatus::ApiFailure, systemError);
 	}
-	return { ScalingWindowOwnerStatus::UnexpectedOwner, systemError, actualOwner };
+	return result(ScalingWindowOwnerStatus::UnexpectedOwner, systemError);
 }
 
 inline bool SetScalingWindowOwner(HWND window, HWND owner) noexcept {

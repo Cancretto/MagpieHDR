@@ -221,7 +221,8 @@ bool SrcTracker::UpdateState(
 
 	// Internal parameter input keeps the scaling session active while the actual
 	// Windows keyboard focus belongs exclusively to its input host.
-	if (_isFocused != (hwndFore == _hWnd || ScalingWindow::Get().IsParameterInputWindow(hwndFore))) {
+	if (_isFocused != (hwndFore == _hWnd || hwndFore == ScalingWindow::Get().SourceRoot() ||
+		ScalingWindow::Get().IsParameterInputWindow(hwndFore))) {
 		_isFocused = !_isFocused;
 		focusedChanged = true;
 	}

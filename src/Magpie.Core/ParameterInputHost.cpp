@@ -293,6 +293,10 @@ void OverlayDrawer::UpdateParameterInputHost() noexcept {
 
 std::optional<ImGuiInputResult> OverlayDrawer::_HandleParameterInputMessage(
 	HWND sourceWindow, UINT msg, WPARAM wParam, LPARAM lParam) noexcept {
+	// The host can be destroyed by USER32 before its output's WM_DESTROY.
+	// Cancellation has already invalidated the old Renderer on explicit stops;
+	// never reactivate or render it from a nested input callback during teardown.
+	if (const auto renderer = ScalingWindow::Get().TryGetRenderer(); renderer && renderer->IsStopping()) return std::nullopt;
 	if (!_parameterFocusSwitchingEnabled) return std::nullopt;
 	if (_parameterInputTransition) return std::nullopt;
 	const bool fromHost = sourceWindow && sourceWindow == _hwndParameterInput;
