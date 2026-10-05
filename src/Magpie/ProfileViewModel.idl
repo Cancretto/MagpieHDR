@@ -49,6 +49,23 @@ namespace Magpie {
 		Boolean ShowGraphicsCardUnavailableWarning { get; };
 
 		Int32 ContentFrameRateModeIndex;
+		Int32 RtssScopeIndex;
+		Int32 RtssRateModeIndex;
+		Double RtssCustomRate;
+		Int32 RtssExitPolicyIndex;
+		Boolean IsRtssManaged { get; };
+		Boolean ShowRtssCustomRate { get; };
+		Boolean IsRtssSyncAvailable { get; };
+		Boolean ShowRtssGlobalNotice { get; };
+		String RtssStatusText { get; };
+		String RtssSyncText { get; };
+		Boolean CanLaunchRtss { get; };
+		Boolean CanLaunchAfterburner { get; };
+		String RtssLaunchText { get; };
+		String AfterburnerLaunchText { get; };
+		void RefreshRtss();
+		void LaunchRtss();
+		void LaunchAfterburner();
 		Double ContentFrameRate;
 		Int32 FrameSyncModeIndex;
 		Boolean IsContentPacingEnabled { get; };

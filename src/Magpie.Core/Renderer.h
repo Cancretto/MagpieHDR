@@ -486,6 +486,9 @@ private:
 	std::unordered_map<uint64_t, PendingEffectParameterUpdate>
 		_effectParameterMailbox;
 	bool _effectParameterWakeQueued = false;
+	std::optional<double> _reportedContentTarget;
+	bool _reportedFixedContent = false;
+	bool _reportedContentConstraint = false;
 };
 
 }

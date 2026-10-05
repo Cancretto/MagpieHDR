@@ -1841,4 +1841,69 @@
 
 
   <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>其他选项</value></data>
+  <!-- RTSS target application linkage; English fallback outside zh-Hans. -->
+  <data name="Rtss_TargetLimit.Header" xml:space="preserve"><value>目标窗口帧率限制</value></data>
+  <data name="Rtss_TargetLimit.Description" xml:space="preserve"><value>开始缩放时管理 RTSS 配置；应用配置作用于同一可执行文件。</value></data>
+  <data name="Rtss_Scope_None.Content" xml:space="preserve"><value>不管理 RTSS 配置</value></data>
+  <data name="Rtss_Scope_Global.Content" xml:space="preserve"><value>修改全局配置</value></data>
+  <data name="Rtss_Scope_Target.Content" xml:space="preserve"><value>修改目标窗口配置</value></data>
+  <data name="Rtss_Status.Header" xml:space="preserve"><value>RTSS 状态</value></data>
+  <data name="Rtss_Tools.Content" xml:space="preserve"><value>启动工具</value></data>
+  <data name="Rtss_Recheck.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>重新检测 RTSS</value></data>
+  <data name="Rtss_Recheck.ToolTipService.ToolTip" xml:space="preserve"><value>重新检测 RTSS 并重试当前请求</value></data>
+  <data name="Rtss_GlobalNotice.Text" xml:space="preserve"><value>影响使用 RTSS 全局配置的应用，可能包括 Magpie 及插帧输出。</value></data>
+  <data name="Rtss_RateMode.Header" xml:space="preserve"><value>帧率设置</value></data>
+  <data name="Rtss_Rate_Custom.Content" xml:space="preserve"><value>自定义</value></data>
+  <data name="Rtss_Rate_Sync.Content" xml:space="preserve"><value>与内容帧率自动同步</value></data>
+  <data name="Rtss_CustomRate.Header" xml:space="preserve"><value>限制帧率</value></data>
+  <data name="Rtss_Advanced.Header" xml:space="preserve"><value>高级选项</value></data>
+  <data name="Rtss_ExitPolicy.Header" xml:space="preserve"><value>停止缩放后的处理</value></data>
+  <data name="Rtss_ExitPolicy.Description" xml:space="preserve"><value>恢复只尽力尝试一次；无法完成清理时修改可能保留。</value></data>
+  <data name="Rtss_Exit_Keep.Content" xml:space="preserve"><value>保留修改</value></data>
+  <data name="Rtss_Exit_Restore.Content" xml:space="preserve"><value>恢复原值</value></data>
+  <data name="Rtss_UnmanagedNotice" xml:space="preserve"><value>当前 Magpie 不管理 RTSS 配置。</value></data>
+  <data name="Rtss_Status_Checking" xml:space="preserve"><value>正在检查 RTSS…</value></data>
+  <data name="Rtss_Status_NotInstalled" xml:space="preserve"><value>未找到 RTSS。</value></data>
+  <data name="Rtss_Status_NotRunning" xml:space="preserve"><value>RTSS 未运行；本次请求等待工具启动。</value></data>
+  <data name="Rtss_Status_Incompatible" xml:space="preserve"><value>当前 RTSS 版本或架构不支持所需配置接口。</value></data>
+  <data name="Rtss_Status_Failed" xml:space="preserve"><value>RTSS 操作失败，缩放可以继续。</value></data>
+  <data name="Rtss_Status_WaitingTarget" xml:space="preserve"><value>开始缩放后读取目标配置。</value></data>
+  <data name="Rtss_Status_Read" xml:space="preserve"><value>配置已读取。</value></data>
+  <data name="Rtss_Status_MissingProfile" xml:space="preserve"><value>开始缩放时将创建目标配置。</value></data>
+  <data name="Rtss_Status_WaitingContent" xml:space="preserve"><value>没有固定的内容基础目标，本次不更新 RTSS 配置。</value></data>
+  <data name="Rtss_Status_Applying" xml:space="preserve"><value>正在读取并应用帧率上限…</value></data>
+  <data name="Rtss_Status_Written" xml:space="preserve"><value>已写入并请求重载配置，实际限帧效果未确认。</value></data>
+  <data name="Rtss_Status_Conflict" xml:space="preserve"><value>配置已被外部修改，Magpie 不再覆盖。</value></data>
+  <data name="Rtss_Status_Kept" xml:space="preserve"><value>已按保留修改策略结束，不执行恢复。</value></data>
+  <data name="Rtss_Status_Restored" xml:space="preserve"><value>已恢复原限帧状态或全局继承关系。</value></data>
+  <data name="Rtss_Status_RestoreFailed" xml:space="preserve"><value>已尝试恢复但未完成，清理已结束。</value></data>
+  <data name="Rtss_Status_StartingTool" xml:space="preserve"><value>正在启动所选工具…</value></data>
+  <data name="Rtss_Status_ToolStartFailed" xml:space="preserve"><value>所选工具未能启动。</value></data>
+  <data name="Rtss_DetectionDisabled" xml:space="preserve"><value>已有配置的 RTSS 应用检测已关闭。</value></data>
+  <data name="Rtss_TargetOverridesGlobal" xml:space="preserve"><value>目标已有独立配置，全局上限可能不作用于此目标。</value></data>
+  <data name="Rtss_NoLimit" xml:space="preserve"><value>未限制帧率</value></data>
+  <data name="Rtss_TimeLimit" xml:space="preserve"><value>原配置采用帧时间限制。</value></data>
+  <data name="Rtss_SyncUnavailable" xml:space="preserve"><value>内容跟随源，没有固定目标；仍可自定义 RTSS 上限。</value></data>
+  <data name="Rtss_SyncAtStart" xml:space="preserve"><value>开始缩放时解析实际内容基础目标，不使用插帧后的帧率。</value></data>
+  <data name="Rtss_CustomAtStart" xml:space="preserve"><value>开始缩放时自动应用；编辑保存到下次开始缩放。</value></data>
+  <data name="Rtss_LaunchRtss" xml:space="preserve"><value>启动 RTSS</value></data>
+  <data name="Rtss_LaunchRtssMissing" xml:space="preserve"><value>RTSS 未安装</value></data>
+  <data name="Rtss_LaunchRtssRunning" xml:space="preserve"><value>RTSS 已运行</value></data>
+  <data name="Rtss_LaunchAfterburner" xml:space="preserve"><value>启动 MSI Afterburner</value></data>
+  <data name="Rtss_LaunchAfterburnerMissing" xml:space="preserve"><value>MSI Afterburner 未安装</value></data>
+  <data name="Rtss_LaunchAfterburnerRunning" xml:space="preserve"><value>MSI Afterburner 已运行</value></data>
+  <data name="Rtss_Failure_Access" xml:space="preserve"><value>无法访问 RTSS 配置接口，请检查安装文件和访问权限。</value></data>
+  <data name="Rtss_Failure_Target" xml:space="preserve"><value>无法可靠识别目标进程，或目标已退出。</value></data>
+  <data name="Rtss_Failure_Read" xml:space="preserve"><value>无法读取配置或原帧率表达，请检查配置访问权限。</value></data>
+  <data name="Rtss_Failure_Write" xml:space="preserve"><value>无法保存或核实配置，请检查写入权限和并发修改。</value></data>
+  <data name="Rtss_Failure_Restore" xml:space="preserve"><value>无法还原保存的帧率表达，或删除本次新建配置。</value></data>
+  <data name="Rtss_Scope_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>RTSS 配置管理</value></data>
+  <data name="Rtss_RateMode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>RTSS 帧率设置</value></data>
+  <data name="Rtss_CustomRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>RTSS 整数帧率上限</value></data>
+  <data name="Rtss_ExitPolicy_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>RTSS 停止策略</value></data>
+  <data name="Rtss_ContentConstrained" xml:space="preserve"><value>采用当前捕获或兼容限制后的内容基础目标。</value></data>
+  <data name="Rtss_Failure_Interface" xml:space="preserve"><value>RTSS 接口发生异常，本次不再调用；请重启 Magpie 后重新检测。</value></data>
+  <data name="Rtss_Failure_StartTimeout" xml:space="preserve"><value>启动请求已发出，但所选工具在等待期间没有运行；本次尝试已结束。</value></data>
+  <data name="Rtss_Failure_LibraryMissing" xml:space="preserve"><value>RTSS 配置接口库缺失，请检查 RTSS 安装文件。</value></data>
+  <data name="Rtss_Failure_Permission" xml:space="preserve"><value>访问被拒绝，请检查 RTSS 安装目录的访问权限。</value></data>
 </root>

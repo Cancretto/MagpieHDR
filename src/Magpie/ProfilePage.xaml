@@ -159,6 +159,58 @@
 					<!-- Keep headers and child rows in the same layout at narrow widths. -->
 					<StaticResource x:Key="SettingsCardWrapNoIconThreshold" ResourceKey="SettingsCardWrapThreshold" />
 				</local:SettingsGroup.Resources>
+				<local:SettingsExpander x:Uid="Rtss_TargetLimit" IsWrapEnabled="True" IsExpanded="True">
+					<local:SettingsExpander.HeaderIcon>
+						<FontIcon Glyph="&#xE9D9;" />
+					</local:SettingsExpander.HeaderIcon>
+					<local:SettingsExpander.Content>
+						<ComboBox x:Uid="Rtss_Scope_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.RtssScopeIndex, Mode=TwoWay}">
+							<ComboBoxItem x:Uid="Rtss_Scope_None" />
+							<ComboBoxItem x:Uid="Rtss_Scope_Global" />
+							<ComboBoxItem x:Uid="Rtss_Scope_Target" />
+						</ComboBox>
+					</local:SettingsExpander.Content>
+					<local:SettingsExpander.Items>
+						<local:SettingsCard x:Uid="Rtss_Status" IsWrapEnabled="True" Description="{x:Bind ViewModel.RtssStatusText, Mode=OneWay}">
+							<Grid Width="{StaticResource FrameRefreshControlColumnWidth}">
+								<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+								<DropDownButton x:Uid="Rtss_Tools" HorizontalAlignment="Stretch">
+									<DropDownButton.Flyout>
+										<MenuFlyout>
+											<MenuFlyoutItem Text="{x:Bind ViewModel.RtssLaunchText, Mode=OneWay}" IsEnabled="{x:Bind ViewModel.CanLaunchRtss, Mode=OneWay}" Click="{x:Bind ViewModel.LaunchRtss}" />
+											<MenuFlyoutItem Text="{x:Bind ViewModel.AfterburnerLaunchText, Mode=OneWay}" IsEnabled="{x:Bind ViewModel.CanLaunchAfterburner, Mode=OneWay}" Click="{x:Bind ViewModel.LaunchAfterburner}" />
+										</MenuFlyout>
+									</DropDownButton.Flyout>
+								</DropDownButton>
+								<Button Grid.Column="1" x:Uid="Rtss_Recheck" Margin="8,0,0,0" Click="{x:Bind ViewModel.RefreshRtss}"><FontIcon Glyph="&#xE72C;" /></Button>
+							</Grid>
+						</local:SettingsCard>
+						<TextBlock x:Uid="Rtss_GlobalNotice" Visibility="{x:Bind ViewModel.ShowRtssGlobalNotice, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="16,4" />
+						<local:SettingsCard x:Uid="Rtss_RateMode" IsWrapEnabled="True" IsEnabled="{x:Bind ViewModel.IsRtssManaged, Mode=OneWay}" Description="{x:Bind ViewModel.RtssSyncText, Mode=OneWay}">
+							<ComboBox x:Uid="Rtss_RateMode_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.RtssRateModeIndex, Mode=TwoWay}">
+								<ComboBoxItem x:Uid="Rtss_Rate_Custom" />
+								<ComboBoxItem x:Uid="Rtss_Rate_Sync" IsEnabled="{x:Bind ViewModel.IsRtssSyncAvailable, Mode=OneWay}" />
+							</ComboBox>
+						</local:SettingsCard>
+						<local:SettingsCard x:Uid="Rtss_CustomRate" IsWrapEnabled="True" IsEnabled="{x:Bind ViewModel.IsRtssManaged, Mode=OneWay}" Visibility="{x:Bind ViewModel.ShowRtssCustomRate, Mode=OneWay}">
+							<Grid Width="{StaticResource FrameRefreshControlColumnWidth}">
+								<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+								<muxc:NumberBox x:Uid="Rtss_CustomRate_Input" Style="{StaticResource FrameRefreshNumberBoxStyle}" Minimum="15" Maximum="360" SmallChange="1" LargeChange="10" Loaded="NumberBox_Loaded" NumberFormatter="{x:Bind local:App.IntegerFormatter, Mode=OneTime}" Value="{x:Bind ViewModel.RtssCustomRate, Mode=TwoWay}" />
+								<TextBlock Grid.Column="1" Margin="8,0,0,0" Text="FPS" VerticalAlignment="Center" />
+							</Grid>
+						</local:SettingsCard>
+						<local:SettingsExpander x:Uid="Rtss_Advanced" IsWrapEnabled="True" IsExpanded="False" IsEnabled="{x:Bind ViewModel.IsRtssManaged, Mode=OneWay}">
+							<local:SettingsExpander.Items>
+								<local:SettingsCard x:Uid="Rtss_ExitPolicy" IsWrapEnabled="True">
+									<ComboBox x:Uid="Rtss_ExitPolicy_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.RtssExitPolicyIndex, Mode=TwoWay}">
+										<ComboBoxItem x:Uid="Rtss_Exit_Keep" />
+										<ComboBoxItem x:Uid="Rtss_Exit_Restore" />
+									</ComboBox>
+								</local:SettingsCard>
+							</local:SettingsExpander.Items>
+						</local:SettingsExpander>
+					</local:SettingsExpander.Items>
+				</local:SettingsExpander>
 				<local:SettingsExpander x:Uid="FrameRefresh_Content" IsWrapEnabled="True" IsExpanded="True">
 					<local:SettingsExpander.HeaderIcon>
 						<FontIcon Glyph="&#xE787;" />

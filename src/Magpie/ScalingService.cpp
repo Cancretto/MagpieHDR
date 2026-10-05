@@ -13,6 +13,7 @@
 #include "ScalingModesService.h"
 #include "ScalingService.h"
 #include "SourceWindowRelations.h"
+#include "RtssService.h"
 #include "StrHelper.h"
 #include "ShortcutService.h"
 #include "ToastService.h"
@@ -60,6 +61,7 @@ void ScalingService::Initialize() {
 		std::bind_front(&ScalingService::_ScalingRuntime_StateChanged, this));
 
 	const DispatcherQueue& dispatcher = App::Get().Dispatcher();
+	RtssService::Get().Initialize(dispatcher);
 
 	_countDownTimer = dispatcher.CreateTimer();
 	_countDownTimer.Interval(25ms);
@@ -79,6 +81,11 @@ void ScalingService::Initialize() {
 		if (_activeFrameSyncProfile.lock() != profile.runtimeIdentity) return;
 		if (_scalingRuntime) _scalingRuntime->UpdateFrameRefreshSettings(profile.frameRefresh);
 	});
+	_rtssChangedRevoker = ProfileService::Get().RtssSettingsChanged(auto_revoke, [](const Profile& profile) {
+		// Page edits are saved for the next start. Explicitly leaving management
+		// releases the active session using the policy captured when it began.
+		if (profile.rtss.scope == RtssScope::None) RtssService::Get().ReleaseProfile(profile.runtimeIdentity);
+	});
 
 	// 立即检查前台窗口
 	_CheckForegroundTimer_Tick(nullptr, nullptr);
@@ -91,9 +98,12 @@ void ScalingService::Uninitialize() {
 
 	_checkForegroundTimer.Stop();
 	_countDownTimer.Stop();
+	RtssService::Get().End();
 	_frameSyncChangedRevoker.Revoke();
+	_rtssChangedRevoker.Revoke();
 	_toolbarShortcutsChangedRevoker.Revoke();
 	_scalingRuntime.reset();
+	RtssService::Get().Uninitialize();
 	// The runtime destructor drains UI requests before this final flush.
 	_FlushEffectParametersSaves(true);
 	// Also wait for any snapshot already being written in the background. The
@@ -305,6 +315,8 @@ void ScalingService::_CheckForegroundTimer_Tick(winrt::DispatcherQueueTimer cons
 
 void ScalingService::_ScalingRuntime_StateChanged(ScalingState value) {
 	App::Get().Dispatcher().TryEnqueue([this, value]() {
+		if (!_scalingRuntime || _scalingRuntime->State() != value) return;
+		if (value == ScalingState::Idle || value == ScalingState::Stopping) RtssService::Get().End();
 		bool shouldRestartForSmoothMotion = false;
 
 		if (value == ScalingState::Scaling) {
@@ -638,7 +650,14 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 		}
 	};
 
+	const auto rtssSession = RtssService::Get().Begin(hWnd, profile.runtimeIdentity, profile.rtss);
+	options.contentTargetChanged = [rtssSession](HWND source, bool fixed, double baseRate, bool constrained) {
+		App::Get().Dispatcher().TryEnqueue([rtssSession, source, fixed, baseRate, constrained] {
+			RtssService::Get().ContentTargetChanged(rtssSession, source, fixed, baseRate, constrained);
+		});
+	};
 	if (!_scalingRuntime->Start(hWnd, std::move(options), force)) {
+		RtssService::Get().End();
 		return ScalingError::ScalingFailedGeneral;
 	}
 

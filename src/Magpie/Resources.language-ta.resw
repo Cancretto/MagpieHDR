@@ -1095,4 +1095,69 @@
   </data>
 
   <data name="ScalingModes_General_MoreOptions.Content" xml:space="preserve"><value>மேலும் விருப்பங்கள்</value></data>
+  <!-- RTSS target application linkage; English fallback outside zh-Hans. -->
+  <data name="Rtss_TargetLimit.Header" xml:space="preserve"><value>Target application frame rate limit</value></data>
+  <data name="Rtss_TargetLimit.Description" xml:space="preserve"><value>Manage RTSS when scaling starts. Application profiles apply to the same executable.</value></data>
+  <data name="Rtss_Scope_None.Content" xml:space="preserve"><value>Do not manage RTSS profiles</value></data>
+  <data name="Rtss_Scope_Global.Content" xml:space="preserve"><value>Modify global profile</value></data>
+  <data name="Rtss_Scope_Target.Content" xml:space="preserve"><value>Modify target application profile</value></data>
+  <data name="Rtss_Status.Header" xml:space="preserve"><value>RTSS status</value></data>
+  <data name="Rtss_Tools.Content" xml:space="preserve"><value>Launch tools</value></data>
+  <data name="Rtss_Recheck.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Recheck RTSS</value></data>
+  <data name="Rtss_Recheck.ToolTipService.ToolTip" xml:space="preserve"><value>Recheck RTSS and retry the current request</value></data>
+  <data name="Rtss_GlobalNotice.Text" xml:space="preserve"><value>Affects applications using the RTSS global profile, possibly including Magpie and generated-frame output.</value></data>
+  <data name="Rtss_RateMode.Header" xml:space="preserve"><value>Frame rate setting</value></data>
+  <data name="Rtss_Rate_Custom.Content" xml:space="preserve"><value>Custom</value></data>
+  <data name="Rtss_Rate_Sync.Content" xml:space="preserve"><value>Sync with content frame rate</value></data>
+  <data name="Rtss_CustomRate.Header" xml:space="preserve"><value>Frame rate limit</value></data>
+  <data name="Rtss_Advanced.Header" xml:space="preserve"><value>Advanced options</value></data>
+  <data name="Rtss_ExitPolicy.Header" xml:space="preserve"><value>When scaling stops</value></data>
+  <data name="Rtss_ExitPolicy.Description" xml:space="preserve"><value>Restore makes one attempt; changes may remain if cleanup cannot finish.</value></data>
+  <data name="Rtss_Exit_Keep.Content" xml:space="preserve"><value>Keep changes</value></data>
+  <data name="Rtss_Exit_Restore.Content" xml:space="preserve"><value>Restore original value</value></data>
+  <data name="Rtss_UnmanagedNotice" xml:space="preserve"><value>Magpie is not managing RTSS profiles.</value></data>
+  <data name="Rtss_Status_Checking" xml:space="preserve"><value>Checking RTSS…</value></data>
+  <data name="Rtss_Status_NotInstalled" xml:space="preserve"><value>RTSS was not found.</value></data>
+  <data name="Rtss_Status_NotRunning" xml:space="preserve"><value>RTSS is not running. The current request waits for it to start.</value></data>
+  <data name="Rtss_Status_Incompatible" xml:space="preserve"><value>This RTSS version or architecture does not support the required profile interface.</value></data>
+  <data name="Rtss_Status_Failed" xml:space="preserve"><value>The RTSS operation failed. Scaling can continue.</value></data>
+  <data name="Rtss_Status_WaitingTarget" xml:space="preserve"><value>The target profile is read when scaling starts.</value></data>
+  <data name="Rtss_Status_Read" xml:space="preserve"><value>Profile read successfully.</value></data>
+  <data name="Rtss_Status_MissingProfile" xml:space="preserve"><value>A target profile will be created when scaling starts.</value></data>
+  <data name="Rtss_Status_WaitingContent" xml:space="preserve"><value>No fixed content base target is available. RTSS is not being updated.</value></data>
+  <data name="Rtss_Status_Applying" xml:space="preserve"><value>Reading and applying the frame rate limit…</value></data>
+  <data name="Rtss_Status_Written" xml:space="preserve"><value>Written and a profile reload requested. Actual frame limiting is unconfirmed.</value></data>
+  <data name="Rtss_Status_Conflict" xml:space="preserve"><value>The profile was changed externally. Magpie will not overwrite it.</value></data>
+  <data name="Rtss_Status_Kept" xml:space="preserve"><value>Ended according to the keep-changes policy. No restoration was performed.</value></data>
+  <data name="Rtss_Status_Restored" xml:space="preserve"><value>The original frame rate state or global inheritance was restored.</value></data>
+  <data name="Rtss_Status_RestoreFailed" xml:space="preserve"><value>Restoration was attempted but failed. Cleanup has ended.</value></data>
+  <data name="Rtss_Status_StartingTool" xml:space="preserve"><value>Starting the selected tool…</value></data>
+  <data name="Rtss_Status_ToolStartFailed" xml:space="preserve"><value>The selected tool could not be started.</value></data>
+  <data name="Rtss_DetectionDisabled" xml:space="preserve"><value>RTSS application detection is disabled for this existing profile.</value></data>
+  <data name="Rtss_TargetOverridesGlobal" xml:space="preserve"><value>The target has its own profile; the global limit may not apply.</value></data>
+  <data name="Rtss_NoLimit" xml:space="preserve"><value>No frame rate limit</value></data>
+  <data name="Rtss_TimeLimit" xml:space="preserve"><value>The original profile uses a frame time limit.</value></data>
+  <data name="Rtss_SyncUnavailable" xml:space="preserve"><value>Content follows the source and has no fixed target. A custom RTSS limit remains available.</value></data>
+  <data name="Rtss_SyncAtStart" xml:space="preserve"><value>The effective base target is resolved when scaling starts, before frame generation.</value></data>
+  <data name="Rtss_CustomAtStart" xml:space="preserve"><value>Applied automatically when scaling starts. Edits are saved for the next start.</value></data>
+  <data name="Rtss_LaunchRtss" xml:space="preserve"><value>Launch RTSS</value></data>
+  <data name="Rtss_LaunchRtssMissing" xml:space="preserve"><value>RTSS is not installed</value></data>
+  <data name="Rtss_LaunchRtssRunning" xml:space="preserve"><value>RTSS is running</value></data>
+  <data name="Rtss_LaunchAfterburner" xml:space="preserve"><value>Launch MSI Afterburner</value></data>
+  <data name="Rtss_LaunchAfterburnerMissing" xml:space="preserve"><value>MSI Afterburner is not installed</value></data>
+  <data name="Rtss_LaunchAfterburnerRunning" xml:space="preserve"><value>MSI Afterburner is running</value></data>
+  <data name="Rtss_Failure_Access" xml:space="preserve"><value>Could not access the RTSS configuration interface. Check its installation and access permissions.</value></data>
+  <data name="Rtss_Failure_Target" xml:space="preserve"><value>The target process could not be identified reliably or has exited.</value></data>
+  <data name="Rtss_Failure_Read" xml:space="preserve"><value>Could not read the profile or its rate expression. Check profile access permissions.</value></data>
+  <data name="Rtss_Failure_Write" xml:space="preserve"><value>Could not save or verify the profile. Check write permissions and concurrent changes.</value></data>
+  <data name="Rtss_Failure_Restore" xml:space="preserve"><value>Could not restore the saved expression or remove the newly created profile.</value></data>
+  <data name="Rtss_Scope_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>RTSS profile management</value></data>
+  <data name="Rtss_RateMode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>RTSS frame rate setting</value></data>
+  <data name="Rtss_CustomRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>RTSS integer frame rate limit</value></data>
+  <data name="Rtss_ExitPolicy_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>RTSS stop policy</value></data>
+  <data name="Rtss_ContentConstrained" xml:space="preserve"><value>Uses the effective base target after capture or compatibility limits.</value></data>
+  <data name="Rtss_Failure_Interface" xml:space="preserve"><value>The RTSS interface faulted and is no longer called. Restart Magpie before rechecking.</value></data>
+  <data name="Rtss_Failure_StartTimeout" xml:space="preserve"><value>The launch was requested, but the selected tool did not become available during the wait. This attempt has ended.</value></data>
+  <data name="Rtss_Failure_LibraryMissing" xml:space="preserve"><value>The RTSS configuration library is missing. Check the RTSS installation.</value></data>
+  <data name="Rtss_Failure_Permission" xml:space="preserve"><value>Access was denied. Check access permissions for the RTSS installation.</value></data>
 </root>
