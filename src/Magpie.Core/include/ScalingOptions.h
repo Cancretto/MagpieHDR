@@ -514,6 +514,8 @@ struct ScalingOptions {
 	std::function<void(uint32_t, const EffectOption&, const std::string&, float, float)> revertEffectParameter;
 	void (*save)(const ScalingOptions& options, HWND hwndScaling) noexcept = nullptr;
 	std::function<void(bool windowed, ToolbarDock dock, uint32_t runId)> saveToolbarDock;
+	// Change notification only; the frontend marshals external-tool work off the renderer.
+	std::function<void(HWND source, bool fixedContent, double effectiveBaseRate, bool constrained)> contentTargetChanged;
 	bool (*requestEffectParameters)(
 		const ScalingOptions& sessionOptions,
 		EffectParametersRequest&& request

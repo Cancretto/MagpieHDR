@@ -3159,6 +3159,19 @@ void Renderer::_UpdateFrameRateLimits() noexcept {
 		_appliedFrameSyncBackend == FrameSyncBackend::Async || _appliedFrameSyncBackend == FrameSyncBackend::Reflex);
 
 	_baseFrameRateLimit = _frameSyncEnabled ? _FrameSyncFrameRate() : maxFrameRate.value_or(0.0f);
+	const bool fixedContent = options.frameRefresh.contentMode != ContentFrameRateMode::Source && !options.IsBenchmarkMode();
+	const auto nominalTarget = ResolvePresentationFrameRate(
+		options.frameRefresh.contentMode == ContentFrameRateMode::Auto ? 0 : options.frameRefresh.contentRate,
+		0, _presentationRefreshRate.load(std::memory_order_acquire), _configuredFrameGenerationMultiplier);
+	const bool constrained = fixedContent && _baseFrameRateLimit > 0 && _baseFrameRateLimit + 0.0001 < nominalTarget;
+	if (options.contentTargetChanged && (!_reportedContentTarget || *_reportedContentTarget != _baseFrameRateLimit ||
+		_reportedFixedContent != fixedContent || _reportedContentConstraint != constrained)) {
+		_reportedContentTarget = _baseFrameRateLimit;
+		_reportedFixedContent = fixedContent;
+		_reportedContentConstraint = constrained;
+		try { options.contentTargetChanged(ScalingWindow::Get().SrcTracker().Handle(), fixedContent, _baseFrameRateLimit, constrained); }
+		catch (...) { Logger::Get().Warn("Unable to notify the frontend of the content target"); }
+	}
 	if (_dlssFrameGenerator) _synchronousPresentInterval =
 		_captureCadence.Interval(_dlssFrameGenerator->Multiplier(), _baseFrameRateLimit);
 }

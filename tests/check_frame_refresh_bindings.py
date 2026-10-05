@@ -14,6 +14,11 @@ x = "{http://schemas.microsoft.com/winfx/2006/xaml}"
 local = "{using:Magpie}"
 profile = ET.fromstring(read("src/Magpie/ProfilePage.xaml"))
 group = next(n for n in profile.iter() if n.get(x + "Uid") == "FrameRefresh")
+# RTSS has separate source/UI/resource contracts. Keep the original refresh
+# contracts scoped to the original controls, including their notifications.
+rtss = next((n for n in group if n.get(x + "Uid") == "Rtss_TargetLimit"), None)
+if rtss is not None:
+    group.remove(rtss)
 uids = [n.get(x + "Uid", "") for n in group.iter()]
 assert uids.index("FrameRefresh_Content") < uids.index("FrameRefresh_Pacing") < uids.index("FrameRefresh_ContentRate")
 advanced = next(n for n in group.iter() if n.get(x + "Uid") == "FrameRefresh_Advanced")

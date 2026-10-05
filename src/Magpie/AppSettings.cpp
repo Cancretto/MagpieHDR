@@ -16,6 +16,7 @@
 #include "Profile.h"
 #include "ProfileFrameSync.h"
 #include "ProfileFrameRefresh.h"
+#include "ProfileRtss.h"
 #include "resource.h"
 #include "ScalingMode.h"
 #include "ScalingModesService.h"
@@ -91,6 +92,7 @@ static void WriteProfile(rapidjson::PrettyWriter<rapidjson::StringBuffer>& write
 	}
 
 	WriteProfileFrameRefresh(writer, profile.frameRefresh);
+	WriteProfileRtss(writer, profile.rtss);
 	writer.Key("parameterFocusSwitching");
 	writer.Bool(profile.isParameterFocusSwitchingEnabled);
 	writer.Key("fullscreenToolbarDock");
@@ -1033,6 +1035,7 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 	const bool migrateLegacyRefresh = refreshVersion < 1;
 	if (migrateLegacyRefresh) _isConfigMigrationNeeded = true;
 	_defaultProfile.frameRefresh = ReadProfileFrameRefresh(root, legacyFrameSync, legacyIdle, migrateLegacyRefresh);
+	_defaultProfile.rtss = ReadProfileRtss(root);
 	uint32_t profileFrameSyncVersion = 0;
 	JsonHelper::ReadUInt(root, "experimentalProfileFrameSyncVersion", profileFrameSyncVersion);
 	if (profileFrameSyncVersion < 1 || root.HasMember("frontEdgeSync") ||
@@ -1205,6 +1208,7 @@ bool AppSettings::_LoadProfile(
 	bool migrateLegacyRefresh
 ) const noexcept {
 	profile.frameRefresh = ReadProfileFrameRefresh(profileObj, legacyFrameSync, legacyIdle, migrateLegacyRefresh);
+	profile.rtss = ReadProfileRtss(profileObj);
 	profile.isParameterFocusSwitchingEnabled = legacyParameterFocusSwitching;
 	JsonHelper::ReadBool(profileObj, "parameterFocusSwitching", profile.isParameterFocusSwitchingEnabled);
 	{

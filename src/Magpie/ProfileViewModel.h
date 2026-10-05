@@ -1,6 +1,7 @@
 #pragma once
 #include "Event.h"
 #include "ScalingOptions.h"
+#include "RtssService.h"
 #include "ProfileViewModel.g.h"
 
 namespace Magpie {
@@ -112,6 +113,27 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 	bool ShowGraphicsCardUnavailableWarning() const noexcept;
 
 	int32_t ContentFrameRateModeIndex() const noexcept;
+	int32_t RtssScopeIndex() const noexcept;
+	void RtssScopeIndex(int32_t value);
+	int32_t RtssRateModeIndex() const noexcept;
+	void RtssRateModeIndex(int32_t value);
+	double RtssCustomRate() const noexcept;
+	void RtssCustomRate(double value);
+	int32_t RtssExitPolicyIndex() const noexcept;
+	void RtssExitPolicyIndex(int32_t value);
+	bool IsRtssManaged() const noexcept;
+	bool ShowRtssCustomRate() const noexcept;
+	bool IsRtssSyncAvailable() const noexcept;
+	bool ShowRtssGlobalNotice() const noexcept;
+	hstring RtssStatusText() const;
+	hstring RtssSyncText() const;
+	bool CanLaunchRtss() const;
+	bool CanLaunchAfterburner() const;
+	hstring RtssLaunchText() const;
+	hstring AfterburnerLaunchText() const;
+	void RefreshRtss();
+	void LaunchRtss();
+	void LaunchAfterburner();
 	void ContentFrameRateModeIndex(int32_t value);
 	double ContentFrameRate() const noexcept;
 	void ContentFrameRate(double value);
@@ -188,6 +210,10 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 
 private:
 	void _NotifyFrameRefreshChanged();
+	void _NotifyRtssChanged();
+	void _SaveRtss();
+	void _LoadRtssPreview();
+	::Magpie::RtssStatus _RtssStatus() const;
 	void _SaveFrameRefresh();
 	fire_and_forget _LoadIcon();
 
@@ -209,6 +235,9 @@ private:
 	::Magpie::Event<uint32_t>::EventRevoker _dpiChangedRevoker;
 	::Magpie::Event<>::EventRevoker _adaptersChangedRevoker;
 	::Magpie::Event<::Magpie::Profile&>::EventRevoker _frameSyncChangedRevoker;
+	::Magpie::Event<>::EventRevoker _rtssStatusRevoker;
+	::Magpie::RtssStatus _rtssPreview;
+	uint64_t _rtssPreviewGeneration = 0;
 
 	IconElement _icon{ nullptr };
 	IVector<IInspectable> _monitorOptions{ nullptr };

@@ -68,6 +68,11 @@ ProfileViewModel::ProfileViewModel(int profileIdx, bool initializePageData)
 	});
 	_BuildMonitorOptions();
 	_BuildGraphicsCards();
+	_rtssStatusRevoker = RtssService::Get().StatusChanged(auto_revoke, [this] {
+		_NotifyRtssChanged();
+		if (RtssService::Get().Status().profileIdentity.lock() != _data->runtimeIdentity) _LoadRtssPreview();
+	});
+	_LoadRtssPreview();
 
 	_adaptersChangedRevoker = AdaptersService::Get().AdaptersChanged(auto_revoke,
 		std::bind_front(&ProfileViewModel::_RefreshGraphicsCardSettings, this));
@@ -695,6 +700,7 @@ bool ProfileViewModel::ShowGraphicsCardUnavailableWarning() const noexcept {
 }
 
 void ProfileViewModel::_NotifyFrameRefreshChanged() {
+	_NotifyRtssChanged();
 	RaisePropertyChanged(L"ContentFrameRateModeIndex");
 	RaisePropertyChanged(L"ContentFrameRate");
 	RaisePropertyChanged(L"FrameSyncModeIndex");
@@ -716,6 +722,148 @@ void ProfileViewModel::_SaveFrameRefresh() {
 	ProfileService::Get().FrameRefreshChanged.Invoke(*_data);
 	AppSettings::Get().SaveAsync();
 }
+
+void ProfileViewModel::_NotifyRtssChanged() {
+	for (const auto property : { L"RtssScopeIndex", L"RtssRateModeIndex", L"RtssCustomRate", L"RtssExitPolicyIndex",
+		L"IsRtssManaged", L"ShowRtssCustomRate", L"IsRtssSyncAvailable", L"ShowRtssGlobalNotice", L"RtssStatusText",
+		L"RtssSyncText", L"CanLaunchRtss", L"CanLaunchAfterburner", L"RtssLaunchText", L"AfterburnerLaunchText" })
+		RaisePropertyChanged(property);
+}
+
+void ProfileViewModel::_SaveRtss() {
+	ProfileService::Get().RtssSettingsChanged.Invoke(*_data);
+	AppSettings::Get().SaveAsync();
+	_NotifyRtssChanged();
+	_LoadRtssPreview();
+}
+
+void ProfileViewModel::_LoadRtssPreview() {
+	const auto generation = ++_rtssPreviewGeneration;
+	const auto identity = _data->runtimeIdentity;
+	// Packaged identities and the default profile require the actual session target.
+	const auto executable = _data->isPackaged ? std::wstring{} : _data->pathRule;
+	RtssService::Get().Preview(_data->rtss, executable, [weak = get_weak(), generation, identity](RtssStatus status) {
+		if (auto self = weak.get(); self && self->_rtssPreviewGeneration == generation && self->_data->runtimeIdentity == identity) {
+			self->_rtssPreview = std::move(status);
+			self->_NotifyRtssChanged();
+		}
+	});
+}
+
+RtssStatus ProfileViewModel::_RtssStatus() const {
+	const auto active = RtssService::Get().Status();
+	if (active.profileIdentity.lock() == _data->runtimeIdentity) return active;
+	if (active.state == RtssState::StartingTool || active.state == RtssState::ToolStartFailed) return active;
+	auto result = _rtssPreview;
+	// Tool inventory is shared; another profile's write result is not.
+	result.rtss = active.rtss;
+	result.afterburner = active.afterburner;
+	if (active.rtss.executable.empty() && active.state != RtssState::Checking) result.state = RtssState::NotInstalled;
+	else if (!active.rtss.running && active.state != RtssState::Checking) result.state = RtssState::NotRunning;
+	return result;
+}
+
+int32_t ProfileViewModel::RtssScopeIndex() const noexcept { return int32_t(_data->rtss.scope); }
+void ProfileViewModel::RtssScopeIndex(int32_t value) {
+	if (value < 0 || value > 2 || RtssScopeIndex() == value) return;
+	_data->rtss.scope = RtssScope(value); _SaveRtss();
+}
+int32_t ProfileViewModel::RtssRateModeIndex() const noexcept { return int32_t(_data->rtss.rateMode); }
+void ProfileViewModel::RtssRateModeIndex(int32_t value) {
+	if (value < 0 || value > 1 || RtssRateModeIndex() == value || (value == 1 && !IsRtssSyncAvailable())) return;
+	_data->rtss.rateMode = RtssRateMode(value); _SaveRtss();
+}
+double ProfileViewModel::RtssCustomRate() const noexcept { return _data->rtss.customRate; }
+void ProfileViewModel::RtssCustomRate(double value) {
+	const auto rate = RtssSettings::EditedRate(value);
+	if (!rate) { RaisePropertyChanged(L"RtssCustomRate"); return; }
+	if (*rate == _data->rtss.customRate) {
+		if (value != *rate) RaisePropertyChanged(L"RtssCustomRate");
+		return;
+	}
+	_data->rtss.customRate = *rate; _SaveRtss();
+}
+int32_t ProfileViewModel::RtssExitPolicyIndex() const noexcept { return int32_t(_data->rtss.exitPolicy); }
+void ProfileViewModel::RtssExitPolicyIndex(int32_t value) {
+	if (value < 0 || value > 1 || RtssExitPolicyIndex() == value) return;
+	_data->rtss.exitPolicy = RtssExitPolicy(value); _SaveRtss();
+}
+bool ProfileViewModel::IsRtssManaged() const noexcept { return _data->rtss.scope != RtssScope::None; }
+bool ProfileViewModel::ShowRtssCustomRate() const noexcept { return _data->rtss.rateMode == RtssRateMode::Custom; }
+bool ProfileViewModel::IsRtssSyncAvailable() const noexcept { return _data->frameRefresh.contentMode != ContentFrameRateMode::Source; }
+bool ProfileViewModel::ShowRtssGlobalNotice() const noexcept { return _data->rtss.scope == RtssScope::Global; }
+
+hstring ProfileViewModel::RtssStatusText() const {
+	const auto loader = ResourceLoader::GetForCurrentView();
+	const auto s = _RtssStatus();
+	const wchar_t* key = L"Rtss_Status_Checking";
+	switch (s.state) {
+	case RtssState::NotInstalled: key = L"Rtss_Status_NotInstalled"; break;
+	case RtssState::NotRunning: key = L"Rtss_Status_NotRunning"; break;
+	case RtssState::Incompatible: key = L"Rtss_Status_Incompatible"; break;
+	case RtssState::Failed: key = L"Rtss_Status_Failed"; break;
+	case RtssState::WaitingTarget: key = L"Rtss_Status_WaitingTarget"; break;
+	case RtssState::Read: key = L"Rtss_Status_Read"; break;
+	case RtssState::MissingProfile: key = L"Rtss_Status_MissingProfile"; break;
+	case RtssState::WaitingContent: key = L"Rtss_Status_WaitingContent"; break;
+	case RtssState::Applying: key = L"Rtss_Status_Applying"; break;
+	case RtssState::Written: key = L"Rtss_Status_Written"; break;
+	case RtssState::Conflict: key = L"Rtss_Status_Conflict"; break;
+	case RtssState::Kept: key = L"Rtss_Status_Kept"; break;
+	case RtssState::Restored: key = L"Rtss_Status_Restored"; break;
+	case RtssState::RestoreFailed: key = L"Rtss_Status_RestoreFailed"; break;
+	case RtssState::StartingTool: key = L"Rtss_Status_StartingTool"; break;
+	case RtssState::ToolStartFailed: key = L"Rtss_Status_ToolStartFailed"; break;
+	default: break;
+	}
+	std::wstring text;
+	if (!IsRtssManaged()) text = std::wstring(loader.GetString(L"Rtss_UnmanagedNotice")) + L"\n";
+	text += loader.GetString(key);
+	if (!s.rtss.version.empty()) text += L"\nRTSS " + s.rtss.version;
+	if (!s.profile.empty()) text += L"\n" + s.profile;
+	if (!s.failureStage.empty()) text += L"\n" + std::wstring(loader.GetString(s.failureStage));
+	if (s.rateKnown && (s.state == RtssState::Read || s.state == RtssState::Written || s.state == RtssState::Kept)) {
+		text += L"\n";
+		text += s.timeLimit ? std::wstring(loader.GetString(L"Rtss_TimeLimit")) : s.currentRate > 0 ?
+			fmt::format(L"{:g} FPS", s.currentRate) : std::wstring(loader.GetString(L"Rtss_NoLimit"));
+	}
+	if (s.detectionDisabled) text += L"\n" + std::wstring(loader.GetString(L"Rtss_DetectionDisabled"));
+	if (s.targetOverridesGlobal) text += L"\n" + std::wstring(loader.GetString(L"Rtss_TargetOverridesGlobal"));
+	return hstring(text);
+}
+
+hstring ProfileViewModel::RtssSyncText() const {
+	const auto loader = ResourceLoader::GetForCurrentView();
+	if (!IsRtssSyncAvailable()) return loader.GetString(L"Rtss_SyncUnavailable");
+	if (_data->rtss.rateMode == RtssRateMode::Custom) return loader.GetString(L"Rtss_CustomAtStart");
+	const auto s = _RtssStatus();
+	if (s.desiredRate && s.profileIdentity.lock() == _data->runtimeIdentity) {
+		auto text = fmt::format(L"{} FPS", s.desiredRate);
+		if (s.contentConstrained) text += L"\n" + std::wstring(loader.GetString(L"Rtss_ContentConstrained"));
+		return hstring(text);
+	}
+	return loader.GetString(L"Rtss_SyncAtStart");
+}
+
+bool ProfileViewModel::CanLaunchRtss() const {
+	const auto s = _RtssStatus(); return !s.rtss.executable.empty() && !s.rtss.running && !RtssService::Get().IsLaunching();
+}
+bool ProfileViewModel::CanLaunchAfterburner() const {
+	const auto s = _RtssStatus(); return !s.afterburner.executable.empty() && !s.afterburner.running && !RtssService::Get().IsLaunching();
+}
+hstring ProfileViewModel::RtssLaunchText() const {
+	const auto s = _RtssStatus();
+	return ResourceLoader::GetForCurrentView().GetString(s.rtss.executable.empty() ? L"Rtss_LaunchRtssMissing" :
+		s.rtss.running ? L"Rtss_LaunchRtssRunning" : L"Rtss_LaunchRtss");
+}
+hstring ProfileViewModel::AfterburnerLaunchText() const {
+	const auto s = _RtssStatus();
+	return ResourceLoader::GetForCurrentView().GetString(s.afterburner.executable.empty() ? L"Rtss_LaunchAfterburnerMissing" :
+		s.afterburner.running ? L"Rtss_LaunchAfterburnerRunning" : L"Rtss_LaunchAfterburner");
+}
+void ProfileViewModel::RefreshRtss() { RtssService::Get().Recheck(); _LoadRtssPreview(); }
+void ProfileViewModel::LaunchRtss() { RtssService::Get().Launch(false); }
+void ProfileViewModel::LaunchAfterburner() { RtssService::Get().Launch(true); }
 
 int32_t ProfileViewModel::ContentFrameRateModeIndex() const noexcept { return int32_t(_data->frameRefresh.contentMode); }
 void ProfileViewModel::ContentFrameRateModeIndex(int32_t value) {
