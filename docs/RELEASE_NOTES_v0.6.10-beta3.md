@@ -38,4 +38,6 @@ Beta3 基于 `release/0.6.10-beta2`，合入 RTSS `f5f534c26fddd0168ef453dfa6c04
 
 准确源码、构建选项和逐文件哈希以包内 `build-manifest.json` 为准。分支快照、C++ 回归、完整构建和打包检查记录位于工作区 `reports/0610-beta3-20261005/`。功能分支中的“未编译”说明保留原开发阶段记录。
 
+整合时补齐旧同步回归夹具对新通知字段的支持；使用实际生产函数验证基础帧率、FG／捕获限制／内容模式变化、通知去重与异常隔离，保留严格警告和原有负向变异检测。
+
 Software tests and the full build are recorded separately from native whole-page/DPI acceptance, real RTSS write/restore transactions, hook injection, target-game FPS, GPU/input compatibility and physical G-SYNC/VRR activation. Those runtime and hardware checks remain pending for this local test version.
