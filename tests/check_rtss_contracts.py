@@ -42,6 +42,11 @@ check(all(n.get("IsWrapEnabled") == "True" for n in rtss.iter() if n.tag.endswit
 idl = read("src/Magpie/ProfileViewModel.idl")
 header = read("src/Magpie/ProfileViewModel.h")
 vm = read("src/Magpie/ProfileViewModel.cpp")
+for name in ("RtssStatusText", "RtssSyncText", "RtssLaunchText", "AfterburnerLaunchText"):
+    getter = vm.split(f"hstring ProfileViewModel::{name}() const {{", 1)[1].split("\n}", 1)[0]
+    check("ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID)" in getter,
+          "native profile resource map: " + name)
+    check("ResourceLoader::GetForCurrentView()" not in getter, "no missing default resource map: " + name)
 members = set(re.findall(r"ViewModel\.(\w+)", ET.tostring(rtss, encoding="unicode")))
 for member in members:
     check(re.search(r"\b" + member + r"\b", idl) is not None, "IDL: " + member)
