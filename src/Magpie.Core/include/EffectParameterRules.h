@@ -24,6 +24,11 @@ inline bool HasOpticalFlowSelection(std::string_view effect) noexcept {
 template<class GetValue>
 bool IsEffectParameterVisible(std::string_view effect, std::string_view parameter,
 	GetValue&& getValue) noexcept {
+	if (effect == "Color\\HDR_to_SDR" && parameter == "peakNits")
+		return getValue("mode", 0.f) == 0.f;
+	if (effect == "Color\\SDR_to_HDR" && parameter == "nativeWhiteNits")
+		return getValue("mode", 0.f) == 1.f ||
+			(getValue("mode", 0.f) == 0.f && getValue("__hdrHasPair", 0.f) == 0.f);
 	if (effect == "DLSSNR\\DLSSNR_AI_Filter" &&
 		(parameter == "residualChromaTemporalStrength" ||
 		 DLSSNRParameterPass(parameter) > DLSSNRPassCount(getValue))) return false;

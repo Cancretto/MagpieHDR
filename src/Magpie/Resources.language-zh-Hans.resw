@@ -1832,4 +1832,8 @@
   <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
     <value>启用效果时将自动选择可用显卡；该显卡恢复后会重新使用。</value>
   </data>
+  <data name="HdrParameter_InvalidInput" xml:space="preserve"><value>请输入所示范围内的数值；整数参数需要输入整数。</value></data>
+  <data name="HdrParameter_PreciseInputHelp" xml:space="preserve"><value>可输入精确数值；Shift 配合方向键或滚轮进行粗调。</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Label" xml:space="preserve"><value>SDR 白色亮度（尼特）</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Description" xml:space="preserve"><value>高值会提高整体画面亮度。默认 203，新输入范围为 80–4000 尼特。旧低亮度值保持到主动编辑。</value></data>
 </root>

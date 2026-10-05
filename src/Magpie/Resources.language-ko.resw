@@ -1093,4 +1093,8 @@
   <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
     <value>효과를 시작하면 사용 가능한 GPU를 자동으로 선택합니다. 선택한 GPU가 다시 사용 가능해지면 해당 GPU를 사용합니다.</value>
   </data>
+  <data name="HdrParameter_InvalidInput" xml:space="preserve"><value>Enter a number in the shown range; integer parameters require whole numbers.</value></data>
+  <data name="HdrParameter_PreciseInputHelp" xml:space="preserve"><value>Type an exact value; Shift + arrow or wheel uses the coarse step.</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Label" xml:space="preserve"><value>SDR white brightness (nits)</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Description" xml:space="preserve"><value>Higher values brighten the entire image. Default 203; new edits use 80–4000 nits. Existing dim values remain unchanged until edited.</value></data>
 </root>

@@ -760,4 +760,8 @@
   <data name="Profile_General_GraphicsCardUnavailable.Message" xml:space="preserve">
     <value>Ефекти автоматично використають доступну відеокарту. Вибрана карта знову використовуватиметься, коли стане доступною.</value>
   </data>
+  <data name="HdrParameter_InvalidInput" xml:space="preserve"><value>Enter a number in the shown range; integer parameters require whole numbers.</value></data>
+  <data name="HdrParameter_PreciseInputHelp" xml:space="preserve"><value>Type an exact value; Shift + arrow or wheel uses the coarse step.</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Label" xml:space="preserve"><value>SDR white brightness (nits)</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Description" xml:space="preserve"><value>Higher values brighten the entire image. Default 203; new edits use 80–4000 nits. Existing dim values remain unchanged until edited.</value></data>
 </root>

@@ -88,6 +88,38 @@ void ScalingModesPage::ParameterSlider_LostFocus(IInspectable const&, RoutedEven
 	_resetHeldSlider = {};
 }
 
+void ScalingModesPage::ParameterSlider_KeyDown(IInspectable const& sender, KeyRoutedEventArgs const& args) {
+	const auto parameter = sender.as<Slider>().DataContext().try_as<Magpie::ScalingModeParameter>();
+	if (!parameter) return;
+	const auto impl = get_self<ScalingModeParameter>(parameter);
+	if (!impl->IsPreciseInput()) return;
+	const auto key = args.Key();
+	using Windows::System::VirtualKey;
+	if (key != VirtualKey::Left && key != VirtualKey::Right && key != VirtualKey::Up && key != VirtualKey::Down) return;
+	impl->StepValue(key == VirtualKey::Right || key == VirtualKey::Up, (GetKeyState(VK_SHIFT) & 0x8000) != 0);
+	args.Handled(true);
+}
+
+void ScalingModesPage::ParameterValue_KeyDown(IInspectable const& sender, KeyRoutedEventArgs const& args) {
+	if (args.Key() != Windows::System::VirtualKey::Enter) return;
+	const auto input = sender.as<TextBox>();
+	if (const auto parameter = input.DataContext().try_as<Magpie::ScalingModeParameter>())
+		get_self<ScalingModeParameter>(parameter)->EditableValue(input.Text());
+	args.Handled(true);
+}
+
+void ScalingModesPage::ParameterSlider_WheelChanged(IInspectable const& sender, PointerRoutedEventArgs const& args) {
+	const auto slider = sender.as<Slider>();
+	const auto parameter = slider.DataContext().try_as<Magpie::ScalingModeParameter>();
+	if (!slider.IsEnabled() || !parameter) return;
+	const auto impl = get_self<ScalingModeParameter>(parameter);
+	if (!impl->IsPreciseInput()) return;
+	const auto delta = args.GetCurrentPoint(slider).Properties().MouseWheelDelta();
+	if (!delta) return;
+	impl->StepValue(delta > 0, (GetKeyState(VK_SHIFT) & 0x8000) != 0);
+	args.Handled(true);
+}
+
 void ScalingModesPage::ParameterSlider_DataContextChanged(
 	FrameworkElement const& sender, DataContextChangedEventArgs const&) {
 	_parameterResetGesture.Clear();
@@ -102,7 +134,7 @@ void ScalingModesPage::ParameterSlider_ValueChanged(
 	if (auto parameter = held.DataContext().try_as<Magpie::ScalingModeParameter>()) {
 		auto impl = get_self<ScalingModeParameter>(parameter);
 		impl->ResetToDefault();
-		if (held.Value() != impl->DefaultValue()) held.Value(impl->DefaultValue());
+		if (held.Value() != impl->SliderValue()) held.Value(impl->SliderValue());
 	}
 }
 
@@ -127,7 +159,7 @@ void ScalingModesPage::_ParameterSlider_Pressed(
 	_capturingResetPointer = false;
 	auto impl = get_self<ScalingModeParameter>(parameter);
 	impl->ResetToDefault();
-	slider.Value(impl->DefaultValue());
+	slider.Value(impl->SliderValue());
 	args.Handled(true);
 }
 

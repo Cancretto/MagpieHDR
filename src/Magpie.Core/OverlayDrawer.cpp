@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "HdrParameterPolicy.h"
 #include "OverlayDrawer.h"
 #include "CursorManager.h"
 #include "DeviceResources.h"
@@ -1318,6 +1319,8 @@ void OverlayDrawer::_InitEffectParameterValues() noexcept {
 			float value = parameter.constant.index() == 0
 				? std::get<0>(parameter.constant).defaultValue
 				: static_cast<float>(std::get<1>(parameter.constant).defaultValue);
+			if (description.name == "Color\\SDR_to_HDR" && parameter.name == "nativeWhiteNits")
+				value = NativeHdrWhiteValue(options.effects[effectIdx].parameters, std::string("nativeWhiteNits"), std::string("whiteNits"), std::string("exposure"));
 			if (auto it = options.effects[effectIdx].parameters.find(parameter.name);
 				it != options.effects[effectIdx].parameters.end()) {
 				value = it->second;
@@ -1364,9 +1367,11 @@ void OverlayDrawer::_SyncEffectParameterValues() noexcept {
 		const auto& applied = _parameterSessionSnapshot.applied[i];
 		for (size_t j = 0; j < descriptions[i]->params.size(); ++j) {
 			const auto& parameter = descriptions[i]->params[j];
-			const float fallback = parameter.constant.index() == 0 ?
+			float fallback = parameter.constant.index() == 0 ?
 				std::get<0>(parameter.constant).defaultValue : float(std::get<1>(parameter.constant).defaultValue);
 			auto value = [&](const EffectOption& option) {
+				if (option.name == "Color\\SDR_to_HDR" && parameter.name == "nativeWhiteNits")
+					return NormalizeEffectParameterValue(parameter, NativeHdrWhiteValue(option.parameters, std::string("nativeWhiteNits"), std::string("whiteNits"), std::string("exposure")));
 				const auto it = option.parameters.find(parameter.name);
 				return NormalizeEffectParameterValue(parameter, it == option.parameters.end() ? fallback : it->second);
 			};
@@ -1454,9 +1459,19 @@ static bool DrawEffectParameterSlider(const char* label, const EffectParameterDe
 		return ImGui::SliderFloat(label, &value, minimum, maximum, format.c_str(),
 			ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
 	}
-	const bool changed = ImGui::SliderInt(label, &currentTick, 0, maximumTick,
+	const float previous = value;
+	bool changed = ImGui::SliderInt(label, &currentTick, 0, maximumTick,
 		displayValue, ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoInput);
 	if (changed) value = GetEffectParameterValueFromTick(parameter, currentTick, maximumTick);
+	if (parameter.inputStep > 0) {
+		const bool up = ImGui::IsItemFocused() && (ImGui::IsKeyPressed(ImGuiKey_RightArrow) || ImGui::IsKeyPressed(ImGuiKey_UpArrow));
+		const bool down = ImGui::IsItemFocused() && (ImGui::IsKeyPressed(ImGuiKey_LeftArrow) || ImGui::IsKeyPressed(ImGuiKey_DownArrow));
+		const float wheel = ImGui::IsItemHovered() ? ImGui::GetIO().MouseWheel : 0;
+		if (up || down || wheel != 0) {
+			value = StepEffectParameter(parameter, previous, up || wheel > 0, ImGui::GetIO().KeyShift);
+			changed = value != previous;
+		}
+	}
 	return changed;
 }
 
@@ -1662,6 +1677,11 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	ImGui::PopID();
 	auto getDraftValue = [&](size_t effectIdx, const EffectDesc& description,
 		std::string_view name, float fallback) noexcept {
+		if (name == "__hdrHasPair") {
+			const auto plan = BuildHdrComponentPlan(_BuildDraftEffectOptions());
+			return plan.error == HdrComponentError::None && effectIdx < plan.stages.size() &&
+				plan.stages[effectIdx].pairIndex != size_t(-1) ? 1.f : 0.f;
+		}
 		for (size_t i = 0; i < description.params.size(); ++i) {
 			if (description.params[i].name == name &&
 				effectIdx < _draftEffectParameterValues.size() &&
@@ -1868,7 +1888,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 
 			if (changed && parameterValid && parameterEnabled) {
 				parameterEdited = true;
-				value = NormalizeEffectParameterValue(parameter, value);
+				value = NormalizeEffectParameterInput(parameter, value);
 				if (isLive) liveUpdates.emplace_back(static_cast<uint32_t>(effectIdx),
 					static_cast<uint32_t>(parameterIdx), value);
 				needRedraw = true;

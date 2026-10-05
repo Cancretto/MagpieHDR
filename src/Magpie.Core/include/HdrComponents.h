@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <string>
@@ -93,6 +94,18 @@ HdrComponentPlan BuildHdrComponentPlan(const Effects& effects) {
 				fail(HdrComponentError::MissingPair); return plan;
 			}
 			if (stage.mode != 1) stage.pairIndex = pair;
+			// Absence of the merged field deliberately keeps both the pixel and
+			// white-point metadata contracts of legacy exposure configurations.
+			// Low legacy values remain representable without an implicit clamp.
+			if (stage.pairIndex == static_cast<size_t>(-1) && effect.parameters.contains("nativeWhiteNits")) {
+				stage.whiteNits = read("nativeWhiteNits", 203, 8, 4000);
+				stage.exposure = 1;
+				// SDR [0,1] white is also the predicted maximum of this proportional
+				// mapping. Keep FG/presentation metadata aligned with the new signal,
+				// rather than carrying the unrelated legacy 1000-nit pair peak.
+				stage.peakNits = std::max(80.f, stage.whiteNits);
+				if (plan.error != HdrComponentError::None) return plan;
+			}
 			pair = static_cast<size_t>(-1);
 			hdr = true;
 		} else if (stage.kind == HdrComponentKind::RtxVideoHdr) {
