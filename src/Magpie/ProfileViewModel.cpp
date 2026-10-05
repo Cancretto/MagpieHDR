@@ -794,7 +794,7 @@ bool ProfileViewModel::IsRtssSyncAvailable() const noexcept { return _data->fram
 bool ProfileViewModel::ShowRtssGlobalNotice() const noexcept { return _data->rtss.scope == RtssScope::Global; }
 
 hstring ProfileViewModel::RtssStatusText() const {
-	const auto loader = ResourceLoader::GetForCurrentView();
+	const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
 	const auto s = _RtssStatus();
 	const wchar_t* key = L"Rtss_Status_Checking";
 	switch (s.state) {
@@ -833,7 +833,7 @@ hstring ProfileViewModel::RtssStatusText() const {
 }
 
 hstring ProfileViewModel::RtssSyncText() const {
-	const auto loader = ResourceLoader::GetForCurrentView();
+	const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
 	if (!IsRtssSyncAvailable()) return loader.GetString(L"Rtss_SyncUnavailable");
 	if (_data->rtss.rateMode == RtssRateMode::Custom) return loader.GetString(L"Rtss_CustomAtStart");
 	const auto s = _RtssStatus();
@@ -853,12 +853,12 @@ bool ProfileViewModel::CanLaunchAfterburner() const {
 }
 hstring ProfileViewModel::RtssLaunchText() const {
 	const auto s = _RtssStatus();
-	return ResourceLoader::GetForCurrentView().GetString(s.rtss.executable.empty() ? L"Rtss_LaunchRtssMissing" :
+	return ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID).GetString(s.rtss.executable.empty() ? L"Rtss_LaunchRtssMissing" :
 		s.rtss.running ? L"Rtss_LaunchRtssRunning" : L"Rtss_LaunchRtss");
 }
 hstring ProfileViewModel::AfterburnerLaunchText() const {
 	const auto s = _RtssStatus();
-	return ResourceLoader::GetForCurrentView().GetString(s.afterburner.executable.empty() ? L"Rtss_LaunchAfterburnerMissing" :
+	return ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID).GetString(s.afterburner.executable.empty() ? L"Rtss_LaunchAfterburnerMissing" :
 		s.afterburner.running ? L"Rtss_LaunchAfterburnerRunning" : L"Rtss_LaunchAfterburner");
 }
 void ProfileViewModel::RefreshRtss() { RtssService::Get().Recheck(); _LoadRtssPreview(); }
