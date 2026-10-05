@@ -319,13 +319,13 @@ SDR 显示映射下不显示兼容编码峰值。恢复配对下不显示另一�
 
 检查起点 HEAD 为 `13adddb6816ecf25cc80b043f0b2f9e0351cb297`，工作区另有未提交改动；后续执行须重新核对。此轮已通过既有 HDR CPU／机械回归、Bicubic SDR／HDR 缩放与缓存、组件边界、生产 shader WARP 和组件计划检查；桥接 ABI 检查覆盖无效／空参数，没有进行 NGX 推理。
 
-任务证据位于仓库外的工作区 `evidence/hdr-audit-20261005`，以下链接依赖当前工作区布局：
+任务证据位于仓库外的工作区 `evidence/hdr-audit-20261005`，以下链接指向原始工作区的绝对路径，可从本功能工作目录打开：
 
-- [生产 shader WARP 结果](../../../../evidence/hdr-audit-20261005/audit-warp-results.txt)：9 条 FP16／RGBA8 组件路线、54 个渐变／往返样例，以及量化、截断、广色域和无效峰值探针。
-- [RTX 清理失败探针](../../../../evidence/hdr-audit-20261005/audit-rtx-cleanup-results.txt)：实际销毁代码配合模拟 SDK 失败返回。
-- [生产参数取整探针](../../../../evidence/hdr-audit-20261005/step-grid-results.txt)：203／1000／1500 在不同 `STEP` 下的变化。
-- [探针准备脚本](../../../../evidence/hdr-audit-20261005/prepare_audit_probes.py)与[参数探针源码](../../../../evidence/hdr-audit-20261005/step-grid-probe.cpp)。
-- [链路可视化预览](../../../../evidence/hdr-audit-20261005/visual-preview.html)与[浏览器验证结果](../../../../evidence/hdr-audit-20261005/visual-check.json)：四种路线、样本数值和窄屏布局；用于解释机制，不模拟实际 HDR 显示器或 RTX 推理。
+- [生产 shader WARP 结果](<C:/Users/81443/Documents/Magpie enhance/evidence/hdr-audit-20261005/audit-warp-results.txt>)：9 条 FP16／RGBA8 组件路线、54 个渐变／往返样例，以及量化、截断、广色域和无效峰值探针。
+- [RTX 清理失败探针](<C:/Users/81443/Documents/Magpie enhance/evidence/hdr-audit-20261005/audit-rtx-cleanup-results.txt>)：实际销毁代码配合模拟 SDK 失败返回。
+- [生产参数取整探针](<C:/Users/81443/Documents/Magpie enhance/evidence/hdr-audit-20261005/step-grid-results.txt>)：203／1000／1500 在不同 `STEP` 下的变化。
+- [探针准备脚本](<C:/Users/81443/Documents/Magpie enhance/evidence/hdr-audit-20261005/prepare_audit_probes.py>)与[参数探针源码](<C:/Users/81443/Documents/Magpie enhance/evidence/hdr-audit-20261005/step-grid-probe.cpp>)。
+- [链路可视化预览](<C:/Users/81443/Documents/Magpie enhance/evidence/hdr-audit-20261005/visual-preview.html>)与[浏览器验证结果](<C:/Users/81443/Documents/Magpie enhance/evidence/hdr-audit-20261005/visual-check.json>)：四种路线、样本数值和窄屏布局；用于解释机制，不模拟实际 HDR 显示器或 RTX 推理。
 
 未完成：真实 Magpie HDR 捕获／输出、原生参数 UI、真实 RTX Create／Evaluate／Destroy、显示器观感与性能、游戏／视频与 FG 验收。安装包内三个标记 shader 与源码哈希相同，只能证明对应文件相同，不能证明 C++ 二进制等价。
 
@@ -345,7 +345,7 @@ SDR 显示映射下不显示兼容编码峰值。恢复配对下不显示另一�
 
 ### 10.3 调研依据与建议边界
 
-- 当前本地 [RTX Video SDK 1.1 编程指南](../../../../dependencies/RTX-Video-SDK-1.1.0/NVIDIA_RTX_Video_SDK_Programming_Guide.txt)规定 MaxLuminance 400–2000、默认 1000，及现有三个画面参数范围；RTX 上限按此合同保留。
+- 当前本地 [RTX Video SDK 1.1 编程指南](<C:/Users/81443/Documents/Magpie enhance/dependencies/RTX-Video-SDK-1.1.0/NVIDIA_RTX_Video_SDK_Programming_Guide.txt>)规定 MaxLuminance 400–2000、默认 1000，及现有三个画面参数范围；RTX 上限按此合同保留。
 - [Microsoft：HDR 与高级颜色](https://learn.microsoft.com/en-us/windows/win32/direct3darticles/high-dynamic-range)用于区分 scRGB 信号、参考白与显示器能力。203 默认值保留当前产品设置。
 - [Microsoft：Slider 设计](https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/slider)支持滑块配合精确数值输入的设计；本文具体步进是针对本产品的判断，并非文档规定值。
 - [NVIDIA RTX Video SDK](https://developer.nvidia.com/rtx-video-sdk)说明 AI 转换方法；[Maxine TrueHDR 参数文档](https://docs.nvidia.com/maxine/vfx/latest/Filters/TrueHDR.html)仅作参数语义对照，不能用另一套 API 的默认值或输出格式替换当前 NGX 集成。
