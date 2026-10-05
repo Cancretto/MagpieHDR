@@ -10,6 +10,7 @@ struct EffectItem {
 	std::pair<float, float> scale = { 1.0f,1.0f };
 	bool isRecoveryInvalid = false;
 	std::string recoveryOriginal;
+	HdrManagedRole hdrManagedRole = HdrManagedRole::None;
 
 	bool HasScale() const noexcept {
 		return scalingType != ScalingType::Normal ||
@@ -22,6 +23,10 @@ struct EffectItem {
 struct ScalingMode {
 	std::wstring name;
 	std::vector<EffectItem> effects;
+	HdrGroupSettings hdr;
+	bool hdrInvalid = false;
+	std::string hdrRecoveryOriginal;
+	uint64_t hdrRevision = 1;
 };
 
 }

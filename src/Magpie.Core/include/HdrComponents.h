@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <optional>
 
 namespace Magpie {
 
@@ -45,9 +46,14 @@ struct HdrComponentPlan {
 // Pure preflight: no SDK calls, windows, graphics devices or file access.
 // The first explicit converter determines the requested capture domain.
 template<class Effects>
-HdrComponentPlan BuildHdrComponentPlan(const Effects& effects) {
+HdrComponentPlan BuildHdrComponentPlan(const Effects& effects, std::optional<bool> captureIntent = std::nullopt) {
 	HdrComponentPlan plan;
+	if (captureIntent) {
+		plan.enabled = true;
+		plan.captureHdr = *captureIntent;
+	}
 	for (const auto& effect : effects) {
+		if (captureIntent) break;
 		const auto kind = ClassifyHdrComponent(effect.name);
 		if (kind == HdrComponentKind::None) continue;
 		plan.enabled = true;

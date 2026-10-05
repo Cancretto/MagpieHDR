@@ -2082,6 +2082,10 @@ void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 				info.restartReason = EffectParameterRestartReason::None;
 			}
 			// The running backend owns live support and history reset semantics.
+			if (option.hdrManagedRole!=HdrManagedRole::None && (parameter.name=="mode" || option.hdrManagedRole==HdrManagedRole::PairRestore)) {
+				info.applyMode=EffectParameterApplyMode::Unavailable;
+				info.restartReason=EffectParameterRestartReason::None;
+			}
 			// DLSSNR observes inputRevision without tearing down the effect group.
 			infos.push_back(std::move(info));
 		}
@@ -2269,7 +2273,7 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 
 	if (anySucceeded) {
 		if (_runtimeHdrComponents.enabled) {
-			_runtimeHdrComponents = BuildHdrComponentPlan(_runtimeEffectOptions);
+			_runtimeHdrComponents = BuildHdrComponentPlan(_runtimeEffectOptions, ScalingWindow::Get().Options().hdrCaptureIntent);
 			_UpdateHdrEffectBoundaryContexts();
 		}
 		ScalingWindow::Get().Options().parameterSession->Applied(_runtimeEffectOptions);

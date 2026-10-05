@@ -76,7 +76,7 @@ bool ScalingModeEffectItem::CanScale() const noexcept {
 		return false;
 	}
 
-	return _effectInfo && _effectInfo->CanScale();
+	return _effectInfo && _effectInfo->CanScale() && !ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdrInvalid && _Data().hdrManagedRole==HdrManagedRole::None;
 }
 
 bool ScalingModeEffectItem::HasParameters() const noexcept {
@@ -84,7 +84,7 @@ bool ScalingModeEffectItem::HasParameters() const noexcept {
 		return false;
 	}
 
-	return _effectInfo && !_effectInfo->params.empty();
+	return _effectInfo && !_effectInfo->params.empty() && !ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdrInvalid && _Data().hdrManagedRole==HdrManagedRole::None;
 }
 
 hstring ScalingModeEffectItem::IssueDescription() const noexcept {
@@ -148,7 +148,7 @@ static SIZE GetMonitorSize() noexcept {
 }
 
 void ScalingModeEffectItem::ScalingType(int value) {
-	if (_IsRemoved() || value < 0) {
+	if (!CanScale() || value < 0) {
 		return;
 	}
 
@@ -175,7 +175,7 @@ void ScalingModeEffectItem::ScalingType(int value) {
 	RaisePropertyChanged(L"IsShowScaleFactors");
 	RaisePropertyChanged(L"IsShowScalingPixels");
 
-	AppSettings::Get().SaveAsync();
+	_SaveScaleChange();
 }
 
 bool ScalingModeEffectItem::IsShowScaleFactors() const noexcept {
@@ -204,11 +204,12 @@ double ScalingModeEffectItem::ScaleFactorX() const noexcept {
 }
 
 void ScalingModeEffectItem::ScaleFactorX(double value) {
-	if (_IsRemoved()) {
+	if (!CanScale()) {
 		return;
 	}
 
 	EffectItem& data = _Data();
+	const auto previous=data.scale;
 	if (data.scalingType != ::Magpie::ScalingType::Normal && data.scalingType != ::Magpie::ScalingType::Fit) {
 		return;
 	}
@@ -219,7 +220,7 @@ void ScalingModeEffectItem::ScaleFactorX(double value) {
 	}
 	
 	RaisePropertyChanged(L"ScaleFactorX");
-	AppSettings::Get().SaveAsync();
+	if (data.scale!=previous) _SaveScaleChange();
 }
 
 double ScalingModeEffectItem::ScaleFactorY() const noexcept {
@@ -231,11 +232,12 @@ double ScalingModeEffectItem::ScaleFactorY() const noexcept {
 }
 
 void ScalingModeEffectItem::ScaleFactorY(double value) {
-	if (_IsRemoved()) {
+	if (!CanScale()) {
 		return;
 	}
 
 	EffectItem& data = _Data();
+	const auto previous=data.scale;
 	if (data.scalingType != ::Magpie::ScalingType::Normal && data.scalingType != ::Magpie::ScalingType::Fit) {
 		return;
 	}
@@ -245,7 +247,7 @@ void ScalingModeEffectItem::ScaleFactorY(double value) {
 	}
 
 	RaisePropertyChanged(L"ScaleFactorY");
-	AppSettings::Get().SaveAsync();
+	if (data.scale!=previous) _SaveScaleChange();
 }
 
 double ScalingModeEffectItem::ScalingPixelsX() const noexcept {
@@ -257,11 +259,12 @@ double ScalingModeEffectItem::ScalingPixelsX() const noexcept {
 }
 
 void ScalingModeEffectItem::ScalingPixelsX(double value) {
-	if (_IsRemoved()) {
+	if (!CanScale()) {
 		return;
 	}
 
 	EffectItem& data = _Data();
+	const auto previous=data.scale;
 	if (data.scalingType != ::Magpie::ScalingType::Absolute) {
 		return;
 	}
@@ -271,7 +274,7 @@ void ScalingModeEffectItem::ScalingPixelsX(double value) {
 	}
 
 	RaisePropertyChanged(L"ScalingPixelsX");
-	AppSettings::Get().SaveAsync();
+	if (data.scale!=previous) _SaveScaleChange();
 }
 
 double ScalingModeEffectItem::ScalingPixelsY() const noexcept {
@@ -283,11 +286,12 @@ double ScalingModeEffectItem::ScalingPixelsY() const noexcept {
 }
 
 void ScalingModeEffectItem::ScalingPixelsY(double value) {
-	if (_IsRemoved()) {
+	if (!CanScale()) {
 		return;
 	}
 
 	EffectItem& data = _Data();
+	const auto previous=data.scale;
 	if (data.scalingType != ::Magpie::ScalingType::Absolute) {
 		return;
 	}
@@ -297,17 +301,31 @@ void ScalingModeEffectItem::ScalingPixelsY(double value) {
 	}
 
 	RaisePropertyChanged(L"ScalingPixelsY");
-	AppSettings::Get().SaveAsync();
+	if (data.scale!=previous) _SaveScaleChange();
 }
 
 void ScalingModeEffectItem::Remove() {
-	if (_IsRemoved()) {
+	if (!CanRemove()) {
 		return;
 	}
 
-	Removed.Invoke(_effectIdx);
+	auto lifetime=get_strong();
+	Removed.Invoke(_effectIdx); // The parent detaches only after a successful transaction.
+}
 
-	_effectIdx = std::numeric_limits<uint32_t>::max();
+bool ScalingModeEffectItem::CanRemove() const noexcept {
+	return !_IsRemoved() && !ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdrInvalid && _Data().hdrManagedRole==HdrManagedRole::None;
+}
+
+bool ScalingModeEffectItem::IsVisible() const noexcept {
+	return !_IsRemoved() && _Data().hdrManagedRole==HdrManagedRole::None;
+}
+
+void ScalingModeEffectItem::_SaveScaleChange() {
+	const uint32_t mode=_scalingModeIdx;
+	if (!_IsRemoved() && ScalingModesService::Get().GetScalingMode(mode).hdr.managed)
+		ScalingModesService::Get().HdrGroupStructureChanged.Invoke(mode);
+	AppSettings::Get().SaveAsync();
 }
 
 bool ScalingModeEffectItem::CanDrag() const noexcept {
@@ -316,7 +334,9 @@ bool ScalingModeEffectItem::CanDrag() const noexcept {
 	}
 
 	const ScalingMode& mode = ScalingModesService::Get().GetScalingMode(_scalingModeIdx);
-	return mode.effects.size() > 1;
+	return !mode.hdrInvalid && _Data().hdrManagedRole==HdrManagedRole::None && std::ranges::count_if(mode.effects,[](const auto& effect) {
+		return effect.hdrManagedRole==HdrManagedRole::None;
+	}) > 1;
 }
 
 void ScalingModeEffectItem::RefreshDragState() {

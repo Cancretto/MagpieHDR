@@ -34,7 +34,7 @@ $cppwinrt = Join-Path $CachedRepoDirectory 'packages/Microsoft.Windows.CppWinRT.
     -reference (Join-Path $CachedRepoDirectory 'packages/Microsoft.Web.WebView2.1.0.4078.44/lib/Microsoft.Web.WebView2.Core.winmd') `
     -output $generated -component -pch pch.h -optimize
 if ($LASTEXITCODE) { throw 'Updated projection validation failed' }
-foreach ($class in @('EffectParametersViewModel','EffectParameterGroupViewModel','ScalingModeParameter','ProfileViewModel')) {
+foreach ($class in @('EffectParametersViewModel','EffectParameterGroupViewModel','ScalingModeParameter','ProfileViewModel','ScalingModeItem','ScalingModeEffectItem')) {
     foreach ($suffix in @('.g.h','.g.cpp')) {
         $path = Join-Path $generated "Magpie/$class$suffix"
         if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination $generated -Force }
@@ -60,8 +60,8 @@ foreach ($project in @('Magpie','Magpie.Core','RtxVideoBridge')) {
         $defines += "/D$define"
     }
     $files = switch ($project) {
-        'Magpie' { @('EffectParametersViewModel.cpp','ScalingModesPage.cpp') }
-        'Magpie.Core' { @('TextureHelper.cpp','RTXVideoHdr.cpp','EffectCompiler.cpp','EffectCacheManager.cpp','OverlayDrawer.cpp','Renderer.cpp') }
+        'Magpie' { @('EffectParametersViewModel.cpp','ScalingModesPage.cpp','ScalingMode.cpp','ScalingModeItem.cpp','ScalingModeEffectItem.cpp','ScalingModesService.cpp','ScalingService.cpp') }
+        'Magpie.Core' { @('TextureHelper.cpp','RTXVideoHdr.cpp','EffectCompiler.cpp','EffectCacheManager.cpp','OverlayDrawer.cpp','Renderer.cpp','ScalingWindow.cpp','ScalingRuntime.cpp') }
         'RtxVideoBridge' { @('RtxVideoBridge.cpp') }
     }
     foreach ($file in $files) {

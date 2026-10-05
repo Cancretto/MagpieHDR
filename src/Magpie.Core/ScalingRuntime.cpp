@@ -179,20 +179,21 @@ void ScalingRuntime::UpdateFrameRefreshSettings(FrameRefreshSettings settings) {
 }
 
 void ScalingRuntime::UpdateEffectParameterFromSettings(uint32_t modeIdx, std::wstring modeName,
-	uint32_t effectIdx, EffectOption effect, std::string parameter, float value) {
+	uint32_t effectIdx, EffectOption effect, std::string parameter, float value,uint64_t hdrRevision) {
 	const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);
 	_Dispatcher().TryEnqueue([this, generation, modeIdx, modeName = std::move(modeName),
-		effectIdx, effect = std::move(effect), parameter = std::move(parameter), value]() {
+		effectIdx, effect = std::move(effect), parameter = std::move(parameter), value,hdrRevision]() {
 		if (_commandGeneration.load(std::memory_order_acquire) != generation) return;
 		auto& window = ScalingWindow::Get();
 		const bool waiting = window.IsWaitingForParameterRestart();
 		if (State() != ScalingState::Scaling && !(State() == ScalingState::Starting && waiting)) return;
 		const auto& options = window.Options();
 		if ((!window && !waiting) || options.scalingModeIdx != modeIdx || options.scalingModeName != modeName ||
+			options.hdrGroupRevision!=hdrRevision ||
 			effectIdx >= options.effects.size()) return;
 		const auto& active = options.effects[effectIdx];
 		if (active.name != effect.name || active.scale != effect.scale ||
-			active.scalingType != effect.scalingType) return;
+			active.scalingType != effect.scalingType || active.hdrManagedRole!=effect.hdrManagedRole) return;
 		if (waiting) {
 			window.UpdateWaitingEffectParameter(effectIdx, parameter, value);
 			return;
@@ -239,6 +240,30 @@ bool ScalingRuntime::RestartWithEffectParameters(
 			return;
 		}
 		window.RestartWithEffectParameters(std::move(effects), frameRefresh);
+	});
+}
+
+void ScalingRuntime::UpdateHdrGroupFromSettings(uint32_t modeIdx, std::wstring modeName,
+	uint64_t revision, std::vector<EffectOption> effects, std::optional<bool> captureIntent) {
+	const uint64_t generation=_commandGeneration.load(std::memory_order_acquire);
+	const uint64_t update=_hdrGroupGeneration.fetch_add(1,std::memory_order_acq_rel)+1;
+	_Dispatcher().TryEnqueue([this,generation,update,modeIdx,modeName=std::move(modeName),
+		revision,effects=std::move(effects),captureIntent]() mutable {
+		if (_commandGeneration.load(std::memory_order_acquire)!=generation ||
+			_hdrGroupGeneration.load(std::memory_order_acquire)!=update) return;
+		auto& window=ScalingWindow::Get();
+		const bool waiting=window.IsWaitingForParameterRestart();
+		if (State()!=ScalingState::Scaling && !(State()==ScalingState::Starting && waiting)) return;
+		const auto& options=window.Options();
+		if ((!window && !waiting) || options.scalingModeIdx!=modeIdx || options.scalingModeName!=modeName || revision<=options.hdrGroupRevision) return;
+		// Runs on the scaling dispatcher after rendering callbacks have returned.
+		// Stop/task-switch generation changes cancel this request; rapid method
+		// changes keep only the newest complete group plan.
+		window.RestartWithHdrGroup(std::move(effects),captureIntent,revision);
+		if (_commandGeneration.load(std::memory_order_acquire)!=generation) {
+			if (window) window.Stop(); return;
+		}
+		_State(window ? ScalingState::Scaling : window.IsSrcRepositioning() || window.IsWaitingForParameterRestart() ? ScalingState::Starting : ScalingState::Idle);
 	});
 }
 

@@ -7,6 +7,10 @@
       xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
       mc:Ignorable="d">
 	<Page.Resources>
+		<Style x:Key="HdrGroupFlyoutPresenterStyle" TargetType="FlyoutPresenter" BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
+			<Setter Property="MaxHeight" Value="10000" />
+			<Setter Property="MaxWidth" Value="10000" />
+		</Style>
 		<Style x:Key="ScalingModesHeaderButtonStyle" TargetType="Button"
 		       BasedOn="{StaticResource DefaultButtonStyle}">
 			<Setter Property="FontSize" Value="12" />
@@ -504,6 +508,7 @@
 									<ListView.ItemTemplate>
 										<DataTemplate x:DataType="local:ScalingModeEffectItem">
 											<local:SettingsCard Header="{x:Bind Name}"
+											                    Visibility="{x:Bind IsVisible, Mode=OneWay}"
 											                    Description="{x:Bind IssueDescription}"
 											                    Loaded="EffectSettingsCard_Loaded"
 											                    Style="{StaticResource DefaultSettingsExpanderItemStyle}">
@@ -638,6 +643,7 @@
 													</Button.Flyout>
 													</Button>
 													<Button x:Uid="ScalingModes_Delete"
+													        IsEnabled="{x:Bind CanRemove, Mode=OneWay}"
 													        Click="{x:Bind Remove}">
 														<Button.Content>
 															<FontIcon Glyph="&#xE74D;" />
@@ -677,6 +683,56 @@
 									              IsClosable="False"
 									              IsOpen="{x:Bind HasUnkownEffects, Mode=OneWay}"
 									              Severity="Warning" />
+									<muxc:InfoBar IsOpen="{x:Bind HasHdrProblem, Mode=OneWay}"
+									              Message="{x:Bind HdrProblem, Mode=OneWay}" IsClosable="False" Severity="Warning" />
+									<local:SettingsCard x:Uid="HdrGroup_InputCard"
+									                    Description="{x:Bind HdrSummary, Mode=OneWay}"
+									                    IsEnabled="{x:Bind CanEditHdr, Mode=OneWay}"
+									                    Style="{StaticResource DefaultSettingsExpanderItemStyle}">
+										<local:SimpleStackPanel Orientation="Horizontal" Spacing="8">
+											<ComboBox MinWidth="200" MaxWidth="300" DropDownOpened="ComboBox_DropDownOpened"
+											          ItemsSource="{x:Bind HdrInputChoices, Mode=OneTime}"
+											          SelectedIndex="{x:Bind HdrInputIndex, Mode=TwoWay}" />
+											<Button x:Uid="HdrGroup_InputParametersButton" Visibility="{x:Bind HasHdrInputParameters, Mode=OneWay}">
+												<Button.Content><FontIcon Glyph="&#xE9E9;" /></Button.Content>
+												<Button.Flyout>
+													<Flyout Opening="EffectParametersFlyout_Opening" ShouldConstrainToRootBounds="False" FlyoutPresenterStyle="{StaticResource HdrGroupFlyoutPresenterStyle}">
+														<ContentControl Content="{x:Bind HdrInputParameters, Mode=OneWay}"
+														                ContentTemplate="{StaticResource EffectParametersFlyout}" IsTabStop="False" />
+													</Flyout>
+												</Button.Flyout>
+											</Button>
+										</local:SimpleStackPanel>
+									</local:SettingsCard>
+									<local:SettingsCard x:Uid="HdrGroup_OutputCard"
+									                    Description="{x:Bind HdrOutputDescription, Mode=OneWay}"
+									                    IsEnabled="{x:Bind CanEditHdr, Mode=OneWay}"
+									                    Style="{StaticResource DefaultSettingsExpanderItemStyle}">
+										<local:SimpleStackPanel Orientation="Horizontal" Spacing="8">
+											<ComboBox MinWidth="200" MaxWidth="300" DropDownOpened="ComboBox_DropDownOpened"
+											          ItemsSource="{x:Bind HdrOutputChoices, Mode=OneTime}"
+											          IsEnabled="{x:Bind IsHdrManaged, Mode=OneWay}"
+											          SelectedIndex="{x:Bind HdrOutputIndex, Mode=TwoWay}" />
+											<Button x:Uid="HdrGroup_OutputParametersButton" Visibility="{x:Bind HasHdrOutputParameters, Mode=OneWay}">
+												<Button.Content><FontIcon Glyph="&#xE9E9;" /></Button.Content>
+												<Button.Flyout>
+													<Flyout Opening="EffectParametersFlyout_Opening" ShouldConstrainToRootBounds="False" FlyoutPresenterStyle="{StaticResource HdrGroupFlyoutPresenterStyle}">
+														<ContentControl Content="{x:Bind HdrOutputParameters, Mode=OneWay}"
+														                ContentTemplate="{StaticResource EffectParametersFlyout}" IsTabStop="False" />
+													</Flyout>
+												</Button.Flyout>
+											</Button>
+										</local:SimpleStackPanel>
+									</local:SettingsCard>
+									<local:SettingsCard x:Uid="HdrGroup_ManualCaptureCard" Visibility="{x:Bind IsHdrManual, Mode=OneWay}"
+									                    IsEnabled="{x:Bind CanEditHdr, Mode=OneWay}" Style="{StaticResource DefaultSettingsExpanderItemStyle}">
+										<ComboBox MinWidth="200" MaxWidth="300" DropDownOpened="ComboBox_DropDownOpened"
+										          ItemsSource="{x:Bind HdrManualCaptureChoices, Mode=OneTime}"
+										          SelectedIndex="{x:Bind HdrManualCaptureIndex, Mode=TwoWay}" />
+									</local:SettingsCard>
+									<TextBlock x:Uid="HdrGroup_ApplyTiming" Margin="48,8,16,8" TextWrapping="Wrap"
+									           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+									           Visibility="{x:Bind IsHdrManaged, Mode=OneWay}" />
 								</local:SimpleStackPanel>
 							</local:SettingsExpander.ItemsHeader>
 							<local:SettingsExpander.ItemsFooter>

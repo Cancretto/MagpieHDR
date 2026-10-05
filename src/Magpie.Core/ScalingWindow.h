@@ -120,6 +120,8 @@ public:
 	) noexcept;
 
 	void CleanAfterSrcRepositioned() noexcept;
+	void RestartWithHdrGroup(std::vector<EffectOption>&& effects,
+		std::optional<bool> captureIntent,uint64_t revision) noexcept;
 	bool QueueEffectParameterRestart(uint32_t effectIdx, uint32_t parameterIdx, float value,
 		bool waitForOverlaySave) noexcept;
 	void ProcessPendingParameterRestart() noexcept;
@@ -252,6 +254,12 @@ private:
 	std::optional<OverlaySessionState> _repositionOverlayState;
 	std::optional<bool> _pendingWindowedMode;
 	std::optional<std::pair<std::vector<EffectOption>, FrameRefreshSettings>> _pendingManualParameterRestart;
+	struct HdrGroupRestart {
+		std::vector<EffectOption> effects;
+		std::optional<bool> captureIntent;
+		uint64_t revision;
+	};
+	std::optional<HdrGroupRestart> _pendingHdrGroupRestart;
 	std::unique_ptr<class Renderer> _renderer;
 	std::unique_ptr<class CursorManager> _cursorManager;
 

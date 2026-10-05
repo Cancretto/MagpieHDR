@@ -1,4 +1,4 @@
-param([string]$OutputDirectory)
+param([string]$OutputDirectory, [string]$RapidJsonIncludeDirectory)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 if (!$OutputDirectory) { $OutputDirectory = Join-Path $repo 'obj/tests/hdr-compatibility-update' }
@@ -10,13 +10,22 @@ if (!(Get-Command cl.exe -ErrorAction SilentlyContinue)) {
 }
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $OutputDirectory = (Resolve-Path -LiteralPath $OutputDirectory).Path
+if (!$RapidJsonIncludeDirectory) {
+    $header = & rg --files --no-ignore (Join-Path $env:USERPROFILE '.conan2/p') -g document.h | Where-Object { $_ -match '[\\/]rapidjson[\\/]document.h$' } | Select-Object -First 1
+    if (!$header) { throw 'Provide -RapidJsonIncludeDirectory for the existing RapidJSON dependency.' }
+    $RapidJsonIncludeDirectory = Split-Path (Split-Path $header -Parent) -Parent
+}
 & python (Join-Path $PSScriptRoot 'prepare_hdr_cleanup_tests.py') $OutputDirectory
 if ($LASTEXITCODE) { throw 'Cleanup extraction failed' }
 & python (Join-Path $PSScriptRoot 'prepare_hdr_export_tests.py') $OutputDirectory
 if ($LASTEXITCODE) { throw 'Export extraction failed' }
-$common = @('/nologo', '/std:c++20', '/EHsc', '/utf-8', '/MT', '/DNOMINMAX', "/I$repo/src/Magpie.Core/include", "/I$repo/src/Magpie.Core", "/I$repo/src/Shared")
-foreach ($test in @('HdrCompatibilityUpdateTests', 'HdrComponentsTests', 'HdrCleanupTests')) {
-    $source = if ($test -eq 'HdrCleanupTests') { Join-Path $OutputDirectory "$test.cpp" } else { Join-Path $PSScriptRoot "$test.cpp" }
+& python (Join-Path $PSScriptRoot 'prepare_hdr_group_persistence_tests.py') $OutputDirectory
+if ($LASTEXITCODE) { throw 'Group persistence extraction failed' }
+& python (Join-Path $PSScriptRoot 'prepare_hdr_group_lifecycle_tests.py') $OutputDirectory
+if ($LASTEXITCODE) { throw 'Group lifecycle extraction failed' }
+$common = @('/nologo', '/std:c++20', '/EHsc', '/utf-8', '/MT', '/DNOMINMAX', "/I$repo/src/Magpie.Core/include", "/I$repo/src/Magpie.Core", "/I$repo/src/Magpie", "/I$repo/src/Shared", "/I$RapidJsonIncludeDirectory")
+foreach ($test in @('HdrCompatibilityUpdateTests', 'HdrComponentsTests', 'HdrGroupTests', 'HdrGroupJsonTests', 'HdrGroupPersistenceTests', 'HdrGroupLifecycleTests', 'HdrCleanupTests')) {
+    $source = if ($test -in @('HdrCleanupTests','HdrGroupPersistenceTests','HdrGroupLifecycleTests')) { Join-Path $OutputDirectory "$test.cpp" } else { Join-Path $PSScriptRoot "$test.cpp" }
     & cl.exe @common $source "/Fe:$OutputDirectory/$test.exe" "/Fo:$OutputDirectory/$test.obj"
     if ($LASTEXITCODE) { throw "$test test compilation failed" }
     & (Join-Path $OutputDirectory "$test.exe")

@@ -996,4 +996,112 @@
   <data name="HdrParameter_PreciseInputHelp" xml:space="preserve"><value>Type an exact value; Shift + arrow or wheel uses the coarse step.</value></data>
   <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Label" xml:space="preserve"><value>SDR white brightness (nits)</value></data>
   <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Description" xml:space="preserve"><value>Higher values brighten the entire image. Default 203; new edits use 80–4000 nits. Existing dim values remain unchanged until edited.</value></data>
+  <data name="HdrGroup_InputCard.Header" xml:space="preserve">
+    <value>Input / HDR compatibility</value>
+  </data>
+  <data name="HdrGroup_OutputCard.Header" xml:space="preserve">
+    <value>HDR output</value>
+  </data>
+  <data name="HdrGroup_InputParametersButton.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Shared compatibility parameters</value>
+  </data>
+  <data name="HdrGroup_OutputParametersButton.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Output method parameters</value>
+  </data>
+  <data name="HdrGroup_ApplyTiming.Text" xml:space="preserve">
+    <value>Input or output method changes rebuild an active session. Parameters marked as requiring a restart apply after restarting the effect group.</value>
+  </data>
+  <data name="HdrGroup_InputManual" xml:space="preserve">
+    <value>Keep existing chain / advanced manual</value>
+  </data>
+  <data name="HdrGroup_InputSdr" xml:space="preserve">
+    <value>SDR input</value>
+  </data>
+  <data name="HdrGroup_InputHdr" xml:space="preserve">
+    <value>HDR input</value>
+  </data>
+  <data name="HdrGroup_OutputAuto" xml:space="preserve">
+    <value>Auto</value>
+  </data>
+  <data name="HdrGroup_OutputRestore" xml:space="preserve">
+    <value>Restore compatibility pair</value>
+  </data>
+  <data name="HdrGroup_OutputNative" xml:space="preserve">
+    <value>Native SDR white mapping</value>
+  </data>
+  <data name="HdrGroup_OutputRtx" xml:space="preserve">
+    <value>RTX HDR</value>
+  </data>
+  <data name="HdrGroup_OutputSdr" xml:space="preserve">
+    <value>SDR output</value>
+  </data>
+  <data name="HdrGroup_AddProblem" xml:space="preserve">
+    <value>This effect cannot be added to the managed HDR plan. Use advanced manual editing for converters or unverified HDR effects.</value>
+  </data>
+  <data name="HdrGroup_AdoptionProblem" xml:space="preserve">
+    <value>This manual chain cannot be represented equivalently. Keep advanced manual editing; its order and values are preserved.</value>
+  </data>
+  <data name="HdrGroup_InvalidPlan" xml:space="preserve">
+    <value>The requested HDR plan is unavailable. The existing chain has been retained.</value>
+  </data>
+  <data name="HdrGroup_MissingPair" xml:space="preserve">
+    <value>There is no compatibility pair to restore. Choose Auto, native mapping or RTX HDR.</value>
+  </data>
+  <data name="HdrGroup_UnknownEffect" xml:space="preserve">
+    <value>HDR capability is unknown for an effect in this group. Keep advanced manual editing or remove that effect.</value>
+  </data>
+  <data name="HdrGroup_FrameGenerationPosition" xml:space="preserve">
+    <value>Group management requires the frame-generation item at the end. Keep this layout in advanced manual editing.</value>
+  </data>
+  <data name="HdrGroup_RecoveryProblem" xml:space="preserve">
+    <value>Saved HDR settings are invalid and have been retained for recovery. Repair this group before starting.</value>
+  </data>
+  <data name="HdrGroup_ManualSummary" xml:space="preserve">
+    <value>Advanced manual chain: existing converters determine capture and output.</value>
+  </data>
+  <data name="HdrGroup_ManualHdrSummary" xml:space="preserve">
+    <value>Advanced manual chain: explicit HDR input is retained; existing components determine output.</value>
+  </data>
+  <data name="HdrGroup_ManualOutput" xml:space="preserve">
+    <value>Edit the existing conversion components in advanced manual mode.</value>
+  </data>
+  <data name="HdrGroup_Summary" xml:space="preserve">
+    <value>{} input → {} SDR span(s) → {} output</value>
+  </data>
+  <data name="HdrGroup_RtxLibrariesReady" xml:space="preserve">
+    <value>RTX runtime libraries found; GPU and driver support are verified when starting. HDR input is reinterpreted through SDR.</value>
+  </data>
+  <data name="HdrGroup_RtxLibrariesMissing" xml:space="preserve">
+    <value>RTX HDR runtime libraries are missing. Install the matching RTX runtime package before starting this method.</value>
+  </data>
+  <data name="HdrGroup_SdrDescription" xml:space="preserve">
+    <value>HDR input uses display tone mapping; output stays SDR.</value>
+  </data>
+  <data name="HdrGroup_NativeDescription" xml:space="preserve">
+    <value>Actual method: native white mapping, {:.7g} nits. Increasing this value raises white, gray and highlights together.</value>
+  </data>
+  <data name="HdrGroup_RestoreDescription" xml:space="preserve">
+    <value>Actual method: restore the shared compatibility pair. Quantization, clipping and effect changes cannot be undone.</value>
+  </data>
+  <data name="HdrGroup_KeepHdrDescription" xml:space="preserve">
+    <value>Actual method: keep HDR throughout effects with confirmed direct HDR support.</value>
+  </data>
+  <data name="HdrGroup_CaptureFromChain" xml:space="preserve">
+    <value>From existing converters</value>
+  </data>
+  <data name="HdrGroup_ManualCaptureCard.Header" xml:space="preserve">
+    <value>Advanced capture input</value>
+  </data>
+  <data name="HdrGroup_ManualCaptureCard.Description" xml:space="preserve">
+    <value>Keep explicit HDR input when editing a direct HDR chain manually.</value>
+  </data>
+  <data name="HdrGroup_ManualSdrSummary" xml:space="preserve">
+    <value>Advanced manual chain: explicit SDR input is retained; existing components determine output.</value>
+  </data>
+  <data name="HdrGroup_NativeHdrDescription" xml:space="preserve">
+    <value>Actual method: native white mapping, {:.7g} nits. HDR input is first converted to SDR and then reinterpreted as HDR; this does not restore the original highlights.</value>
+  </data>
+  <data name="HdrGroup_LegacyDimDescription" xml:space="preserve">
+    <value>A legacy dim value is preserved. New edits use the 80–4000-nit range.</value>
+  </data>
 </root>
