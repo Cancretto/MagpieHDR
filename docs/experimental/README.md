@@ -22,6 +22,8 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- **0.6.10 Beta3 本地整合**：`release/0.6.10-beta3` 继承 Beta2 `6e50812a`，增量合入 RTSS `f5f534c2`；保留统一 VRR、开关样式、UWP／参数焦点和渲染显卡选择。RTSS 设置 C++ 176 项与结构合同通过；完整构建、相关回归及本地包以本轮整合审计和清单为准。真实 RTSS 事务、Hook、游戏帧率和原生界面验收仍待进行。见[本版中英说明](../RELEASE_NOTES_v0.6.10-beta3.md)。下方功能交接文档保留其开发阶段状态。
+
 - [0.6.10 VRR 统一入口、FG 与前台关联修正 TODO](todos/20261004-v0.6.10-vrr-unified-fg-foreground-TODO.md)：用户已反馈双开关、无 FG 时输出指示器正常，DLSS／XeSS FG 都使其消失；部署日志确认共同 FG 资格排除。已在原功能分支合入 Beta2 基线，收敛为高级选项中的“VRR 可变刷新率”，解除 FG／窗口模式排除，接入实际交换链绑定与主界面身份更新。四项静态合同及资源检查通过；C++ 编译／执行、部署和实测交给独立会话。[源码交接](reviews/20261005-v0.6.10-vrr-unified-fg-source-development.md)。
 
 - [0.6.10 G-SYNC 输出前台身份兼容 TODO](todos/20261004-v0.6.10-gsync-output-foreground-TODO.md)：第一版查询兼容、真实业务查询隔离、生命周期及短时真实前台参考入口已由单独会话集成到 Beta2。后续双开关与 FG 扩展按上方新 TODO 推进；[初次源码实施与交接](reviews/20261004-v0.6.10-gsync-foreground-source-development.md)保留原型阶段记录。
