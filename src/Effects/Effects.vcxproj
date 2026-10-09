@@ -24,6 +24,8 @@
     </CopyFileToFolders>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <CopyFileToFolders Include="NvidiaVFX\Upscale.hlsl"><FileType>Document</FileType></CopyFileToFolders>
+    <CopyFileToFolders Include="NvidiaVFX\VFG.hlsl"><FileType>Document</FileType></CopyFileToFolders>
     <CopyFileToFolders Include="Color\HDR_to_SDR.hlsl"><FileType>Document</FileType></CopyFileToFolders>
     <CopyFileToFolders Include="Color\SDR_to_HDR.hlsl"><FileType>Document</FileType></CopyFileToFolders>
     <CopyFileToFolders Include="RTXVideo\RTXVideo_HDR.hlsl"><FileType>Document</FileType></CopyFileToFolders>
