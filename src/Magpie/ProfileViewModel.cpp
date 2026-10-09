@@ -735,7 +735,7 @@ void ProfileViewModel::IsVRREnabled(bool value) {
 void ProfileViewModel::_NotifyRtssChanged() {
 	for (const auto property : { L"RtssScopeIndex", L"RtssRateModeIndex", L"RtssCustomRate", L"RtssSyncedRate", L"RtssExitPolicyIndex",
 		L"IsRtssManaged", L"ShowRtssCustomRate", L"ShowRtssSyncedRate", L"IsRtssSyncAvailable", L"ShowRtssGlobalNotice", L"RtssStatusText",
-		L"RtssStatusSegments", L"CanInitializeMagpie", L"RtssInitializeText",
+		L"RtssStatusSegments", L"CanInitializeMagpie", L"ShowRtssInitialize", L"RtssInitializeText",
 		L"RtssSyncText", L"CanLaunchRtss", L"CanLaunchAfterburner", L"RtssLaunchText", L"AfterburnerLaunchText" })
 		RaisePropertyChanged(property);
 }
@@ -893,7 +893,10 @@ bool ProfileViewModel::CanLaunchAfterburner() const {
 bool ProfileViewModel::CanInitializeMagpie() const {
 	const auto s = _RtssStatus();
 	return s.initializeReady &&
-		!RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie();
+		ShowRtssInitialize() && !RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie();
+}
+bool ProfileViewModel::ShowRtssInitialize() const {
+	return !RtssService::Get().IsMagpieInitialized();
 }
 hstring ProfileViewModel::RtssInitializeText() const {
 	return ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID).GetString(

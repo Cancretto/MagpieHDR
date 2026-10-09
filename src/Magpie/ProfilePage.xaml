@@ -9,7 +9,6 @@
 	<Page.Resources>
 		<x:Double x:Key="FrameRefreshControlColumnWidth">225</x:Double>
 		<Style x:Key="RtssActionButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
-			<Setter Property="FontSize" Value="12" />
 			<Setter Property="MinWidth" Value="0" />
 			<Setter Property="MinHeight" Value="32" />
 			<Setter Property="Padding" Value="6,4" />
@@ -208,6 +207,7 @@
 									</ResourceDictionary>
 								</local:WrapPanel.Resources>
 								<Button x:Uid="Rtss_InitializeMagpieButton" Content="{x:Bind ViewModel.RtssInitializeText, Mode=OneWay}"
+								        Visibility="{x:Bind ViewModel.ShowRtssInitialize, Mode=OneWay}"
 								        Style="{StaticResource RtssActionButtonStyle}" IsEnabled="{x:Bind ViewModel.CanInitializeMagpie, Mode=OneWay}"
 								        Click="{x:Bind ViewModel.InitializeMagpieRtss}" />
 								<Button x:Uid="Rtss_Tools" Style="{StaticResource RtssActionButtonStyle}">

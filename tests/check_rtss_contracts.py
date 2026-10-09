@@ -67,9 +67,10 @@ check("FrameRefreshControlColumnWidth" not in ET.tostring(status, encoding="unic
 action_style = next(n for n in nodes if n.get(x + "Key") == "RtssActionButtonStyle")
 setters = {n.get("Property"): n.get("Value") for n in action_style}
 check(action_style.get("BasedOn") == "{StaticResource DefaultButtonStyle}" and setters.get("BorderThickness") == "0", "ordinary action template and zero border")
-check(setters.get("MinHeight") == "32" and setters.get("FontSize") == "12" and setters.get("Padding") == "6,4" and setters.get("VerticalAlignment") == "Center", "reference action size and alignment")
+check(setters.get("MinHeight") == "32" and "FontSize" not in setters and setters.get("Padding") == "6,4" and setters.get("VerticalAlignment") == "Center", "action size/alignment and default button typography")
 buttons = [n for n in status.iter() if n.tag.endswith("Button") and n.get(x + "Uid")]
 check([n.get(x + "Uid") for n in buttons] == ["Rtss_InitializeMagpieButton", "Rtss_Tools", "Rtss_Recheck"], "initialization is left of tools")
+check(uids["Rtss_InitializeMagpieButton"].get("Visibility") == "{x:Bind ViewModel.ShowRtssInitialize, Mode=OneWay}", "initialized self profile collapses the action")
 check(uids["Rtss_Tools"].tag.endswith("Button") and not uids["Rtss_Tools"].tag.endswith("DropDownButton"), "menu uses ordinary button template")
 check(len([n for n in status.iter() if n.get("ResourceKey") == "ControlFillColorDefaultBrush"]) == 2, "neutral fills in light and dark themes")
 description = next(n for n in status if n.tag.endswith("SettingsCard.Description"))
@@ -91,6 +92,7 @@ check("if (!IsRtssManaged() || !ShowRtssCustomRate()) return;" in manual_setter,
 check('Double RtssSyncedRate { get; };' in idl, "sync property is read only")
 notify = vm.split("void ProfileViewModel::_NotifyRtssChanged() {", 1)[1].split("\n}", 1)[0]
 check('L"RtssSyncedRate"' in notify and 'L"ShowRtssSyncedRate"' in notify, "display changes notify bindings")
+check('L"ShowRtssInitialize"' in notify and 'Boolean ShowRtssInitialize { get; };' in idl and 'bool ShowRtssInitialize() const;' in header, "initialization visibility binding is declared and refreshed")
 for name in ("RtssStatusSegments", "RtssSyncText", "RtssLaunchText", "AfterburnerLaunchText", "RtssInitializeText"):
     getter = vm.split(f"ProfileViewModel::{name}() const {{", 1)[1].split("\n}", 1)[0]
     check("ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID)" in getter,

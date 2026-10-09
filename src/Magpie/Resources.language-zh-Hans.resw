@@ -1915,7 +1915,7 @@
   <data name="Rtss_Failure_Reload" xml:space="preserve"><value>重载配置失败。</value></data>
   <data name="Rtss_Failure_TimeMode" xml:space="preserve"><value>无法切换帧时间模式。</value></data>
   <data name="Rtss_InitializeMagpie" xml:space="preserve">
-    <value>初始化 Magpie</value>
+    <value>初始化</value>
   </data>
   <data name="Rtss_InitializingMagpie" xml:space="preserve">
     <value>正在初始化…</value>

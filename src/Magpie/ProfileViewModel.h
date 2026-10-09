@@ -132,6 +132,7 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 	hstring RtssSyncText() const;
 	bool CanLaunchRtss() const;
 	bool CanInitializeMagpie() const;
+	bool ShowRtssInitialize() const;
 	hstring RtssInitializeText() const;
 	void InitializeMagpieRtss();
 	bool CanLaunchAfterburner() const;

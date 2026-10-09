@@ -1003,7 +1003,7 @@
   <data name="Rtss_Failure_Reload" xml:space="preserve"><value>Could not reload the profile.</value></data>
   <data name="Rtss_Failure_TimeMode" xml:space="preserve"><value>Could not switch from frame time mode.</value></data>
   <data name="Rtss_InitializeMagpie" xml:space="preserve">
-    <value>Initialize Magpie</value>
+    <value>Initialize</value>
   </data>
   <data name="Rtss_InitializingMagpie" xml:space="preserve">
     <value>Initializing…</value>

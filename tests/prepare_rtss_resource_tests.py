@@ -18,7 +18,8 @@ for name in ("RtssStatusText", "RtssSyncText", "RtssLaunchText", "AfterburnerLau
     start = vm.index(f"hstring ProfileViewModel::{name}() const {{")
     end = vm.index("\n}", start) + 2
     getters.append(vm[start:end])
-for signature in ("RtssStatus ProfileViewModel::_RtssStatus() const {", "bool ProfileViewModel::CanInitializeMagpie() const {"):
+for signature in ("RtssStatus ProfileViewModel::_RtssStatus() const {", "bool ProfileViewModel::CanInitializeMagpie() const {",
+                  "bool ProfileViewModel::ShowRtssInitialize() const {"):
     start = vm.index(signature)
     end = vm.index("\n}", start) + 2
     getters.append(vm[start:end].replace("ProfileViewModel::", "StatusViewModel::"))
