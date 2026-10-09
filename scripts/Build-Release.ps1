@@ -12,7 +12,9 @@ param(
     [switch]$IncludeSymbols,
     [switch]$SkipBuild,
     [switch]$RequireMagpieClosed,
-    [switch]$EnableFrameTrace
+    [switch]$EnableFrameTrace,
+    [ValidateSet('Minimal', 'Full')]
+    [string]$NvidiaVfxRuntimeLayout = 'Minimal'
 )
 
 $ErrorActionPreference = "Stop"
@@ -251,6 +253,7 @@ if (!$SkipBuild) {
     )
     $traceEnabled = if ($EnableFrameTrace) { "true" } else { "false" }
     $msbuildArgs += "/p:EnableFrameTrace=$traceEnabled"
+    $msbuildArgs += "/p:NvidiaVfxRuntimeLayout=$NvidiaVfxRuntimeLayout"
     if ($IncludeSymbols) {
         $msbuildArgs += @(
             "/p:GenerateReleaseSymbols=true"
@@ -395,6 +398,12 @@ if (!$featureOptions.Contains("EnableAmdOpticalFlow") -and
 }
 
 $featureOptions["EnableFrameTrace"] = if ($EnableFrameTrace) { "true" } else { "false" }
+if ($featureOptions["EnableNvidiaVfx"] -eq 'true') {
+    # Also protects -SkipBuild: a former full-Core output cannot silently be
+    # repackaged as the Minimal four-feature distribution.
+    & (Join-Path $PSScriptRoot 'Test-NvidiaVfxPackage.ps1') -PackageDirectory $stagingDir -Layout $NvidiaVfxRuntimeLayout
+    $featureOptions['NvidiaVfxRuntimeLayout'] = $NvidiaVfxRuntimeLayout
+}
 if ($featureOptions["EnableFrameTrace"] -eq "true") {
     $diagnosticsDir = Join-Path $stagingDir "Diagnostics"
     New-Item -ItemType Directory -Path $diagnosticsDir -Force | Out-Null

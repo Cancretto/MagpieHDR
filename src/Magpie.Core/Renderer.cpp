@@ -1141,6 +1141,24 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 	const bool submitted = _presenter->EndFrame(waitForGpu);
 	_pendingFrontendFrame.reset();
 	if (submitted) {
+		if constexpr (NativeBackendTiming::Enabled) {
+			if (_nvidiaVfxFrameGenerator && contentFrame &&
+				(!_presenter->LastPresentedFrameCount() || *_presenter->LastPresentedFrameCount() > 0)) {
+				const auto now = NativeBackendTiming::Now();
+				std::scoped_lock lock(_vfxPresentTimingMutex);
+				++_vfxPresentedOutputs;
+				if (_vfxLastPresentTime != NativeBackendTiming::Clock::time_point{} &&
+					_vfxPresentSequence == _frontendFrameMetadata.captureSequence &&
+					_vfxPresentGeneration == _frontendFrameMetadata.resourceGeneration) {
+					const double interval = std::chrono::duration<double, std::milli>(now - _vfxLastPresentTime).count();
+					++_vfxPresentIntervals; _vfxPresentIntervalTotalMs += interval;
+					_vfxPresentIntervalMaxMs = std::max(_vfxPresentIntervalMaxMs, interval);
+				}
+				_vfxLastPresentTime = now;
+				_vfxPresentSequence = _frontendFrameMetadata.captureSequence;
+				_vfxPresentGeneration = _frontendFrameMetadata.resourceGeneration;
+			}
+		}
 		VRRPerformance::Record(contentFrame ? (generatedFrame ? VRRPerformance::Event::GeneratedSubmit :
 			VRRPerformance::Event::RealSubmit) : VRRPerformance::Event::AuxiliarySubmit);
 		if (!contentFrame) VRRPerformance::AuxiliaryReasons(diagnosticReasons);
@@ -2712,21 +2730,27 @@ bool Renderer::_InitializeNvidiaVfxFrameGenerator() noexcept {
 	return true;
 }
 
-bool Renderer::_DrawNvidiaVfxPostEffects(ID3D11Texture2D* input, uint32_t index, uint32_t multiplier) noexcept {
+bool Renderer::_DrawNvidiaVfxPostEffects(ID3D11Texture2D* input, uint32_t index, uint32_t multiplier,
+	const NvidiaVfxCudaFrame* cudaFrame) noexcept {
 	const auto started = std::chrono::steady_clock::now();
+	auto* dc = _backendResources.GetD3DDC();
+	int postGpuTicket = _vfxPostGpuTimings.Begin(_backendResources.GetD3DDevice(), dc);
+	auto finishGpuTiming = wil::scope_exit([&] { _vfxPostGpuTimings.End(dc, postGpuTicket); });
 	_vfxOutputIndex = index; _vfxOutputMultiplier = multiplier;
 	ID3D11Texture2D* result = input;
 	if (_vfxExecutionPlan.postStart < _effectDrawers.size()) {
 		if (!_vfxPostInput) return false;
-		auto* dc = _backendResources.GetD3DDC();
-		dc->ClearState(); dc->CopyResource(_vfxPostInput.get(), input);
-		result = _vfxPostInput.get();
+		if (!cudaFrame) {
+			dc->ClearState(); dc->CopyResource(_vfxPostInput.get(), input);
+			result = _vfxPostInput.get();
+		}
 		FrameGuidanceView noGuidance{};
 		for (size_t i = _vfxExecutionPlan.postStart; i < _effectDrawers.size(); ++i) {
 			auto& drawer = _effectDrawers[i];
 			drawer.SetHdrInputSource(result);
 			if (i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) {
-				if (!drawer.PrepareHdrInput()) return false;
+				const bool borrowedCuda = cudaFrame && i == _vfxExecutionPlan.postStart;
+				if (!borrowedCuda && !drawer.PrepareHdrInput()) return false;
 				const NativeEffectDrawContext context{
 					.input = drawer.GetTexture(0), .output = drawer.GetOutputTexture(),
 					.inputMetadata = drawer.GetHdrBoundary().inputFrame.metadata,
@@ -2737,18 +2761,62 @@ bool Renderer::_DrawNvidiaVfxPostEffects(ID3D11Texture2D* input, uint32_t index,
 					.isNewCaptureFrame = index == multiplier,
 					.frameGuidance = noGuidance, .zeroFrameGuidance = noGuidance
 				};
-				if (!_nativeEffectBackends[i]->Draw(context) || !drawer.CompleteHdrOutput()) return false;
+				const bool drawn = borrowedCuda ? _nativeEffectBackends[i]->DrawNvidiaVfxCudaInput(context, *cudaFrame) :
+					_nativeEffectBackends[i]->Draw(context);
+				if (!drawn || !drawer.CompleteHdrOutput()) return false;
 			} else if (!drawer.Draw(_vfxPostProfiler)) return false;
 			result = drawer.GetExternalOutputTexture();
 		}
 	}
+	_vfxPostGpuTimings.End(dc, postGpuTicket); postGpuTicket = -1;
 	_vfxPostTotalMs += std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now() - started).count();
 	++_vfxPostSamples;
+	const auto publicationStarted = NativeBackendTiming::Now();
 	const bool success = _PublishBackendTexture(result, true, index < multiplier, _captureSequence,
 		_frameSource->ResourceGeneration(), _reflex.NextPresentId());
+	if constexpr (NativeBackendTiming::Enabled) _vfxPublicationCpuMs += NativeBackendTiming::ElapsedMilliseconds(publicationStarted);
 	FrameTrace::Mark(FrameTrace::Event::NativeEffect, index,
 		std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count());
 	return success;
+}
+
+void Renderer::_LogNvidiaVfxMeasurements() noexcept {
+	if constexpr (!NativeBackendTiming::Enabled) return;
+	const auto frame = _nvidiaVfxFrameGenerator->TakeMeasurements();
+	const auto logRuntime = [](std::string_view name, const NvidiaVfxRuntimeMeasurements& measurements) {
+		const auto logStage = [&](std::string_view stage, const NvidiaVfxStageMeasurements& value) {
+			Logger::Get().Info(fmt::format("Nvidia VFX timing: effect={} stage={} cpuCalls={} cpuTotalMs={:.3f} gpuSamples={} gpuSpanTotalMs={:.3f} gpuSkipped={}; CPU and GPU spans overlap, not additive",
+				name, stage, value.cpuCalls, value.cpuMs, value.gpuSamples, value.gpuSpanMs, value.gpuSkipped));
+		};
+		logStage("import", measurements.importImage); logStage("inference", measurements.inference); logStage("export", measurements.exportImage);
+		Logger::Get().Info(fmt::format("Nvidia VFX synchronization: effect={} calls={} cpuWaitTotalMs={:.3f}",
+			name, measurements.synchronizeCalls, measurements.synchronizeCpuMs));
+	};
+	logRuntime("VFG", frame.runtime);
+	for (size_t i = 0; i < _nativeEffectBackends.size(); ++i) {
+		if (_nativeEffectBackends[i] && i < _runtimeEffectOptions.size()) {
+			const auto measurements = _nativeEffectBackends[i]->TakeNvidiaVfxMeasurements();
+			if (measurements.importImage.cpuCalls || measurements.inference.cpuCalls || measurements.exportImage.cpuCalls)
+				logRuntime(_runtimeEffectOptions[i].name, measurements);
+		}
+	}
+	const auto postGpu = _vfxPostGpuTimings.Take(_backendResources.GetD3DDC());
+	const auto publicationGpu = _vfxPublicationGpuTimings.Take(_backendResources.GetD3DDC());
+	const uint64_t ringWaitNs = _dlssFgRingWaitNanoseconds.load(std::memory_order_relaxed);
+	const double ringWaitMs = double(ringWaitNs - _vfxLastReportedRingWaitNs) / 1000000.;
+	_vfxLastReportedRingWaitNs = ringWaitNs;
+	Logger::Get().Info(fmt::format("Nvidia VFX comparison: calls={} srvCreations={} cpuTotalMs={:.3f} readbackWaitCpuMs={:.3f} gpuSamples={} gpuSpanTotalMs={:.3f} gpuSkipped={} generatedCallbacks={} realCallbacks={} bypassedPairs={}",
+		frame.comparisons, frame.srvCreations, frame.comparisonCpuMs, frame.readbackWaitCpuMs,
+		frame.comparisonGpu.samples, frame.comparisonGpu.spanMs, frame.comparisonGpu.skipped,
+		frame.generatedOutputs, frame.realOutputs, frame.bypassedPairs));
+	Logger::Get().Info(fmt::format("Nvidia VFX post/publication: postGpuSamples={} postGpuSpanTotalMs={:.3f} postGpuSkipped={} publicationCpuTotalMs={:.3f} ringWaitCpuMs={:.3f} mutexWaitCpuMs={:.3f} publicationGpuSamples={} publicationCopyGpuSpanTotalMs={:.3f} publicationGpuSkipped={}",
+		postGpu.samples, postGpu.spanMs, postGpu.skipped, _vfxPublicationCpuMs, ringWaitMs, _vfxMutexWaitCpuMs,
+		publicationGpu.samples, publicationGpu.spanMs, publicationGpu.skipped));
+	_vfxPublicationCpuMs = _vfxMutexWaitCpuMs = 0;
+	std::scoped_lock lock(_vfxPresentTimingMutex);
+	Logger::Get().Info(fmt::format("Nvidia VFX accepted presents: outputs={} intervalSamples={} intervalAvgMs={:.3f} intervalMaxMs={:.3f}; application submission, not scanout latency",
+		_vfxPresentedOutputs, _vfxPresentIntervals, _vfxPresentIntervals ? _vfxPresentIntervalTotalMs / _vfxPresentIntervals : 0., _vfxPresentIntervalMaxMs));
+	_vfxPresentedOutputs = _vfxPresentIntervals = 0; _vfxPresentIntervalTotalMs = _vfxPresentIntervalMaxMs = 0;
 }
 
 bool Renderer::_InitializeDLSSFrameGenerator(
@@ -3980,18 +4048,27 @@ void Renderer::_CompleteBackendFrame(
 		_captureCadence.Interval(_SoftwareFrameMultiplier(), _baseFrameRateLimit);
 	if (_nvidiaVfxFrameGenerator) {
 		const auto pairStarted = std::chrono::steady_clock::now();
+		NvidiaVfxFrameGenerator::PublishCuda cudaPublish;
+		const size_t firstPost = _vfxExecutionPlan.postStart;
+		if (firstPost < _nativeEffectBackends.size() && _nativeEffectBackends[firstPost] &&
+			_nativeEffectBackends[firstPost]->SupportsNvidiaVfxCudaInput(_vfxSourceTexture.get())) {
+			cudaPublish = [this](const NvidiaVfxCudaFrame& frame, uint32_t index, uint32_t multiplier) {
+				return _DrawNvidiaVfxPostEffects(_vfxSourceTexture.get(), index, multiplier, &frame);
+			};
+		}
 		const bool success = _nvidiaVfxFrameGenerator->Draw(effectsOutput,
 			{_capturedFrameId, captureSequence, _frameSource->ResourceGeneration(), _vfxUpstreamHistoryRevision},
 			isNewCaptureFrame, [this](ID3D11Texture2D* frame, uint32_t index, uint32_t multiplier) {
 				return _DrawNvidiaVfxPostEffects(frame, index, multiplier);
-			});
+			}, cudaPublish);
 		if (!success && !_sessionLifetime->IsStopping()) _FailColorPipeline("Nvidia VFX VFG -> TrueHDR", ScalingError::EffectResourceFailed);
 		const double elapsed = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now() - pairStarted).count();
-		_vfxPairTotalMs += elapsed; _vfxPairMaxMs = std::max(_vfxPairMaxMs, elapsed);
-		if (++_vfxPairSamples == 120) {
+		if (isNewCaptureFrame) { _vfxPairTotalMs += elapsed; _vfxPairMaxMs = std::max(_vfxPairMaxMs, elapsed); }
+		if (isNewCaptureFrame && ++_vfxPairSamples == 120) {
 			Logger::Get().Info(fmt::format("Nvidia VFX VFG output budget: multiplier={} pairAvgMs={:.3f} pairMaxMs={:.3f} postOutputs={} postAvgMs={:.3f} intervalMs={:.3f} ringCapacity={}; pair includes SDK, post-processing and publication/backpressure",
 				_SoftwareFrameMultiplier(), _vfxPairTotalMs / _vfxPairSamples, _vfxPairMaxMs, _vfxPostSamples,
 				_vfxPostSamples ? _vfxPostTotalMs / _vfxPostSamples : 0., _synchronousPresentInterval.count() / 1000000., _sharedTextureSlotCount));
+			_LogNvidiaVfxMeasurements();
 			_vfxPairSamples = _vfxPostSamples = 0; _vfxPairTotalMs = _vfxPairMaxMs = _vfxPostTotalMs = 0;
 		}
 		_effectsProfiler.QueryTimings(d3dDC); return;
@@ -4215,6 +4292,7 @@ bool Renderer::_PublishBackendTexture(
 			_passThroughFrames.BackendMutex(sharedTextureSlot),
 			_backendSharedMotionTextureMutexes[sharedTextureSlot].get() };
 		size_t failedIndex = mutexes.size();
+		const auto mutexWaitStarted = NativeBackendTiming::Now();
 		hr = AcquirePresentationTextures(mutexes, currentKey, 250, &failedIndex);
 		if (FAILED(hr) && failedIndex == 1) {
 			if (_passThroughFrames.DisableSharing()) {
@@ -4227,7 +4305,12 @@ bool Renderer::_PublishBackendTexture(
 			mutexes[1] = nullptr;
 			hr = AcquirePresentationTextures(mutexes, currentKey, 250);
 		}
+		if constexpr (NativeBackendTiming::Enabled) if (_nvidiaVfxFrameGenerator)
+			_vfxMutexWaitCpuMs += NativeBackendTiming::ElapsedMilliseconds(mutexWaitStarted);
 		if (SUCCEEDED(hr)) {
+			const int publicationGpuTicket = _nvidiaVfxFrameGenerator ?
+				_vfxPublicationGpuTimings.Begin(_backendResources.GetD3DDevice(), d3dDC) : -1;
+			auto publicationGpuTiming = wil::scope_exit([&] { _vfxPublicationGpuTimings.End(d3dDC, publicationGpuTicket); });
 			HdrFrameMetadata frameMetadata = publicationMetadata;
 			frameMetadata.frameId = _capturedFrameId;
 			frameMetadata.captureSequence = captureSequence;

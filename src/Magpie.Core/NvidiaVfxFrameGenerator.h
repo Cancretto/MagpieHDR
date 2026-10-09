@@ -1,10 +1,17 @@
 #pragma once
 #include "NvidiaVfxParameters.h"
+#include "NvidiaVfxMeasurements.h"
 #include <functional>
 #include <memory>
+struct NvCVImage;
 
 namespace Magpie {
 class DeviceResources;
+class NvidiaVfxSession;
+struct NvidiaVfxCudaFrame {
+	NvCVImage* image = nullptr;
+	NvidiaVfxSession* producer = nullptr;
+};
 
 struct NvidiaVfxFrameIdentity {
 	uint64_t frameId = 0, captureSequence = 0, resourceGeneration = 0, historyRevision = 0;
@@ -15,12 +22,14 @@ struct NvidiaVfxFrameIdentity {
 class NvidiaVfxFrameGenerator {
 public:
 	using Publish = std::function<bool(ID3D11Texture2D*, uint32_t, uint32_t)>;
+	using PublishCuda = std::function<bool(const NvidiaVfxCudaFrame&, uint32_t, uint32_t)>;
 	NvidiaVfxFrameGenerator();
 	~NvidiaVfxFrameGenerator();
 	bool Initialize(DeviceResources& resources, ID3D11Texture2D* input,
 		const NvidiaVfxFrameGenerationSettings& settings) noexcept;
 	bool Draw(ID3D11Texture2D* input, NvidiaVfxFrameIdentity identity,
-		bool newCapture, const Publish& publish) noexcept;
+		bool newCapture, const Publish& publish, const PublishCuda& publishCuda = {}) noexcept;
+	NvidiaVfxFrameMeasurements TakeMeasurements() noexcept;
 	bool ApplyModel(DeviceResources& resources, ID3D11Texture2D* input, uint32_t model) noexcept;
 	void RequestHistoryReset() noexcept;
 	bool Drain() noexcept;

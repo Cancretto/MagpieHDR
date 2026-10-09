@@ -4,7 +4,23 @@
 
 状态：2026-10-09 已继续 `worktrees/nvidia-vfx-suite` 的 `feature/nvidia-vfx-suite`，基于 Beta4 `49de3f25` 完成下列源码候选及静态检查。官方 Core 1.3.0.0 与四个功能包已齐备；预览已同步四项名称、TrueHDR 精确输入／步进、Upscale 超过 4× 的适配与逐帧 TrueHDR。按维护者授权，本阶段没有编译、创建或部署新 release，也没有产品 GPU／WinUI 实测。
 
+后续状态（2026-10-09）：单独构建会话已生成 Beta5；本轮核对的包清单提交为 `4f44cbc27ba2c1efe0af56ecca517d5bca7209ff`，VFG／公共 VFX 运行层／图像后端与本功能分支相同。本轮另行完成最小运行库的直接 SDK GPU 依赖验证，具体范围见 D01；它不代表完整 Magpie 的 D3D11／呈现、画质、性能或其他 GPU 已验收。下列新增 F11–F17、D01–D08 为待实施的性能与分发工作；本轮仅整理 TODO，没有修改源码或发布包。后续实施前重新核对当前 Beta5 及更新后的源码，纳入其他会话的修复。
+
 ## 0. 本次目标：源码阶段交付
+
+### 0.1 后续优化源码阶段（2026-10-09）
+
+当前继续 `feature/nvidia-vfx-optimization`，基线为 Beta5 后续修复 `7b10961c`；工作目录 `worktrees/nvidia-vfx-optimization`。本阶段交付与限制见[优化源码交接](../reviews/20261009-nvidia-vfx-optimization-source-handoff.md)。下列完成项仅指源码／静态验证，下方包含运行验收的 F11–F17、D04–D08 不据此全部勾选。
+
+- [x] F11 的诊断计时源码：CUDA／D3D 固定池、无阻塞查询、API／GPU span／读回／发布／背压和接受呈现间隔分别记录；实际基线与性能收益待编译后测量。
+- [x] F12–F14 的源码候选：SRV 缓存、线程组比较归约、稳定描述符的双缓冲轮换及 RGBA／BGRA 编码匹配。
+- [x] F15–F16 的验证路线源码：异步与相邻 VFG→TrueHDR 的 CUDA 双向事件交接、输入恢复、编码／路线限制；两个开关默认关闭，完整编译与运行验收后再评估启用。
+- [x] D03 白名单与 D04／D07 的打包保护源码：十个固定 DLL、四份许可通知、Minimal／私有 Full、复制前后验证、残留拒绝及 SkipBuild 封包检查。
+- [x] 91 项套件静态检查、61 项优化结构检查、7 项组件文件完整性用例及 Windows PowerShell 5.1 验证；未编译 C++／HLSL、未生成 ZIP 或新 release。
+- [ ] 编译候选并完成 F11 的实际预算基线、F12–F16 的正确性／性能和 D04–D07 的完整产品／跨 GPU／实际包体验收。
+- [ ] F17 依据实际呈现预算评估过期生成帧省算；本阶段没有自动跳帧或改变倍率／模型。D08 的组件在线安装与拆包保持可选后续。
+
+### 0.2 原组件接入阶段（历史）
 
 - [x] 继续现有功能分支并保存暂停时草稿，保留主工作树现存修改与旧 Beta4 完整运行环境。
 - [x] 接入官方 1.3 开发头、代理及四项功能库清单；新增公共选定渲染 GPU 的 CUDA／D3D11 运行层。
@@ -30,6 +46,7 @@
 | TrueHDR | 最终用 VFX TrueHDR 替换现有 RTX Video HDR 后端；显示名称改为 **Nvidia VFX TrueHDR**。替换前完成比较、颜色验证与旧配置兼容 |
 | 命名 | 四个用户可见名称统一为 **Nvidia VFX Upscale／Nvidia VFX VSR／Nvidia VFX VFG／Nvidia VFX TrueHDR**；不用 Maxine 前缀，品牌与空格保持一致 |
 | 执行顺序 | 组件统一与源码候选已完成；后续编译后先做旧功能回归，再逐项 GPU／颜色与联合验收；达到验收后再按维护者后续授权发布 |
+| 分发方向 | 维护者接受约 **487 MB 的精简全功能离线包**；先验证最小依赖并精简完整包，可选拆包／在线组件管理作为后续方案，不列为本轮必要交付。487 MB 是压缩体积测算，实际打包后再核对 |
 
 ### 1.1 Upscale 的倍率与尺寸规则
 
@@ -149,6 +166,44 @@
 - [ ] **F08** 新增前置／FG／逐输出帧后处理的计划和执行接口，保留手动段内顺序；验证 TrueHDR 前后位置、HDR→SDR 输入转换以及非法颜色／时序后置链的预检。
 - [ ] **F09** 区分 SDR 历史、生成临时输出和最终 HDR 发布资源；逐张消费与复用，防止七张中间帧被覆盖、首帧重复、捕获级缓存误复用及跨代次发布。
 - [ ] **F10** 场切、重复帧、首帧和 VFG 失败回退仍走 TrueHDR；测量包括后处理在内的预算、截止时间、队列背压及实际呈现间隔。
+- [ ] **F11／P0** 建立优化前基线：分别记录 SDK 的 GPU 执行、导入／导出、场切比较与读回等待、逐帧后处理、队列等待及实际呈现间隔／延迟。当前组耗时包含发布背压，后处理的 CPU 墙钟时间也不是 GPU 执行时间；不能据此给算法标注耗时或收益。覆盖 SDR VFG 单独和 VFG→TrueHDR、2×／4×／8×、1080p／1440p／4K，并以相同素材／参数比较修改前后。
+- [ ] **F12／P1** 缓存比较用的当前帧 SRV，避免每组重新创建；将所有变化像素写同一个四字节标志的 `InterlockedOr` 改为线程组内归约后再提交标志。保留完全相等比较、自动场切旁路与真实帧顺序；检查边缘线程的同步与边界，记录阻塞 `Map` 的等待。只读回四字节不意味着没有 CPU／GPU 同步成本。
+- [ ] **F13／P1** 用双缓冲索引或指针轮换上一帧／当前帧的角色，省去每组末尾整张 B→历史帧的 GPU 复制。`NvCVImage` 拥有分配且没有移动语义，不能直接 `std::swap` 其拥有资源的对象；轮换后重新绑定 SDK 的输入描述符，消费完输出后再复用，保留历史 revision／资源代次／失败回退语义。
+- [ ] **F14／P1** 核对实际 SDR 输入的 RGBA／BGRA 编码，在 SDK 支持时匹配 CUDA 图像编码，减少不必要的通道转换；覆盖 A、B、生成帧及 TrueHDR 输入，验证颜色与 alpha。以测量结果决定是否启用，不仅凭纹理格式推断收益。
+- [ ] **F15／P2** 在基线与资源生命周期检查后，验证 `NvVFX_Run(..., 1)` 的异步执行和有序 CUDA stream／event 管理，减少导入、运行、导出中的重复 CPU 等待。核对 NvCV 的 D3D11 map／unmap 实际合同，保留所有必要的跨接口依赖、销毁／重建 drain；不能批量删除同步，也不能在下一次 Run 前覆盖未消费的输出。
+- [ ] **F16／P2** 评估相邻 VFG→TrueHDR 的 CUDA 图像直接交接，减少“VFG 导出 D3D→复制后置输入→TrueHDR 再导入 CUDA”。仅在图像编码、stream／event 和缓冲生命周期明确的路线启用；其余后置链保留通用路径。每张真实帧与生成帧仍独立执行 TrueHDR、参数快照与显式 HDR10→canonical 转换，不改变手动效果顺序。
+- [ ] **F17／P2** 根据真实呈现截止时间与背压，评估省去已经不可能按时呈现的中间帧计算；不能丢弃当前真实帧、跨 revision 发布、改变帧顺序或虚报输出 FPS。SDK 每次 Run 只生成一张，8× 正常配对需七次 Run，后置 TrueHDR 需处理八张输出；队列继续有界，不用扩容至八槽替代预算控制。实施与否以 F11 的结果及现有固定倍率合同为准。
+
+### D：精简运行库与全功能离线分发
+
+- [x] **D01** 完成依赖调查与本机隔离 SDK GPU 验证：RTX 5070 Ti，驱动 616.92，Core 1.3.0.0；独立目录仅放下表十个 DLL，缩窄进程 DLL 搜索路径。26 个用例全部通过，包括 Upscale 五档倍率、VSR 五分类的代表档位、VFG Low／Medium／High 各 2×／4×／8×、TrueHDR 去色带开启／关闭，执行并读取了 GPU 输出。所观察的模块全部使用本目录匹配的十个 VFX DLL，没有加载下列十七个候选排除库。其余 24 个保留产品 PE 模块的静态／延迟导入也没有引用排除库。四个官方 `*_dependencies.txt` 均为空，不能将它们解释为完整依赖证明。
+- [x] **D02** 确认分发目标为精简全功能离线包。Beta4 ZIP 为 489,970,632 bytes；本轮核对的 Beta5 ZIP 为 1,551,148,999 bytes。按现有压缩条目排除十七个 Core DLL，完整包测算约 487,107,479 bytes，即约 487 MB；它仍包含现有功能及四项 VFX。该数字不是新包的实测大小，也不是功能验收结果。
+- [ ] **D03** 为统一 VFX 套件建立明确的版本化运行库白名单，保留下表十个匹配 DLL，将现有 `Core/bin/*.dll` 全量复制改为按清单复制；区分私有完整验证输出与公开精简输出。无统一套件的旧回退构建保留其独立、已经验证的依赖清单，不能未经测试沿用新白名单。
+- [ ] **D04** 在干净暂存目录生成候选精简包，排除下列十七个 Core DLL，避免旧构建输出残留又被打入包。保持其他 SDK／效果文件及现有功能清单；保留 VFX Core／功能包许可证和适用的 `ThirdPartyLicenses.txt`、其他第三方通知。不得修改、裁剪官方 DLL 或删除完整开发 SDK／当前 Beta5／旧恢复包。
+- [ ] **D05** 在候选目录执行完整 Magpie 运行验收：D3D11↔CUDA 导入／导出、RGBA／BGRA、四项单独与组合、VFG→逐帧 TrueHDR、窗口／全屏、切屏、参数更新、停止／重启及失败恢复。核对实际加载路径，防止全局 SDK、PATH 或旧版本组件补齐缺少文件而形成假通过。D01 的直接 CUDA SDK 测试不能代替此项。
+- [ ] **D06** 验证其他支持 GPU／驱动及实际渲染适配器：VFG 的 Ada／Blackwell、VSR／TrueHDR 对其他受支持 GPU 的路线、多 GPU 选择；对不支持的功能提供正确提示。若某个已支持路线需要额外依赖，将实际证据与版本补入白名单并重新测算体积，不以本机通过覆盖全部硬件。
+- [ ] **D07** 核对升级／回退与分发完整性：更新到精简包后不能残留或混用旧 Core／功能库；生成实际文件清单、准确字节数、SHA-256、组件版本／签名与许可证记录，复核打包许可。只在完成验收且获得后续发布授权后替换分发包；发布包不包含开发者 NGC key、用户配置、测试素材或调试符号。
+- [ ] **D08／可选后续** 如完整包后续仍有分发需求，再评估主程序／公共 VFX 与图像功能／VFG 分包、版本化组件目录、离线导入和在线按需安装。当前加载器固定程序目录且代理缓存模块地址，独立目录方案需要加载器／更新器支持以及组件替换后的进程重启；不作为约 487 MB 全功能离线包的前置条件。
+
+候选必需 VFX 运行库（Core／功能包均为官方 1.3.0.0；功能包版本 `1.3.0.0_lib_windows`）：
+
+| 类别 | 保留 DLL |
+| --- | --- |
+| 公共 Core | `NVVideoEffects.dll`、`NVCVImage.dll`、`cudart64_12.dll`、`nvngxruntime.dll` |
+| Upscale | `nvVFXUpscale.dll` |
+| VSR | `nvVFXVideoSuperRes.dll`、`nvngx_vsr.dll` |
+| VFG | `nvVFXVideoFrameGeneration.dll` |
+| TrueHDR | `nvVFXTrueHDR.dll`、`nvngx_truehdr.dll` |
+
+候选排除的十七个 Core 文件：
+
+- cuBLAS：`cublas64_12.dll`、`cublasLt64_12.dll`。
+- TensorRT／解析器：`nvinfer_10.dll`、`nvinfer_plugin_10.dll`、`nvonnxparser_10.dll`。
+- NVRTC：`nvrtc64_120_0.dll`、`nvrtc-builtins64_128.dll`。
+- NPP：`nppc64_12.dll`、`nppial64_12.dll`、`nppicc64_12.dll`、`nppidei64_12.dll`、`nppif64_12.dll`、`nppig64_12.dll`、`nppim64_12.dll`、`nppist64_12.dll`、`nppitc64_12.dll`。
+- 其他：`libcrypto-3-x64.dll`。
+
+依赖与体积证据：[调查记录](</C:/Users/81443/Documents/Magpie enhance/reports/vfg-performance-distribution-audit-20261009/evidence.json>)、[26 项直接 SDK GPU 用例与实际模块路径](</C:/Users/81443/Documents/Magpie enhance/reports/vfg-performance-distribution-audit-20261009/minimal-runtime-gpu-probe.json>)、[其余产品模块导入检查](</C:/Users/81443/Documents/Magpie enhance/reports/vfg-performance-distribution-audit-20261009/retained-product-import-audit.json>)、[可复现隔离探针](</C:/Users/81443/Documents/Magpie enhance/reports/vfg-performance-distribution-audit-20261009/probe_minimal_runtime.py>)。这些本地证据不随正式发布包分发。
 
 ### H：TrueHDR 替换
 

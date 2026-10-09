@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "NvidiaVfxImageBackend.h"
 #include "NvidiaVfxRuntime.h"
+#include "NvidiaVfxFrameGenerator.h"
 #include "NvidiaVfxParameters.h"
 #include "DeviceResources.h"
 #include "DirectXHelper.h"
@@ -109,12 +110,14 @@ bool NvidiaVfxImageBackend::Initialize(DeviceResources& resources, ID3D11Texture
 	candidate->kind = kind;
 	if (!candidate->session.Initialize(resources, library)) return false;
 	NvidiaVfxContextScope scope(candidate->session.Context());
+	const auto inputEncoding = in.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? NVCV_BGRA : NVCV_RGBA;
+	const auto outputEncoding = out.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? NVCV_BGRA : NVCV_RGBA;
 	if (!scope || !NvidiaVfxSucceeded(NvCVImage_Alloc(&candidate->session.input, in.Width, in.Height,
-		NVCV_RGBA, NVCV_U8, NVCV_INTERLEAVED, NVCV_GPU, 32), "Alloc(input)") ||
+		inputEncoding, NVCV_U8, NVCV_INTERLEAVED, NVCV_GPU, 32), "Alloc(input)") ||
 		!NvidiaVfxSucceeded(NvCVImage_Alloc(&candidate->session.output,
 			kind == NvidiaVfxImageKind::Upscale ? upscale.native.width : out.Width,
 			kind == NvidiaVfxImageKind::Upscale ? upscale.native.height : out.Height,
-			kind == NvidiaVfxImageKind::TrueHdr ? NVCV_RGB10A2 : NVCV_RGBA,
+			kind == NvidiaVfxImageKind::TrueHdr ? NVCV_RGB10A2 : outputEncoding,
 			kind == NvidiaVfxImageKind::TrueHdr ? NVCV_P32 : NVCV_U8,
 			NVCV_INTERLEAVED, NVCV_GPU, 32), "Alloc(output)")) return false;
 	if (kind == NvidiaVfxImageKind::TrueHdr) {
@@ -162,7 +165,7 @@ bool NvidiaVfxImageBackend::Draw(const NativeEffectDrawContext& context) noexcep
 	if (!_impl) return false;
 	NvidiaVfxContextScope scope(_impl->session.Context());
 	if (!scope || !_impl->session.Import(context.input, _impl->session.input) ||
-		!NvidiaVfxSucceeded(NvVFX_Run(_impl->session.effect, 0), "Run image effect")) return false;
+		!_impl->session.Run("Run image effect")) return false;
 	if (_kind != NvidiaVfxImageKind::TrueHdr) {
 		if (!_impl->nativeUpscale) return _impl->session.Export(_impl->session.output, context.output);
 		if (!_impl->session.Export(_impl->session.output, _impl->nativeUpscale.get()) ||
@@ -171,6 +174,13 @@ bool NvidiaVfxImageBackend::Draw(const NativeEffectDrawContext& context) noexcep
 		_impl->resources->GetD3DDC()->CopyResource(context.output, _impl->adaptation.GetOutputTexture());
 		return true;
 	}
+	return _ExportTrueHdr(context);
+#else
+	(void)context; return false;
+#endif
+}
+bool NvidiaVfxImageBackend::_ExportTrueHdr(const NativeEffectDrawContext& context) noexcept {
+#ifdef MP_ENABLE_NVIDIA_VFX
 	if (!_impl->session.Export(_impl->session.output, _impl->packedHdr.get())) return false;
 	HdrTransformParameters parameters;
 	const auto peak = _option.parameters.find("peakNits");
@@ -179,6 +189,50 @@ bool NvidiaVfxImageBackend::Draw(const NativeEffectDrawContext& context) noexcep
 	return _impl->adapter.ConvertHdr10ToCanonical(_impl->packedHdr.get(), context.output, parameters);
 #else
 	(void)context; return false;
+#endif
+}
+NvidiaVfxRuntimeMeasurements NvidiaVfxImageBackend::TakeNvidiaVfxMeasurements() noexcept {
+#ifdef MP_ENABLE_NVIDIA_VFX
+	return _impl ? _impl->session.TakeMeasurements() : NvidiaVfxRuntimeMeasurements{};
+#else
+	return {};
+#endif
+}
+bool NvidiaVfxImageBackend::SupportsNvidiaVfxCudaInput(ID3D11Texture2D* source) const noexcept {
+#if defined(MP_ENABLE_NVIDIA_VFX) && defined(MP_ENABLE_NVIDIA_VFX_CUDA_HANDOFF)
+	if (!_impl || _kind != NvidiaVfxImageKind::TrueHdr || !source || _hdrBoundary.plan.requiresBoundedMapping) return false;
+	D3D11_TEXTURE2D_DESC desc{}; source->GetDesc(&desc);
+	const auto format = desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? NVCV_BGRA : NVCV_RGBA;
+	return (desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM || desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM) &&
+		desc.SampleDesc.Count == 1 && desc.Width == _impl->session.input.width &&
+		desc.Height == _impl->session.input.height && format == _impl->session.input.pixelFormat;
+#else
+	(void)source;
+	return false;
+#endif
+}
+bool NvidiaVfxImageBackend::DrawNvidiaVfxCudaInput(const NativeEffectDrawContext& context,
+	const NvidiaVfxCudaFrame& frame) noexcept {
+#if defined(MP_ENABLE_NVIDIA_VFX) && defined(MP_ENABLE_NVIDIA_VFX_CUDA_HANDOFF)
+	if (!SupportsNvidiaVfxCudaInput(context.input) || !frame.image || !frame.producer) return false;
+	auto& session = _impl->session;
+	const auto& image = *frame.image;
+	if (image.width != session.input.width || image.height != session.input.height ||
+		image.pixelFormat != session.input.pixelFormat ||
+		image.componentType != NVCV_U8 || image.gpuMem != NVCV_GPU ||
+		(image.pixelFormat != NVCV_RGBA && image.pixelFormat != NVCV_BGRA)) return false;
+	NvidiaVfxContextScope scope(session.Context());
+	if (!scope || !session.WaitFor(*frame.producer)) return false;
+	const bool bound = NvidiaVfxSucceeded(NvVFX_SetImage(session.effect, NVVFX_INPUT_IMAGE, frame.image), "Borrow VFG CUDA image");
+	const bool ran = bound && session.Run("Run TrueHDR on VFG CUDA image");
+	// Queue the reverse fence even on SDK failure: a partially submitted read
+	// must finish before VFG reuses the shared generated/current allocation.
+	const bool released = frame.producer->WaitFor(session);
+	if (!released) session.Synchronize();
+	const bool restored = NvidiaVfxSucceeded(NvVFX_SetImage(session.effect, NVVFX_INPUT_IMAGE, &session.input), "Restore owned TrueHDR input");
+	return ran && released && restored && _ExportTrueHdr(context);
+#else
+	(void)context; (void)frame; return false;
 #endif
 }
 EffectParameterApplyMode NvidiaVfxImageBackend::GetParameterApplyMode(std::string_view name) const noexcept {

@@ -48,6 +48,10 @@
     <EnableRTXVideoDenoise>false</EnableRTXVideoDenoise>
     <!-- Unified suite requires matched Core 1.3 headers, proxies and features. -->
     <EnableNvidiaVfx>false</EnableNvidiaVfx>
+    <!-- Validation-only alternatives. Activate after D3D11/lifetime acceptance. -->
+    <EnableNvidiaVfxAsync>false</EnableNvidiaVfxAsync>
+    <EnableNvidiaVfxCudaHandoff>false</EnableNvidiaVfxCudaHandoff>
+    <NvidiaVfxRuntimeLayout>Minimal</NvidiaVfxRuntimeLayout>
     <VFXIncludeDir></VFXIncludeDir>
     <VFXProxyDir></VFXProxyDir>
     <VFXSdkDir></VFXSdkDir>

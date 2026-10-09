@@ -170,6 +170,7 @@
     <ClInclude Include="FrameGuidanceTypes.h" />
     <ClInclude Include="FrameGuidancePerformance.h" />
     <ClInclude Include="NativeBackendTiming.h" />
+    <ClInclude Include="NvidiaVfxMeasurements.h" />
     <ClInclude Include="ReflexController.h" />
     <ClInclude Include="ZeroFrameGuidanceProvider.h" />
     <ClInclude Include="NvidiaOpticalFlowProvider.h" />

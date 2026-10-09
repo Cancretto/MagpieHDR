@@ -18,10 +18,12 @@
 #include "SceneScreenshot.h"
 #include "StepTimer.h"
 #include "NvidiaVfxExecutionPlan.h"
+#include "NvidiaVfxMeasurements.h"
 #include <mutex>
 #include <unordered_map>
 
 namespace Magpie {
+struct NvidiaVfxCudaFrame;
 
 class FrameSourceBase;
 
@@ -386,6 +388,14 @@ private:
 	uint32_t _vfxOutputIndex = 0, _vfxOutputMultiplier = 1;
 	uint32_t _vfxPairSamples = 0, _vfxPostSamples = 0;
 	double _vfxPairTotalMs = 0, _vfxPairMaxMs = 0, _vfxPostTotalMs = 0;
+	double _vfxPublicationCpuMs = 0, _vfxMutexWaitCpuMs = 0;
+	uint64_t _vfxLastReportedRingWaitNs = 0;
+	NvidiaVfxD3dTimings _vfxPostGpuTimings, _vfxPublicationGpuTimings;
+	std::mutex _vfxPresentTimingMutex;
+	NativeBackendTiming::Clock::time_point _vfxLastPresentTime{};
+	uint64_t _vfxPresentedOutputs = 0, _vfxPresentIntervals = 0;
+	uint64_t _vfxPresentSequence = 0, _vfxPresentGeneration = 0;
+	double _vfxPresentIntervalTotalMs = 0, _vfxPresentIntervalMaxMs = 0;
 	int64_t _vfxPreviousTimestamp100ns = 0;
 	mutable std::mutex _vfxDescriptionMutex;
 	std::vector<std::string> _vfxDescriptions;
@@ -393,7 +403,9 @@ private:
 	bool _HasSoftwareFrameGenerator() const noexcept { return _dlssFrameGenerator || _nvidiaVfxFrameGenerator; }
 	uint32_t _SoftwareFrameMultiplier() const noexcept;
 	bool _InitializeNvidiaVfxFrameGenerator() noexcept;
-	bool _DrawNvidiaVfxPostEffects(ID3D11Texture2D* input, uint32_t index, uint32_t multiplier) noexcept;
+	bool _DrawNvidiaVfxPostEffects(ID3D11Texture2D* input, uint32_t index, uint32_t multiplier,
+		const NvidiaVfxCudaFrame* cudaFrame = nullptr) noexcept;
+	void _LogNvidiaVfxMeasurements() noexcept;
 	uint32_t _dlssFgConsecutiveFailures = 0;
 	uint32_t _dlssFgRecoveryAttempts = 0;
 

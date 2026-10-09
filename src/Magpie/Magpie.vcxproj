@@ -786,21 +786,28 @@
 	  <Copy SourceFiles="$(XeSSSdkDir)\LICENSE.txt" DestinationFiles="$(OutDir)\INTEL-XESS-LICENSE.txt" />
 	  <Copy SourceFiles="$(XeSSSdkDir)\third-party-programs.txt" DestinationFiles="$(OutDir)\INTEL-XESS-THIRD-PARTY.txt" />
 	</Target>
+  <Import Project="..\NvidiaVfxRuntime.props" />
+  <Target Name="ValidateNvidiaVfxRuntime" BeforeTargets="CopyRTXVideoDenoiseRuntime" Condition="$(EnableNvidiaVfx) And '$(Platform)' == 'x64'">
+    <Error Condition="'$(NvidiaVfxRuntimeLayout)' != 'Minimal' And '$(NvidiaVfxRuntimeLayout)' != 'Full'" Text="NvidiaVfxRuntimeLayout must be Minimal or Full." />
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\Validate-NvidiaVfxRuntime.ps1&quot; -SdkDirectory &quot;$(VFXSdkDir)&quot; -RuntimeDirectory &quot;$(VFXRuntimeDir)&quot; -Layout &quot;$(NvidiaVfxRuntimeLayout)&quot; -OutputDirectory &quot;$(OutDir).&quot;" />
+  </Target>
   <Target Name="CopyRTXVideoDenoiseRuntime" AfterTargets="Build" Condition="($(EnableRTXVideoDenoise) Or $(EnableNvidiaVfx)) And '$(Platform)' == 'x64'">
     <ItemGroup>
-      <!-- Keep the matched Core set for private validation. Public distribution
-           requires the separate license/dependency review in the VFX TODO. -->
-      <RTXVideoRuntimeDll Include="$(VFXRuntimeDir)\*.dll" />
-      <RTXVideoRuntimeDll Include="$(VFXSdkDir)\features\nvvfxvideosuperres\bin\*.dll" />
-      <RTXVideoRuntimeDll Include="$(VFXSdkDir)\features\nvvfxupscale\bin\*.dll;$(VFXSdkDir)\features\nvvfxvideoframegeneration\bin\*.dll;$(VFXSdkDir)\features\nvvfxtruehdr\bin\*.dll" Condition="$(EnableNvidiaVfx)" />
-      <RTXVideoLicense Include="$(VFXLicenseDir)\*" />
+      <RTXVideoRuntimeDll Include="@(NvidiaVfxRuntimeFile)" Condition="$(EnableNvidiaVfx)" />
+      <RTXVideoRuntimeDll Include="$(VFXRuntimeDir)\*.dll" Condition="!$(EnableNvidiaVfx) Or '$(NvidiaVfxRuntimeLayout)' == 'Full'" Exclude="@(NvidiaVfxRuntimeFile)" />
+      <RTXVideoRuntimeDll Include="$(VFXSdkDir)\features\nvvfxvideosuperres\bin\*.dll" Condition="!$(EnableNvidiaVfx)" />
+      <RTXVideoLicense Include="$(VFXLicenseDir)\*" Condition="!$(EnableNvidiaVfx) And '$(VFXLicenseDir)' != ''" />
       <VfxFeatureLicense Include="$(VFXSdkDir)\features\nvvfxvideosuperres\license\*" />
       <VfxFeatureLicense Include="$(VFXSdkDir)\features\nvvfxupscale\license\*;$(VFXSdkDir)\features\nvvfxvideoframegeneration\license\*;$(VFXSdkDir)\features\nvvfxtruehdr\license\*" Condition="$(EnableNvidiaVfx)" />
       <VfxCoreLicense Include="$(VFXSdkDir)\license\*" />
+      <VfxCoreLicense Include="$(VFXRuntimeDir)\ThirdPartyLicenses.txt" Condition="$(EnableNvidiaVfx)" />
     </ItemGroup>
     <Copy SourceFiles="@(RTXVideoRuntimeDll)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(RTXVideoLicense)" DestinationFolder="$(OutDir)\NVIDIA-VFX-Licenses" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(VfxFeatureLicense);@(VfxCoreLicense)" DestinationFolder="$(OutDir)\NVIDIA-VFX-Licenses" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="VerifyNvidiaVfxRuntimeOutput" AfterTargets="CopyRTXVideoDenoiseRuntime" Condition="$(EnableNvidiaVfx) And '$(Platform)' == 'x64'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\Validate-NvidiaVfxRuntime.ps1&quot; -SdkDirectory &quot;$(VFXSdkDir)&quot; -RuntimeDirectory &quot;$(VFXRuntimeDir)&quot; -Layout &quot;$(NvidiaVfxRuntimeLayout)&quot; -OutputDirectory &quot;$(OutDir).&quot; -RequireOutput -Report &quot;$(OutDir)nvidia-vfx-runtime-manifest.json&quot;" />
   </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <!-- 导入 Microsoft.AppXPackage.Targets 以生成 pri，应在 Microsoft.Cpp.targets 之后 -->
