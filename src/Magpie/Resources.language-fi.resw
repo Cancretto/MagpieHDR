@@ -1111,4 +1111,12 @@
   <data name="Rtss_Failure_Verify" xml:space="preserve"><value>Could not verify the profile.</value></data>
   <data name="Rtss_Failure_Reload" xml:space="preserve"><value>Could not reload the profile.</value></data>
   <data name="Rtss_Failure_TimeMode" xml:space="preserve"><value>Could not switch from frame time mode.</value></data>
+  <data name="Home_Toolbar_ScreenshotContent.Header" xml:space="preserve"><value>Screenshot content</value></data>
+  <data name="Home_Toolbar_ScreenshotContent.Description" xml:space="preserve"><value>Choose what the toolbar button and screenshot shortcut save.</value></data>
+  <data name="Home_Toolbar_ScreenshotContent_InputAndOutput.Content" xml:space="preserve"><value>Capture original input and final output</value></data>
+  <data name="Home_Toolbar_ScreenshotContent_OutputOnly.Content" xml:space="preserve"><value>Capture final output only</value></data>
+  <data name="Home_Toolbar_ScreenshotContent_InputOnly.Content" xml:space="preserve"><value>Capture original input only</value></data>
+  <data name="Message_ScreenshotBusy" xml:space="preserve"><value>A screenshot is being saved. Try again when it finishes.</value></data>
+  <data name="Message_ScreenshotPairSaved" xml:space="preserve"><value>Screenshots saved: {0} and {1}</value></data>
+  <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>Saved {0}; {1} could not be saved. See error details.</value></data>
 </root>

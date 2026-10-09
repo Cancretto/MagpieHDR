@@ -10,6 +10,7 @@
 #include "HdrComponents.h"
 #include "OverlayWindowGeometry.h"
 #include "ToolbarPlacement.h"
+#include "ScreenshotContent.h"
 #include <mutex>
 #include <functional>
 
@@ -505,6 +506,7 @@ struct ScalingOptions {
 	ToolbarDockSettings toolbarDocks;
 	float initialWindowedScaleFactor = 0.0f;
 	std::filesystem::path screenshotsDir;
+	ScreenshotContent screenshotContent = ScreenshotContent::OutputOnly;
 
 	// 下面的成员支持在缩放时修改
 	OverlayOptions overlayOptions;

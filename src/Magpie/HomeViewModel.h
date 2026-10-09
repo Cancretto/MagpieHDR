@@ -62,6 +62,8 @@ struct HomeViewModel : HomeViewModelT<HomeViewModel>, wil::notify_property_chang
 	void WindowedInitialToolbarState(int value);
 
 	hstring ScreenshotSaveDirectory() const noexcept;
+	int ScreenshotContent() const noexcept;
+	void ScreenshotContent(int value);
 
 	void OpenScreenshotSaveDirectory() const noexcept;
 

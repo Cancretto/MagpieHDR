@@ -111,6 +111,9 @@
     <ClInclude Include="NvidiaForegroundCompatibility.h" />
     <ClInclude Include="VRRPresentationPolicy.h" />
     <ClInclude Include="Renderer.h" />
+    <ClInclude Include="SceneScreenshot.h" />
+    <ClInclude Include="ScreenshotNaming.h" />
+    <ClInclude Include="include\ScreenshotContent.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="ScalingWindow.h" />
     <ClInclude Include="ScreenshotHelper.h" />
@@ -232,6 +235,7 @@
     <ClCompile Include="GroupBHdrRoutes.cpp" />
     <ClCompile Include="PresenterBase.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="RendererScreenshot.cpp" />
     <ClCompile Include="ReflexController.cpp" />
     <ClCompile Include="ScalingOptions.cpp" />
     <ClCompile Include="ScalingRuntime.cpp" />

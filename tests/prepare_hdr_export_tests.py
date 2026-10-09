@@ -6,6 +6,11 @@ repo = Path(__file__).resolve().parents[1]
 out = Path(sys.argv[1])
 source = (repo / 'src/Magpie.Core/TextureHelper.cpp').read_text(encoding='utf-8-sig')
 functions = source[source.index('static void RecordTextureSaveError('):source.rfind('\n}')]
+# Exclusive screenshot commits are exercised by the screenshot disk fixture;
+# this existing test isolates the ordinary encoder/format dispatcher.
+exclusive_start = functions.index('bool TextureHelper::SaveTextureExclusive(')
+exclusive_end = functions.index('bool TextureHelper::SaveTexture(', exclusive_start)
+functions = functions[:exclusive_start] + functions[exclusive_end:]
 preamble = r'''
 #include <windows.h>
 #include <winrt/base.h>

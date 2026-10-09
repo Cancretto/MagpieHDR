@@ -858,6 +858,8 @@ std::string AppSettings::_Serialize(const _AppSettingsData& data) {
 	writer.Uint((uint32_t)data._windowedInitialToolbarState);
 	writer.Key("screenshotsDir");
 	writer.String(StrHelper::UTF16ToUTF8(data._screenshotsDir.native()).c_str());
+	writer.Key("screenshotContent");
+	writer.Uint(static_cast<uint32_t>(data._screenshotContent));
 	writer.Key("windows");
 	writer.StartObject();
 	for (const auto& [name, windowOption] : data._overlayOptions.windows) {
@@ -1136,9 +1138,13 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 		}
 	}
 
+	_screenshotContent = Magpie::ScreenshotContent::OutputOnly;
 	auto overlayNode = root.FindMember("overlay");
 	if (overlayNode != root.MemberEnd() && overlayNode->value.IsObject()) {
 		auto overlayObj = overlayNode->value.GetObj();
+		uint32_t screenshotContent = static_cast<uint32_t>(Magpie::ScreenshotContent::OutputOnly);
+		JsonHelper::ReadUInt(overlayObj, "screenshotContent", screenshotContent, true);
+		_screenshotContent = NormalizeScreenshotContent(screenshotContent);
 
 		uint32_t initialToolbarState = (uint32_t)ToolbarState::AutoHide;
 		if (JsonHelper::ReadUInt(overlayObj, "fullscreenInitialToolbarState", initialToolbarState, true)) {
