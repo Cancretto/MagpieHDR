@@ -1,7 +1,7 @@
 param([string]$OutputDirectory, [string]$RapidJsonIncludeDirectory, [string[]]$TrialConfigurations)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
-$TrialConfigurations = @($TrialConfigurations | ForEach-Object { (Resolve-Path -LiteralPath $_).Path })
+$TrialConfigurations = @($TrialConfigurations | Where-Object { $_ } | ForEach-Object { (Resolve-Path -LiteralPath $_).Path })
 if (!$OutputDirectory) { $OutputDirectory = Join-Path $repo 'obj/tests/hdr-compatibility-update' }
 if (!(Get-Command cl.exe -ErrorAction SilentlyContinue)) {
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'

@@ -31,6 +31,7 @@ parts += [block(effect, marker) for marker in [
     'bool ScalingModeEffectItem::HasParameters()',
     'bool ScalingModeEffectItem::CanDrag()',
     'bool ScalingModeEffectItem::_IsRemoved()',
+    'bool ScalingModeEffectItem::_IsNvidiaVfxSameSize()',
     'void ScalingModeEffectItem::ScalingType(int value)',
     'void ScalingModeEffectItem::ScaleFactorX(double value)',
     'void ScalingModeEffectItem::ScaleFactorY(double value)',
@@ -53,6 +54,7 @@ prefix = r'''
 #include <string>
 #include <vector>
 #include "manual_fg.inc"
+#include "NvidiaVfxParameters.h"
 using hstring=std::wstring;
 struct SIZE { long cx,cy; };
 static SIZE GetMonitorSize() { return {1920,1080}; }
@@ -98,7 +100,7 @@ struct ScalingModeEffectItem : std::enable_shared_from_this<ScalingModeEffectIte
  void RaisePropertyChanged(const wchar_t*) {}
  void EffectIdx(uint32_t i) { _effectIdx=i; }
  bool CanScale() const noexcept; bool HasParameters() const noexcept; bool CanDrag() const noexcept;
- bool _IsRemoved() const noexcept;
+ bool _IsRemoved() const noexcept; bool _IsNvidiaVfxSameSize() const noexcept;
  void ScalingType(int); void ScaleFactorX(double); void ScaleFactorY(double);
  void ScalingPixelsX(double); void ScalingPixelsY(double); void _SaveScaleChange(); void Remove();
  void RefreshDragState() {}
