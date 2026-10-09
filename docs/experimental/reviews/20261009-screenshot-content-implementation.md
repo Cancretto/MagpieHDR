@@ -7,7 +7,7 @@
 - 分支：`feature/screenshot-content`。
 - 开发目录：`C:/Users/81443/Documents/Magpie enhance/worktrees/screenshot-content`。
 - 基线：Beta4 `49de3f25478008c962e24015cf81d7e9772b9a2b`，含实际纹理格式和 HDR PNG 导出修复。
-- 源码提交：本分支的 `feat(screenshot): add input and output capture modes` 提交。
+- 源码提交：`b442fd59`（`feat(screenshot): add input and output capture modes`）。
 - 日常 `source/experimental` 保持 `13adddb6` 和已有未提交工作的状态，仅本任务的 TODO／交接文档更新。
 - [需求与实施 TODO](../todos/20261009-screenshot-content-TODO.md)。
 
