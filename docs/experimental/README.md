@@ -37,7 +37,11 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 - **0.6.10 Beta2 本地整合**：`release/0.6.10-beta2` 继承 Beta1，保留参数焦点／输入所有权和“性能”分组渲染显卡选择；2026-10-05 增量合入 `df0e1ac8` 的统一 VRR／DLSS 与 XeSS 前台兼容，产品仅保留一个默认关闭的开关。修正前台测试夹具重名并完成 11 组软件回归。见 [本版中英说明](../RELEASE_NOTES_v0.6.10-beta2.md)。上下功能分支交接状态保留当时的开发记录；完整构建、部署与准确源码以本轮整合审计和包清单为准，实际游戏、输入和 G-SYNC 验收继续保留。
 - [069 RTSS 目标应用限帧开发](todos/20261005-v0.6.9-rtss-target-frame-rate-TODO.md)：`feature/069-rtss-target-frame-rate` 已接入配置/四部分界面、工具入口、公开配置接口及会话同步与一次恢复；Beta3 动态文字读取错误资源表导致的配置页闪退已修复，209 项源码合同、325 项独立原生资源检查及原有刷新/GPU 位置合同通过。修复尚未编译部署到产品或进行真实写入与游戏验收，详见[闪退修复记录](reviews/20261005-rtss-profile-page-crash-fix.md)、[实施与编译交接](reviews/20261005-v0.6.9-rtss-target-frame-rate-implementation.md)和[功能文档](design/20261005-v0.6.9-rtss-target-frame-rate-plan.md)。
 
-- [RTSS 配置保存失败 TODO](todos/20261009-rtss-save-failure-TODO.md)：普通 FPS 的 Apply/Restore 已按当前值跳过无效 setter，失败阶段与日志已拆分。216 项配置事务、64 项会话事务、55 项本机隔离原生事务及 358 项当前资源检查通过；非零帧时间兼容方案已设计，文件路径实现、其他版本验证与按需提权接入仍待完成；本机普通权限无法写安装目录，已加入明确权限检测。产品构建、部署及目标应用 FPS 由独立会话验收。[修复与交接](reviews/20261009-rtss-save-failure-fix.md)。
+- [RTSS 能力判断与固定门槛整改 TODO](todos/20261009-rtss-capability-checks-TODO.md)：按实际接口、字段和操作条件判断可用性。第一阶段 10 项已完成：移除版本/名称及整项拒绝、解除同步模式的无关手动值依赖，开放可验证的离线配置操作，恢复只尝试一次且不阻断开始。源码与隔离回归通过，第二阶段 4 项安装发现、架构、格式和范围扩展后置；产品构建/UI/FPS 交给独立会话。[实施与交接](reviews/20261009-rtss-capability-checks.md)。
+
+- [RTSS 状态分段与 Magpie 初始化及管理员启动 TODO](todos/20261009-rtss-status-magpie-init-and-admin-TODO.md)：已确认优先同行、按内容类型整段换行，三按钮统一普通操作样式，初始化 Magpie 独立不限帧配置且保留其他设置，主程序启动默认请求管理员权限。源码及隔离回归已完成，真实 UI、UAC/自启动与产品 FPS 待独立会话验收，见[实施与交接](reviews/20261009-rtss-status-magpie-init-and-admin.md)。
+
+- [RTSS 配置保存失败 TODO](todos/20261009-rtss-save-failure-TODO.md)：普通 FPS 的 Apply/Restore 已按当前值跳过无效 setter，失败阶段与日志已拆分。216 项配置事务、64 项会话事务、55 项本机隔离原生事务及 358 项当前资源检查通过；非零帧时间兼容方案已设计，本次已完成 Magpie 初始化的清零文件路径和默认管理员启动；Global/目标转正 FPS、缺失字段恢复与其他版本验证仍待完成；本机普通权限无法写安装目录，已加入明确权限检测。产品构建、部署及目标应用 FPS 由独立会话验收。[修复与交接](reviews/20261009-rtss-save-failure-fix.md)。
 
 - [RTSS 界面文案精简与控件样式 TODO](todos/20261009-rtss-ui-text-and-style-TODO.md)：固定帧率行、只读同步 FPS、停止策略直接排列和精简文案已在原分支完成，工具按钮局部对齐沿用原生样式。297 项合同、176 项设置、54 项生产代码显示回归、334 项当前资源原生检查通过；产品构建、主题/DPI 与真实交互交给独立会话。[实施与交接](reviews/20261009-rtss-ui-text-and-style.md)。
 

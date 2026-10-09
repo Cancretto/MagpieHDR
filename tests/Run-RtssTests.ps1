@@ -52,3 +52,18 @@ if ($LASTEXITCODE) { throw 'RTSS transaction tests failed.' }
 if ($LASTEXITCODE) { throw 'RTSS session transaction test compilation failed.' }
 & (Join-Path $rtssOutput 'RtssSessionTransactionTests.exe') $rtssOutput
 if ($LASTEXITCODE) { throw 'RTSS session transaction tests failed.' }
+& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX /DNOMINMAX /DRTSS_TEST_FILE_COMMIT `
+    "/I$rtssOutput" "/I$rtssRepo/src/Magpie" "/I$($rtssRapid.FullName)/p/include" `
+    (Join-Path $PSScriptRoot 'RtssInitializationTests.cpp') (Join-Path $rtssOutput 'RtssProfileAccess.g.cpp') `
+    "/Fe:$rtssOutput/RtssInitializationTests.exe" "/Fo:$rtssOutput/"
+if ($LASTEXITCODE) { throw 'RTSS initialization test compilation failed.' }
+& (Join-Path $rtssOutput 'RtssInitializationTests.exe') $rtssOutput
+if ($LASTEXITCODE) { throw 'RTSS initialization tests failed.' }
+& python (Join-Path $PSScriptRoot 'prepare_rtss_layout_startup_tests.py') $rtssOutput
+if ($LASTEXITCODE) { throw 'Production layout/startup extraction failed.' }
+& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX /DNOMINMAX /DUNICODE /D_UNICODE `
+    "/I$rtssOutput" (Join-Path $PSScriptRoot 'RtssLayoutStartupTests.cpp') `
+    "/Fe:$rtssOutput/RtssLayoutStartupTests.exe" "/Fo:$rtssOutput/RtssLayoutStartupTests.obj"
+if ($LASTEXITCODE) { throw 'RTSS layout/startup test compilation failed.' }
+& (Join-Path $rtssOutput 'RtssLayoutStartupTests.exe')
+if ($LASTEXITCODE) { throw 'RTSS layout/startup tests failed.' }

@@ -60,8 +60,12 @@ namespace Magpie {
 		Boolean IsRtssSyncAvailable { get; };
 		Boolean ShowRtssGlobalNotice { get; };
 		String RtssStatusText { get; };
+		IVector<String> RtssStatusSegments { get; };
 		String RtssSyncText { get; };
 		Boolean CanLaunchRtss { get; };
+		Boolean CanInitializeMagpie { get; };
+		String RtssInitializeText { get; };
+		void InitializeMagpieRtss();
 		Boolean CanLaunchAfterburner { get; };
 		String RtssLaunchText { get; };
 		String AfterburnerLaunchText { get; };

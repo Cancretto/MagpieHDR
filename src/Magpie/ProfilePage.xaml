@@ -8,6 +8,14 @@
       mc:Ignorable="d">
 	<Page.Resources>
 		<x:Double x:Key="FrameRefreshControlColumnWidth">225</x:Double>
+		<Style x:Key="RtssActionButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+			<Setter Property="FontSize" Value="12" />
+			<Setter Property="MinWidth" Value="0" />
+			<Setter Property="MinHeight" Value="32" />
+			<Setter Property="Padding" Value="6,4" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+		</Style>
 		<Style x:Key="FrameRefreshComboBoxStyle" TargetType="ComboBox"
 		       BasedOn="{StaticResource DefaultComboBoxStyle}">
 			<Setter Property="Width" Value="{StaticResource FrameRefreshControlColumnWidth}" />
@@ -171,21 +179,54 @@
 						</ComboBox>
 					</local:SettingsExpander.Content>
 					<local:SettingsExpander.Items>
-						<local:SettingsCard x:Uid="Rtss_Status" IsWrapEnabled="True" Description="{x:Bind ViewModel.RtssStatusText, Mode=OneWay}">
-							<Grid Width="{StaticResource FrameRefreshControlColumnWidth}" VerticalAlignment="Center">
-								<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-								<DropDownButton x:Uid="Rtss_Tools" MinWidth="0" MinHeight="32" HorizontalAlignment="Stretch" VerticalAlignment="Center">
-									<DropDownButton.Flyout>
+						<local:SettingsCard x:Uid="Rtss_Status" IsWrapEnabled="True">
+							<local:SettingsCard.Description>
+								<ItemsControl ItemsSource="{x:Bind ViewModel.RtssStatusSegments, Mode=OneWay}"
+								              IsTabStop="False" FontSize="{StaticResource SecondaryTextFontSize}"
+								              Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+									<ItemsControl.ItemsPanel><ItemsPanelTemplate><local:WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
+								</ItemsControl>
+							</local:SettingsCard.Description>
+							<local:WrapPanel HorizontalSpacing="8" VerticalSpacing="8" VerticalAlignment="Center">
+								<local:WrapPanel.Resources>
+									<ResourceDictionary>
+										<ResourceDictionary.ThemeDictionaries>
+											<ResourceDictionary x:Key="Default">
+												<StaticResource x:Key="ButtonBackground" ResourceKey="ControlFillColorDefaultBrush" />
+												<StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="ControlFillColorSecondaryBrush" />
+													<StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="ControlFillColorTertiaryBrush" />
+													<StaticResource x:Key="ButtonBackgroundDisabled" ResourceKey="ControlFillColorDisabledBrush" />
+											</ResourceDictionary>
+											<ResourceDictionary x:Key="Light">
+												<StaticResource x:Key="ButtonBackground" ResourceKey="ControlFillColorDefaultBrush" />
+													<StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="ControlFillColorSecondaryBrush" />
+													<StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="ControlFillColorTertiaryBrush" />
+													<StaticResource x:Key="ButtonBackgroundDisabled" ResourceKey="ControlFillColorDisabledBrush" />
+											</ResourceDictionary>
+										</ResourceDictionary.ThemeDictionaries>
+									</ResourceDictionary>
+								</local:WrapPanel.Resources>
+								<Button x:Uid="Rtss_InitializeMagpieButton" Content="{x:Bind ViewModel.RtssInitializeText, Mode=OneWay}"
+								        Style="{StaticResource RtssActionButtonStyle}" IsEnabled="{x:Bind ViewModel.CanInitializeMagpie, Mode=OneWay}"
+								        Click="{x:Bind ViewModel.InitializeMagpieRtss}" />
+								<Button x:Uid="Rtss_Tools" Style="{StaticResource RtssActionButtonStyle}">
+									<Button.ContentTemplate>
+										<DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+											<TextBlock Text="{Binding}" TextWrapping="Wrap" VerticalAlignment="Center" />
+											<FontIcon Grid.Column="1" Glyph="&#xE70D;" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center" />
+										</Grid></DataTemplate>
+									</Button.ContentTemplate>
+									<Button.Flyout>
 										<MenuFlyout>
 											<MenuFlyoutItem Text="{x:Bind ViewModel.RtssLaunchText, Mode=OneWay}" IsEnabled="{x:Bind ViewModel.CanLaunchRtss, Mode=OneWay}" Click="{x:Bind ViewModel.LaunchRtss}" />
 											<MenuFlyoutItem Text="{x:Bind ViewModel.AfterburnerLaunchText, Mode=OneWay}" IsEnabled="{x:Bind ViewModel.CanLaunchAfterburner, Mode=OneWay}" Click="{x:Bind ViewModel.LaunchAfterburner}" />
 										</MenuFlyout>
-									</DropDownButton.Flyout>
-								</DropDownButton>
-								<Button Grid.Column="1" x:Uid="Rtss_Recheck" MinWidth="32" MinHeight="32" Margin="8,0,0,0" Padding="6,4" VerticalAlignment="Center" Style="{StaticResource DefaultButtonStyle}" Click="{x:Bind ViewModel.RefreshRtss}"><FontIcon Glyph="&#xE72C;" FontSize="16" /></Button>
-							</Grid>
+									</Button.Flyout>
+								</Button>
+								<Button x:Uid="Rtss_Recheck" MinWidth="32" Style="{StaticResource RtssActionButtonStyle}" Click="{x:Bind ViewModel.RefreshRtss}"><FontIcon Glyph="&#xE72C;" FontSize="16" /></Button>
+							</local:WrapPanel>
 						</local:SettingsCard>
-						<TextBlock x:Uid="Rtss_GlobalNotice" Visibility="{x:Bind ViewModel.ShowRtssGlobalNotice, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="16,4" />
 						<local:SettingsCard x:Uid="Rtss_RateMode" IsWrapEnabled="True" IsEnabled="{x:Bind ViewModel.IsRtssManaged, Mode=OneWay}" Description="{x:Bind ViewModel.RtssSyncText, Mode=OneWay}">
 							<ComboBox x:Uid="Rtss_RateMode_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.RtssRateModeIndex, Mode=TwoWay}">
 								<ComboBoxItem x:Uid="Rtss_Rate_Custom" />

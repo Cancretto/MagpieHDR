@@ -34,7 +34,7 @@ check("Rtss_Advanced" not in uids, "no RTSS inner advanced expander")
 check("FrameRefresh_Advanced" in uids, "existing refresh advanced expander preserved")
 items = next(n for n in rtss if n.tag.endswith("SettingsExpander.Items"))
 check([n.get(x + "Uid") for n in items] ==
-      ["Rtss_Status", "Rtss_GlobalNotice", "Rtss_RateMode", "Rtss_CustomRate", "Rtss_ExitPolicy"],
+      ["Rtss_Status", "Rtss_RateMode", "Rtss_CustomRate", "Rtss_ExitPolicy"],
       "direct item order and stop policy after rate")
 check(rtss.get("IsExpanded") == "True", "RTSS expanded by default")
 for uid in ("Rtss_RateMode", "Rtss_CustomRate", "Rtss_ExitPolicy"):
@@ -61,9 +61,22 @@ status = uids["Rtss_Status"]
 check("IsEnabled" not in status.attrib, "status/launcher remain available")
 check(uids["Rtss_Tools"] in list(status.iter()), "launcher in status row")
 check(len([n for n in status.iter() if n.tag.endswith("MenuFlyoutItem")]) == 2, "two distinct launch actions")
-check(uids["Rtss_Tools"].get("VerticalAlignment") == "Center" and
-      uids["Rtss_Recheck"].get("VerticalAlignment") == "Center", "tool buttons vertically aligned")
-check(uids["Rtss_Recheck"].get("Style") == "{StaticResource DefaultButtonStyle}", "native neutral action style")
+check(all(uids[uid].get("Style") == "{StaticResource RtssActionButtonStyle}" for uid in
+          ("Rtss_InitializeMagpieButton", "Rtss_Tools", "Rtss_Recheck")), "shared neutral action style")
+check("FrameRefreshControlColumnWidth" not in ET.tostring(status, encoding="unicode"), "status buttons size to content")
+action_style = next(n for n in nodes if n.get(x + "Key") == "RtssActionButtonStyle")
+setters = {n.get("Property"): n.get("Value") for n in action_style}
+check(action_style.get("BasedOn") == "{StaticResource DefaultButtonStyle}" and setters.get("BorderThickness") == "0", "ordinary action template and zero border")
+check(setters.get("MinHeight") == "32" and setters.get("FontSize") == "12" and setters.get("Padding") == "6,4" and setters.get("VerticalAlignment") == "Center", "reference action size and alignment")
+buttons = [n for n in status.iter() if n.tag.endswith("Button") and n.get(x + "Uid")]
+check([n.get(x + "Uid") for n in buttons] == ["Rtss_InitializeMagpieButton", "Rtss_Tools", "Rtss_Recheck"], "initialization is left of tools")
+check(uids["Rtss_Tools"].tag.endswith("Button") and not uids["Rtss_Tools"].tag.endswith("DropDownButton"), "menu uses ordinary button template")
+check(len([n for n in status.iter() if n.get("ResourceKey") == "ControlFillColorDefaultBrush"]) == 2, "neutral fills in light and dark themes")
+description = next(n for n in status if n.tag.endswith("SettingsCard.Description"))
+description_control = description[0]
+check(description_control.get("ItemsSource") == "{x:Bind ViewModel.RtssStatusSegments, Mode=OneWay}", "description uses separate status units")
+check(any(n.tag.endswith("WrapPanel") for n in description.iter()), "production panel packs whole segments")
+check(any(n.tag.endswith("TextBlock") and n.get("TextWrapping") == "Wrap" and "TextTrimming" not in n.attrib for n in description.iter()), "only overlong segment wraps internally without ellipsis")
 check(all(n.get("IsWrapEnabled") == "True" for n in rtss.iter() if n.tag.endswith("SettingsCard") or n.tag.endswith("SettingsExpander")), "wrap all settings rows")
 
 idl = read("src/Magpie/ProfileViewModel.idl")
@@ -78,8 +91,8 @@ check("if (!IsRtssManaged() || !ShowRtssCustomRate()) return;" in manual_setter,
 check('Double RtssSyncedRate { get; };' in idl, "sync property is read only")
 notify = vm.split("void ProfileViewModel::_NotifyRtssChanged() {", 1)[1].split("\n}", 1)[0]
 check('L"RtssSyncedRate"' in notify and 'L"ShowRtssSyncedRate"' in notify, "display changes notify bindings")
-for name in ("RtssStatusText", "RtssSyncText", "RtssLaunchText", "AfterburnerLaunchText"):
-    getter = vm.split(f"hstring ProfileViewModel::{name}() const {{", 1)[1].split("\n}", 1)[0]
+for name in ("RtssStatusSegments", "RtssSyncText", "RtssLaunchText", "AfterburnerLaunchText", "RtssInitializeText"):
+    getter = vm.split(f"ProfileViewModel::{name}() const {{", 1)[1].split("\n}", 1)[0]
     check("ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID)" in getter,
           "native profile resource map: " + name)
     check("ResourceLoader::GetForCurrentView()" not in getter, "no missing default resource map: " + name)
@@ -126,6 +139,25 @@ settings = read("src/Magpie/AppSettings.cpp")
 profile = read("src/Magpie/Profile.h")
 service = read("src/Magpie/RtssService.cpp")
 access = read("src/Magpie/RtssProfileAccess.cpp")
+initialization = access.split("bool RtssProfileAccess::InitializeUnlimited(", 1)[1].split("\n}", 1)[0]
+check('_stricmp(profile.c_str(), _selfProfile.c_str())' in initialization, "initialization binds trusted process filename")
+check('before.exists && before.rateKnown[0] && before.rateKnown[2]' in initialization and initialization.index('alreadyUnlimited = true') < initialization.index('_CheckWriteAccess'), "already unlimited requires no write permission or setters")
+check('_version !=' not in access and '_version ==' not in access, "version metadata never gates operations")
+check('if (!_load || !_save || !_delete || !_get || !_set || !_update)' not in access, "no aggregate export gate")
+prepare = service.split("bool RtssService::_Prepare(", 1)[1].split("\n}", 1)[0]
+check('if (!status.rtss.running)' not in prepare, "configuration access can prepare offline")
+check('return s.initializeReady &&' in vm and 's.accessReady' not in vm, "initialization has its own availability")
+check('ReplaceFileW(path.c_str(), tempName, backupName, 0' in access and 'identity != before.fileIdentity' in access, "commit compares actual replaced bytes and identity")
+check('actual == contents' in access and 'FILE_SHARE_READ,' in access and 'temporary.retainBackup = true' in access, "rollback is guarded and retains unresolved backup")
+check('MOVEFILE_REPLACE_EXISTING' not in access and 'sourceLock' in access, "new profile never overwrites and Global source is locked")
+worker_initialization = service.split("void RtssService::_InitializeMagpie() {", 1)[1].split("\n}", 1)[0]
+check('session->original =' not in worker_initialization and 'session->lastWritten =' not in worker_initialization and 'selfInitialization = true' in worker_initialization and 'GetExePath().filename()' in worker_initialization, "worker initializes actual self name without session mutation")
+startup = read("src/Magpie/App.cpp")
+check('bool _isAlwaysRunAsAdmin = true' in read('src/Magpie/AppSettings.h'), "fresh settings request admin")
+check('ReadAdminStartupSettings(root' in settings and 'adminStartupDefaultsVersion' in settings, "versioned admin defaults migration")
+check(startup.index('if (settings.IsAlwaysRunAsAdmin()') < startup.index('settings.UpdateAdminAutoStart()'), "auto-start migration follows elevation")
+check('if (_isAlwaysRunAsAdmin && !Win32Helper::IsProcessElevated()) return true;' in settings, "startup persistence waits for elevation")
+check('adminAutoStartDefaultsVersion' in settings and 'AutoStartHelper::EnableAutoStart(_isAlwaysRunAsAdmin)' in settings, "existing auto-start reconciled once")
 scaling = read("src/Magpie/ScalingService.cpp")
 renderer = read("src/Magpie.Core/Renderer.cpp")
 check(settings.count("ReadProfileRtss(") == 2, "default and application load")
@@ -140,7 +172,7 @@ check("saveAttempted = true" in access and "else if (saveAttempted &&" in servic
 check("readbackComplete && RtssProfileAccess::SameRate(before, written)" in service, "verified unchanged failed writes do not fabricate ownership")
 check("current.contents != lastWritten.contents" in access, "new profile deletion ownership")
 check("disk.contents != current.contents" in access, "restore concurrent edit guard")
-check("_SetIfChanged(\"AppDetectionLevel\", 1, error)" in access, "new profile Low")
+check("_SetIfChanged(\"AppDetectionLevel\", 1, error," in access, "new profile Low")
 check("before.exists && !NonRateEqual" in access, "existing non-rate preservation check")
 check("std::chrono::milliseconds(750)" in service and "_thread.detach()" in service, "bounded final shutdown")
 check("Recheck(false)" in service and "retry && Status().state != RtssState::Conflict" in service, "launch readiness does not retry failures")
@@ -174,7 +206,8 @@ check("LogProfileFailure" in service and "observedKnown={} " in service and "nat
 check("GetLastError()" not in setter, "SDK BOOL rejection does not use stale last error")
 check('_CheckWriteAccess(profile, before.exists, error)' in access and '_CheckWriteAccess(profile, true, error)' in access,
       "Apply/Restore check the caller's file write rights")
-check("FILE_ADD_FILE" in access and "FILE_FLAG_BACKUP_SEMANTICS" in access and "CREATE_NEW" not in access,
+probe = access.split("bool RtssProfileAccess::_CheckWriteAccess(", 1)[1].split("\n}", 1)[0]
+check("FILE_ADD_FILE" in probe and "FILE_FLAG_BACKUP_SEMANTICS" in probe and "CREATE_NEW" not in probe,
       "new-profile permission probe opens only the existing directory")
 check("failure.fileError == ERROR_ACCESS_DENIED" in service and "Rtss_Failure_Permission" in service,
       "permission errors have a specific UI result")

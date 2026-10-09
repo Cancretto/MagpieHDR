@@ -23,7 +23,7 @@ inline RtssSettings ReadProfileRtss(const rapidjson::GenericObject<true, rapidjs
 	if (const auto value = fields.FindMember("customRate"); value != fields.MemberEnd()) {
 		if (value->value.IsUint() && value->value.GetUint() >= RtssSettings::MinimumRate &&
 			value->value.GetUint() <= RtssSettings::MaximumRate) result.customRate = value->value.GetUint();
-		else valid = false;
+		else if (result.rateMode == RtssRateMode::Custom) valid = false;
 	}
 	// Do not interpret damaged/forward-version preferences as permission to write externally.
 	if (!valid) result.scope = RtssScope::None;
@@ -32,7 +32,8 @@ inline RtssSettings ReadProfileRtss(const rapidjson::GenericObject<true, rapidjs
 
 template<class Writer>
 void WriteProfileRtss(Writer& writer, const RtssSettings& settings) {
-	const auto s = settings.IsValid() ? settings : RtssSettings{};
+	auto s = settings.IsValid() ? settings : RtssSettings{};
+	if (s.customRate < RtssSettings::MinimumRate || s.customRate > RtssSettings::MaximumRate) s.customRate = 60;
 	writer.Key("rtss"); writer.StartObject();
 	writer.Key("scope"); writer.Uint(uint32_t(s.scope));
 	writer.Key("rateMode"); writer.Uint(uint32_t(s.rateMode));

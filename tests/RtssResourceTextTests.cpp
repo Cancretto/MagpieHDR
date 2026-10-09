@@ -11,6 +11,7 @@
 #include "RtssSettings.h"
 
 using namespace winrt;
+using namespace Windows::Foundation::Collections;
 using namespace Magpie;
 namespace Resources = Windows::ApplicationModel::Resources;
 
@@ -26,6 +27,14 @@ struct ResourceLoader {
 // the real product PRI. No service, process launch or profile write runs.
 struct RtssToolInfo { std::wstring executable, version; bool running = false; };
 #include "RtssResourceCases.g.h"
+struct RtssService {
+	RtssStatus status;
+	bool pending = false, launching = false;
+	static RtssService& Get() { static RtssService service; return service; }
+	bool IsInitializingMagpie() const { return pending; }
+	bool IsLaunching() const { return launching; }
+	RtssStatus Status() const { return status; }
+};
 struct ProfileData {
 	RtssSettings rtss;
 	std::shared_ptr<const uint8_t> runtimeIdentity = std::make_shared<const uint8_t>(uint8_t(0));
@@ -38,10 +47,19 @@ struct ProfileViewModel {
 	RtssStatus _RtssStatus() const { return status; }
 	bool IsRtssManaged() const { return data.rtss.scope != RtssScope::None; }
 	bool IsRtssSyncAvailable() const { return syncAvailable; }
+	bool ShowRtssGlobalNotice() const { return data.rtss.scope == RtssScope::Global; }
+	IVector<hstring> RtssStatusSegments() const;
 	hstring RtssStatusText() const;
 	hstring RtssSyncText() const;
 	hstring RtssLaunchText() const;
 	hstring AfterburnerLaunchText() const;
+	hstring RtssInitializeText() const;
+};
+struct StatusViewModel {
+	ProfileData data; ProfileData* _data = &data;
+	RtssStatus _rtssPreview;
+	RtssStatus _RtssStatus() const;
+	bool CanInitializeMagpie() const;
 };
 #include "RtssResourceGetters.g.h"
 static unsigned checks = 0;
@@ -77,12 +95,32 @@ int main() {
 			Require(resources.GetString(L"Rtss_Failure_TimeMode") == (chinese ? L"无法切换帧时间模式。" : L"Could not switch from frame time mode."), "Time mode failure wording");
 #endif
 			ProfileViewModel vm;
+			for (bool pending : { false, true }) {
+				RtssService::Get().pending = pending;
+				Require(vm.RtssInitializeText() == resources.GetString(pending ? L"Rtss_InitializingMagpie" : L"Rtss_InitializeMagpie"), "Initialization button uses native map and busy text");
+			}
 			for (auto state : States) for (auto scope : {RtssScope::None, RtssScope::Global, RtssScope::Target}) {
 				vm.data.rtss.scope = scope;
 				vm.status.state = state;
 				Require(!vm.RtssStatusText().empty(), "Empty status text");
 			}
 			vm.status.state = RtssState::Read;
+			vm.data.rtss.scope = RtssScope::Global;
+			vm.status.rtss.executable = L"RTSS.exe";
+			vm.status.rtss.running = true;
+			vm.status.profile = L"Global"; vm.status.rtss.version = L"7.3.5.28314";
+			vm.status.rateKnown = true; vm.status.currentRate = 60;
+			vm.status.failureStage = L"Rtss_Failure_Read";
+			const auto segments = vm.RtssStatusSegments();
+			Require(segments.GetAt(0) == L"Global" && segments.GetAt(1) == L"\u00a0-\u00a0RTSS 7.3.5.28314", "Profile and version lead the status");
+			Require(segments.GetAt(3) == hstring(L"\u00a0-\u00a0" + fmt::format(fmt::runtime(std::wstring_view(resources.GetString(L"Rtss_ProfileRate"))), 60.0)) && segments.GetAt(4) == hstring(L"\u00a0-\u00a0" + std::wstring(resources.GetString(L"Rtss_Failure_Read"))), "Rate precedes specific error");
+			Require(std::wstring_view(vm.RtssStatusText()).find(L'\n') == std::wstring_view::npos, "Status stays one paragraph");
+			vm.status.profile.clear(); vm.status.rtss.version.clear(); vm.status.rateKnown = false; vm.status.failureStage.clear();
+			vm.data.rtss.scope = RtssScope::Target;
+			Require(vm.RtssStatusSegments().Size() == 1, "Missing object, version and rate are omitted");
+			vm.status.profile = L"Global"; vm.status.rtss.executable.clear();
+			Require(vm.RtssStatusSegments().Size() == 1, "Uninstalled tool does not fabricate an object");
+			vm.status.profile.clear();
 			vm.status.rateKnown = true;
 			vm.status.detectionDisabled = vm.status.targetOverridesGlobal = true;
 			vm.status.failureStage = L"Rtss_Failure_Read";
@@ -90,6 +128,22 @@ int main() {
 				vm.status.currentRate = rate; vm.status.timeLimit = timeLimit;
 				Require(!vm.RtssStatusText().empty(), "Empty rate status");
 			}
+			vm.status = {}; vm.status.rtss.executable = L"RTSS.exe"; vm.status.profile = L"Renamed Magpie.exe";
+			vm.status.state = RtssState::MagpieInitialized; vm.status.selfInitialization = true; vm.status.rateKnown = true;
+			const auto offlineText = std::wstring(vm.RtssStatusText());
+			Require(offlineText.find(std::wstring(resources.GetString(L"Rtss_Status_NotRunning"))) != offlineText.npos &&
+				offlineText.find(std::wstring(resources.GetString(L"Rtss_Reloaded"))) == offlineText.npos, "Offline saved result identifies stopped RTSS without claiming reload");
+			vm.status.state = RtssState::Read; vm.status.selfInitialization = false; vm.status.rateKnown = false; vm.status.rateUnavailable = true;
+			Require(std::wstring(vm.RtssStatusText()).find(std::wstring(resources.GetString(L"Rtss_RateUnknown"))) != std::wstring::npos &&
+				std::wstring(vm.RtssStatusText()).find(std::wstring(resources.GetString(L"Rtss_NoLimit"))) == std::wstring::npos, "Unknown field is not rendered as unlimited");
+			vm.status.rtss.running = true; vm.status.rateUnavailable = false; vm.status.reloaded = true;
+			Require(std::wstring(vm.RtssStatusText()).find(std::wstring(resources.GetString(L"Rtss_Reloaded"))) != std::wstring::npos, "Verified reload is a separate content segment");
+			vm.status.reloaded = false; vm.status.profileSaved = true; vm.status.state = RtssState::Failed;
+			vm.status.failureStage = L"Rtss_Failure_Reload";
+			const auto reloadFailureText = std::wstring(vm.RtssStatusText());
+			Require(reloadFailureText.find(std::wstring(resources.GetString(L"Rtss_ProfileSaved"))) != reloadFailureText.npos &&
+				reloadFailureText.find(std::wstring(resources.GetString(L"Rtss_Failure_Reload"))) != reloadFailureText.npos, "Saved and reload failure are distinct segments");
+			vm.status.profileSaved = false;
 			vm.syncAvailable = false;
 			Require(vm.RtssSyncText() == resources.GetString(L"Rtss_SyncUnavailable"), "Unavailable sync text");
 			vm.syncAvailable = true;
@@ -108,6 +162,26 @@ int main() {
 				Require(vm.AfterburnerLaunchText() == resources.GetString(abKeys[toolState]), "Afterburner launch text");
 			}
 		}
+		RtssService::Get().pending = RtssService::Get().launching = false;
+		StatusViewModel model;
+		auto& activeStatus = RtssService::Get().status;
+		activeStatus = {}; activeStatus.state = RtssState::NotRunning;
+		activeStatus.rtss.executable = L"RTSS.exe"; activeStatus.readReady = activeStatus.initializeReady = true;
+		model._rtssPreview.state = RtssState::Read; model._rtssPreview.rateKnown = true; model._rtssPreview.currentRate = 60;
+		model._rtssPreview.profile = L"Global";
+		Require(model._RtssStatus().state == RtssState::Read && model._RtssStatus().rateKnown && model._RtssStatus().currentRate == 60,
+			"Actual status merge retains offline read rather than clearing data");
+		Require(model.CanInitializeMagpie(), "Actual button availability permits offline self initialization");
+		RtssService::Get().launching = true;
+		Require(!model.CanInitializeMagpie(), "Button prevents conflicting launch command");
+		RtssService::Get().launching = false; RtssService::Get().pending = true;
+		Require(!model.CanInitializeMagpie(), "Button prevents duplicate self initialization");
+		RtssService::Get().pending = false; activeStatus.readReady = activeStatus.initializeReady = false;
+		activeStatus.state = RtssState::Failed; activeStatus.failureStage = L"Rtss_Failure_Interface";
+		Require(!model.CanInitializeMagpie() && model._RtssStatus().state == RtssState::Failed && !model._RtssStatus().rateKnown &&
+			model._RtssStatus().failureStage == L"Rtss_Failure_Interface", "Faulted read capability supersedes stale preview");
+		activeStatus.state = RtssState::NotInstalled; activeStatus.rtss.executable.clear();
+		Require(model._RtssStatus().profile.empty() && !model._RtssStatus().rateKnown, "Uninstalled state clears stale object");
 		std::cout << "RTSS native resource text: " << checks << " checks passed across 3 languages.\n";
 		return 0;
 	} catch (const hresult_error& e) {
