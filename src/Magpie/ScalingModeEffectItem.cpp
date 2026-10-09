@@ -76,7 +76,7 @@ bool ScalingModeEffectItem::CanScale() const noexcept {
 		return false;
 	}
 
-	return _effectInfo && _effectInfo->CanScale() && !ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdrInvalid && _Data().hdrManagedRole==HdrManagedRole::None;
+	return _effectInfo && _effectInfo->CanScale() && !ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdrMigrationInvalid;
 }
 
 bool ScalingModeEffectItem::HasParameters() const noexcept {
@@ -84,11 +84,14 @@ bool ScalingModeEffectItem::HasParameters() const noexcept {
 		return false;
 	}
 
-	return _effectInfo && !_effectInfo->params.empty() && !ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdrInvalid && _Data().hdrManagedRole==HdrManagedRole::None;
+	return _effectInfo && !_effectInfo->params.empty() && !ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdrMigrationInvalid;
 }
 
 hstring ScalingModeEffectItem::IssueDescription() const noexcept {
-	if (_effectInfo || _IsRemoved()) return {};
+	if (_IsRemoved()) return {};
+	if (ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdrMigrationInvalid)
+		return ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID).GetString(L"ScalingModes_HdrMigrationInvalid_Description");
+	if (_effectInfo) return {};
 	return ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID).GetString(
 		_Data().isRecoveryInvalid ? L"ScalingModes_RecoveryInvalid_Description" : L"ScalingModes_MissingEffect_Description");
 }
@@ -204,7 +207,7 @@ double ScalingModeEffectItem::ScaleFactorX() const noexcept {
 }
 
 void ScalingModeEffectItem::ScaleFactorX(double value) {
-	if (!CanScale()) {
+	if (!CanScale() || !std::isfinite(value) || value <= 0) {
 		return;
 	}
 
@@ -232,7 +235,7 @@ double ScalingModeEffectItem::ScaleFactorY() const noexcept {
 }
 
 void ScalingModeEffectItem::ScaleFactorY(double value) {
-	if (!CanScale()) {
+	if (!CanScale() || !std::isfinite(value) || value <= 0) {
 		return;
 	}
 
@@ -259,7 +262,7 @@ double ScalingModeEffectItem::ScalingPixelsX() const noexcept {
 }
 
 void ScalingModeEffectItem::ScalingPixelsX(double value) {
-	if (!CanScale()) {
+	if (!CanScale() || !std::isfinite(value) || value <= 0) {
 		return;
 	}
 
@@ -286,7 +289,7 @@ double ScalingModeEffectItem::ScalingPixelsY() const noexcept {
 }
 
 void ScalingModeEffectItem::ScalingPixelsY(double value) {
-	if (!CanScale()) {
+	if (!CanScale() || !std::isfinite(value) || value <= 0) {
 		return;
 	}
 
@@ -305,7 +308,7 @@ void ScalingModeEffectItem::ScalingPixelsY(double value) {
 }
 
 void ScalingModeEffectItem::Remove() {
-	if (!CanRemove()) {
+	if (_IsRemoved() || ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdrMigrationInvalid) {
 		return;
 	}
 
@@ -313,18 +316,7 @@ void ScalingModeEffectItem::Remove() {
 	Removed.Invoke(_effectIdx); // The parent detaches only after a successful transaction.
 }
 
-bool ScalingModeEffectItem::CanRemove() const noexcept {
-	return !_IsRemoved() && !ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdrInvalid && _Data().hdrManagedRole==HdrManagedRole::None;
-}
-
-bool ScalingModeEffectItem::IsVisible() const noexcept {
-	return !_IsRemoved() && _Data().hdrManagedRole==HdrManagedRole::None;
-}
-
 void ScalingModeEffectItem::_SaveScaleChange() {
-	const uint32_t mode=_scalingModeIdx;
-	if (!_IsRemoved() && ScalingModesService::Get().GetScalingMode(mode).hdr.managed)
-		ScalingModesService::Get().HdrGroupStructureChanged.Invoke(mode);
 	AppSettings::Get().SaveAsync();
 }
 
@@ -334,9 +326,7 @@ bool ScalingModeEffectItem::CanDrag() const noexcept {
 	}
 
 	const ScalingMode& mode = ScalingModesService::Get().GetScalingMode(_scalingModeIdx);
-	return !mode.hdrInvalid && _Data().hdrManagedRole==HdrManagedRole::None && std::ranges::count_if(mode.effects,[](const auto& effect) {
-		return effect.hdrManagedRole==HdrManagedRole::None;
-	}) > 1;
+	return !mode.hdrMigrationInvalid && mode.effects.size() > 1;
 }
 
 void ScalingModeEffectItem::RefreshDragState() {

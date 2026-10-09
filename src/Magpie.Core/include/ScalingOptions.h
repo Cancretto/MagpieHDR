@@ -8,7 +8,6 @@
 #include "FrameRefreshSettings.h"
 #include "SourceWindowRelations.h"
 #include "HdrComponents.h"
-#include "HdrGroupSettings.h"
 #include "OverlayWindowGeometry.h"
 #include "ToolbarPlacement.h"
 #include <mutex>
@@ -94,7 +93,6 @@ struct EffectOption {
 	phmap::flat_hash_map<std::string, float> parameters;
 	ScalingType scalingType = ScalingType::Normal;
 	std::pair<float, float> scale = { 1.0f,1.0f };
-	HdrManagedRole hdrManagedRole = HdrManagedRole::None;
 
 	bool HasScale() const noexcept {
 		return scalingType != ScalingType::Normal ||
@@ -467,8 +465,7 @@ struct ScalingOptions {
 	// Session-only plan. Persisted HDR flags remain retired; explicit components
 	// select capture and output independently before creating graphics resources.
 	HdrComponentPlan hdrComponents;
-	uint64_t hdrGroupRevision = 1;
-	std::optional<bool> hdrCaptureIntent;
+	std::optional<bool> legacyHdrCaptureIntent;
 	bool IsHdrCaptureEnabled() const noexcept {
 		return hdrComponents.enabled ? hdrComponents.captureHdr : IsHdrCompatibilityEnabled();
 	}

@@ -58,9 +58,6 @@
     <ClInclude Include="HdrComponentRuntime.h" />
     <ClInclude Include="HdrDisplayPreflight.h" />
     <ClInclude Include="include\HdrComponents.h" />
-    <ClInclude Include="include\HdrGroupSettings.h" />
-    <ClInclude Include="include\HdrGroupPlan.h" />
-    <ClInclude Include="include\HdrEffectCapabilities.h" />
     <ClInclude Include="HdrEffectBoundary.h" />
     <ClInclude Include="DlssnrAutoHdr.h" />
     <ClInclude Include="include\RTXVideoParameters.h" />

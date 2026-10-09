@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "HdrGroupPlan.h"
 #include "App.h"
 #include "AppSettings.h"
 #include "CommonSharedConstants.h"
@@ -423,8 +422,8 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 
 	const ScalingMode& scalingMode =
 		ScalingModesService::Get().GetScalingMode(profile.scalingMode);
-	if (scalingMode.hdrInvalid) {
-		Logger::Get().Error("Invalid saved HDR group settings; retained for recovery without rewriting its chain");
+	if (scalingMode.hdrMigrationInvalid) {
+		Logger::Get().Error("Invalid HDR trial configuration retained for recovery");
 		return ScalingError::HdrComponentInvalidParameters;
 	}
 	const std::vector<EffectItem>& effects = scalingMode.effects;
@@ -458,8 +457,7 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	ScalingOptions options;
 	options.scalingModeIdx = static_cast<uint32_t>(profile.scalingMode);
 	options.scalingModeName = scalingMode.name;
-	options.hdrCaptureIntent = scalingMode.hdr.CaptureIntent();
-	options.hdrGroupRevision = scalingMode.hdrRevision;
+	options.legacyHdrCaptureIntent = scalingMode.legacyHdrCaptureIntent;
 
 	options.effects.reserve(effects.size());
 	for (const EffectItem& effectItem : effects) {
@@ -706,7 +704,7 @@ void ScalingService::EffectParameterEdited(uint32_t modeIdx, uint32_t effectIdx,
 	const auto& modes = AppSettings::Get().ScalingModes();
 	if (modeIdx >= modes.size() || effectIdx >= modes[modeIdx].effects.size()) return;
 	_scalingRuntime->UpdateEffectParameterFromSettings(modeIdx, modes[modeIdx].name,
-		effectIdx, static_cast<EffectOption>(modes[modeIdx].effects[effectIdx]), parameter, value,modes[modeIdx].hdrRevision);
+		effectIdx, static_cast<EffectOption>(modes[modeIdx].effects[effectIdx]), parameter, value);
 }
 
 void ScalingService::RetryConfigurationSave(std::function<void(bool)> completed) {
@@ -728,16 +726,6 @@ void ScalingService::RetryConfigurationSave(std::function<void(bool)> completed)
 		}
 		if (completed) completed(succeeded);
 	});
-}
-
-void ScalingService::HdrGroupEdited(uint32_t modeIdx) {
-	if (!_scalingRuntime || (!IsScaling() && _scalingRuntime->State()!=ScalingState::Starting)) return;
-	const auto& modes=AppSettings::Get().ScalingModes();
-	if (modeIdx>=modes.size() || modes[modeIdx].hdrInvalid) return;
-	const auto& mode=modes[modeIdx];
-	std::vector<EffectOption> effects;
-	for (const auto& effect:mode.effects) effects.push_back(static_cast<EffectOption>(effect));
-	_scalingRuntime->UpdateHdrGroupFromSettings(modeIdx,mode.name,mode.hdrRevision,std::move(effects),mode.hdr.CaptureIntent());
 }
 
 void ScalingService::_FlushEffectParametersSaves(bool synchronous) {
@@ -807,10 +795,7 @@ void ScalingService::_HandleEffectParametersRequest(
 		return;
 	}
 	ScalingMode& mode = modes[sessionOptions.scalingModeIdx];
-	if (mode.hdrRevision != sessionOptions.hdrGroupRevision || mode.hdrInvalid ||
-		mode.hdr.CaptureIntent() != sessionOptions.hdrCaptureIntent) {
-		// An intentional group/method switch retires old panel requests, rather
-		// than reporting a competing parameter edit against the new topology.
+	if (mode.hdrMigrationInvalid || mode.legacyHdrCaptureIntent != sessionOptions.legacyHdrCaptureIntent) {
 		fail(EffectParametersSaveError::SessionExpired); return;
 	}
 	if (mode.name != sessionOptions.scalingModeName ||
@@ -832,8 +817,6 @@ void ScalingService::_HandleEffectParametersRequest(
 			fail(EffectParametersSaveError::Conflict);
 			return;
 		}
-		if (destination.hdrManagedRole != session.hdrManagedRole || request.effects[i].hdrManagedRole != session.hdrManagedRole ||
-			request.previousEffects[i].hdrManagedRole != session.hdrManagedRole) { fail(EffectParametersSaveError::Conflict); return; }
 		phmap::flat_hash_map<std::wstring, float> before, after;
 		for (const auto& [name, value] : request.previousEffects[i].parameters) {
 			before[StrHelper::UTF8ToUTF16(name)] = value;
@@ -852,7 +835,6 @@ void ScalingService::_HandleEffectParametersRequest(
 		}
 	}
 	mode.effects = std::move(merged);
-	if (mode.hdr.managed) CaptureHdrGroupParameters(mode.effects,mode.hdr);
 	if (frameSyncProfile->frameRefresh != mergedFrameRefresh) {
 		frameSyncProfile->frameRefresh = mergedFrameRefresh;
 		ProfileService::Get().FrameRefreshChanged.Invoke(*frameSyncProfile);

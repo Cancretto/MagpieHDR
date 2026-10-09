@@ -159,6 +159,21 @@ inline Plan Prepare(std::string_view source, std::string_view backup,
 					static_cast<rapidjson::SizeType>(recoveredGroupName.size()), allocator), allocator);
 				note(path + "/name");
 			}
+			// The HDR migration loader validates the complete group and keeps its
+			// raw object on failure. Generic repairs must not erase or clamp nodes
+			// before it sees them, nor rewrite an already unfolded manual chain.
+			const bool hdrMigrationData = mode.HasMember("hdr") || mode.HasMember("hdrManualMigration") ||
+				mode.HasMember("hdrRecoveryInvalid") || [&] {
+					if (!mode.HasMember("effects") || !mode["effects"].IsArray()) return false;
+					for (const auto& effect : mode["effects"].GetArray())
+						if (effect.IsObject() && (effect.HasMember("hdrManagedRole") || [&] {
+							if (!effect.HasMember("name") || !effect["name"].IsString()) return false;
+							const std::string_view name(effect["name"].GetString(), effect["name"].GetStringLength());
+							return name == "Color\\HDR_to_SDR" || name == "Color\\SDR_to_HDR" || name == "RTXVideo\\RTXVideo_HDR";
+						}())) return true;
+					return false;
+				}();
+			if (hdrMigrationData) continue;
 			// Retain each healthy item and its index. A broken chain/item is a
 			// visible placeholder, never an automatic replacement image filter.
 			if (mode.HasMember("effects") && !mode["effects"].IsArray()) {

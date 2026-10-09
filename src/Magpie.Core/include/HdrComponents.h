@@ -45,6 +45,8 @@ struct HdrComponentPlan {
 
 // Pure preflight: no SDK calls, windows, graphics devices or file access.
 // The first explicit converter determines the requested capture domain.
+// An internal intent may preserve a migrated trial chain's capture contract;
+// it never inserts, hides, reorders or synchronizes conversion nodes.
 template<class Effects>
 HdrComponentPlan BuildHdrComponentPlan(const Effects& effects, std::optional<bool> captureIntent = std::nullopt) {
 	HdrComponentPlan plan;

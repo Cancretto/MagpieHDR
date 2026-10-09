@@ -1,6 +1,7 @@
-param([string]$OutputDirectory, [string]$RapidJsonIncludeDirectory)
+param([string]$OutputDirectory, [string]$RapidJsonIncludeDirectory, [string[]]$TrialConfigurations)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
+$TrialConfigurations = @($TrialConfigurations | ForEach-Object { (Resolve-Path -LiteralPath $_).Path })
 if (!$OutputDirectory) { $OutputDirectory = Join-Path $repo 'obj/tests/hdr-compatibility-update' }
 if (!(Get-Command cl.exe -ErrorAction SilentlyContinue)) {
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
@@ -15,20 +16,22 @@ if (!$RapidJsonIncludeDirectory) {
     if (!$header) { throw 'Provide -RapidJsonIncludeDirectory for the existing RapidJSON dependency.' }
     $RapidJsonIncludeDirectory = Split-Path (Split-Path $header -Parent) -Parent
 }
+& python (Join-Path $PSScriptRoot 'prepare_hdr_manual_migration_tests.py') $OutputDirectory
+if ($LASTEXITCODE) { throw 'Manual migration extraction failed' }
+& python (Join-Path $PSScriptRoot 'prepare_hdr_manual_editing_tests.py') $OutputDirectory
+if ($LASTEXITCODE) { throw 'Manual editing extraction failed' }
 & python (Join-Path $PSScriptRoot 'prepare_hdr_cleanup_tests.py') $OutputDirectory
 if ($LASTEXITCODE) { throw 'Cleanup extraction failed' }
 & python (Join-Path $PSScriptRoot 'prepare_hdr_export_tests.py') $OutputDirectory
 if ($LASTEXITCODE) { throw 'Export extraction failed' }
-& python (Join-Path $PSScriptRoot 'prepare_hdr_group_persistence_tests.py') $OutputDirectory
-if ($LASTEXITCODE) { throw 'Group persistence extraction failed' }
-& python (Join-Path $PSScriptRoot 'prepare_hdr_group_lifecycle_tests.py') $OutputDirectory
-if ($LASTEXITCODE) { throw 'Group lifecycle extraction failed' }
 $common = @('/nologo', '/std:c++20', '/EHsc', '/utf-8', '/MT', '/DNOMINMAX', "/I$repo/src/Magpie.Core/include", "/I$repo/src/Magpie.Core", "/I$repo/src/Magpie", "/I$repo/src/Shared", "/I$RapidJsonIncludeDirectory")
-foreach ($test in @('HdrCompatibilityUpdateTests', 'HdrComponentsTests', 'HdrGroupTests', 'HdrGroupJsonTests', 'HdrGroupPersistenceTests', 'HdrGroupLifecycleTests', 'HdrCleanupTests')) {
-    $source = if ($test -in @('HdrCleanupTests','HdrGroupPersistenceTests','HdrGroupLifecycleTests')) { Join-Path $OutputDirectory "$test.cpp" } else { Join-Path $PSScriptRoot "$test.cpp" }
+foreach ($test in @('HdrCompatibilityUpdateTests', 'HdrComponentsTests', 'HdrManualMigrationTests', 'HdrManualEditingTests', 'HdrCleanupTests')) {
+    $source = if ($test -in @('HdrCleanupTests','HdrManualMigrationTests','HdrManualEditingTests')) { Join-Path $OutputDirectory "$test.cpp" } else { Join-Path $PSScriptRoot "$test.cpp" }
     & cl.exe @common $source "/Fe:$OutputDirectory/$test.exe" "/Fo:$OutputDirectory/$test.obj"
     if ($LASTEXITCODE) { throw "$test test compilation failed" }
-    & (Join-Path $OutputDirectory "$test.exe")
+    $testArguments = @()
+    if ($test -eq 'HdrManualMigrationTests') { $testArguments = @($TrialConfigurations) }
+    & (Join-Path $OutputDirectory "$test.exe") @testArguments
     if ($LASTEXITCODE) { throw "$test failed" }
 }
 & cl.exe @common (Join-Path $OutputDirectory 'HdrExportTests.cpp') windowscodecs.lib windowsapp.lib ole32.lib "/Fe:$OutputDirectory/HdrExportTests.exe" "/Fo:$OutputDirectory/HdrExportTests.obj"

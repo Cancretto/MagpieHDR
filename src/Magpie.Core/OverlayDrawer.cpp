@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "HdrGroupPlan.h"
 #include "HdrParameterPolicy.h"
 #include "OverlayDrawer.h"
 #include "CursorManager.h"
@@ -1414,7 +1413,6 @@ std::vector<EffectOption> OverlayDrawer::_BuildDraftEffectOptions() const noexce
 				_draftEffectParameterValues[effectIdx][parameterIdx];
 		}
 	}
-	SynchronizeHdrGroupParameterChanges(_submittedEffectOptions,effects);
 	return effects;
 }
 
@@ -1688,7 +1686,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	auto getDraftValue = [&](size_t effectIdx, const EffectDesc& description,
 		std::string_view name, float fallback) noexcept {
 		if (name == "__hdrHasPair") {
-			const auto plan = BuildHdrComponentPlan(_BuildDraftEffectOptions(), ScalingWindow::Get().Options().hdrCaptureIntent);
+			const auto plan = BuildHdrComponentPlan(_BuildDraftEffectOptions(), ScalingWindow::Get().Options().legacyHdrCaptureIntent);
 			return plan.error == HdrComponentError::None && effectIdx < plan.stages.size() &&
 				plan.stages[effectIdx].pairIndex != size_t(-1) ? 1.f : 0.f;
 		}
@@ -1711,24 +1709,19 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		return true;
 	};
 
-	bool drewSharedHdrInput=false;
 	for (size_t effectIdx = 0; effectIdx < configuredEffectCount; ++effectIdx) {
 		const EffectDesc& description = *descriptions[effectIdx];
-		const auto role=ScalingWindow::Get().Options().effects[effectIdx].hdrManagedRole;
-		if (role==HdrManagedRole::PairRestore || role==HdrManagedRole::Identity) continue;
-		if (role==HdrManagedRole::InputMapping) {
-			if (drewSharedHdrInput) continue;
-			drewSharedHdrInput=true;
-		}
 		if (description.params.empty()) {
 			continue;
 		}
 		ImGui::PushID(itemId++);
-		const auto hdrSectionTitle=role==HdrManagedRole::InputMapping ? EffectParameterLocalization::Resource(L"HdrGroup_InputCard/Header","Input / HDR compatibility") :
-			role==HdrManagedRole::Output ? EffectParameterLocalization::Resource(L"HdrGroup_OutputCard/Header","HDR output") + " · " +
-				EffectParameterLocalization::Resource(ClassifyHdrComponent(ScalingWindow::Get().Options().effects[effectIdx].name)==HdrComponentKind::RtxVideoHdr ?
-					L"HdrGroup_OutputRtx" : L"HdrGroup_OutputNative","HDR mapping") : std::string(GetEffectDisplayName(description));
-		ImGui::SeparatorText(hdrSectionTitle.c_str());
+		ImGui::SeparatorText(
+			std::string(GetEffectDisplayName(description)).c_str());
+		const auto hdrPlan = BuildHdrComponentPlan(_BuildDraftEffectOptions(),
+			ScalingWindow::Get().Options().legacyHdrCaptureIntent);
+		if (hdrPlan.error == HdrComponentError::None && effectIdx < hdrPlan.stages.size() &&
+			hdrPlan.stages[effectIdx].pairIndex != size_t(-1))
+			ImGui::TextWrapped("%s", EffectParameterLocalization::HdrPairSource(hdrPlan.stages[effectIdx].pairIndex).c_str());
 
 		std::string_view currentGroup;
 		// 仅在 _DEBUG 下读取（参数元数据一致性告警），release 下以 maybe_unused 抑制 ClangCL -Werror
@@ -1740,7 +1733,6 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 				_localizedEffectParameters[effectIdx][parameterIdx];
 			const std::string& effectName =
 				ScalingWindow::Get().Options().effects[effectIdx].name;
-			if (role!=HdrManagedRole::None && parameter.name=="mode") continue;
 			if (!IsEffectParameterVisible(effectName, parameter.name,
 				[&](std::string_view name, float fallback) { return getDraftValue(effectIdx, description, name, fallback); })) continue;
 			if (parameter.group != currentGroup) {

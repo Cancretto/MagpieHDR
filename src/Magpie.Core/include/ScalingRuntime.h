@@ -1,6 +1,5 @@
 #pragma once
 #include "Event.h"
-#include <optional>
 
 namespace Magpie {
 
@@ -39,9 +38,7 @@ public:
 
 	uint32_t RunId() const noexcept;
 	void UpdateEffectParameterFromSettings(uint32_t modeIdx, std::wstring modeName,
-		uint32_t effectIdx, EffectOption effect, std::string parameter, float value,uint64_t hdrRevision);
-	void UpdateHdrGroupFromSettings(uint32_t modeIdx, std::wstring modeName,
-		uint64_t revision, std::vector<EffectOption> effects, std::optional<bool> captureIntent);
+		uint32_t effectIdx, EffectOption effect, std::string parameter, float value);
 
 	bool RestartWithEffectParameters(
 		HWND hwndSource,
@@ -75,7 +72,6 @@ private:
 
 	std::atomic<ScalingState> _state = ScalingState::Idle;
 	std::atomic<uint64_t> _commandGeneration = 0;
-	std::atomic<uint64_t> _hdrGroupGeneration = 0;
 };
 
 }

@@ -27,22 +27,5 @@ namespace Magpie {
         Boolean IsInUse { get; };
 
         Boolean CanReorderEffects { get; };
-        IObservableVector<String> HdrInputChoices { get; };
-        IObservableVector<String> HdrOutputChoices { get; };
-        IObservableVector<String> HdrManualCaptureChoices { get; };
-        Int32 HdrManualCaptureIndex;
-        Boolean IsHdrManual { get; };
-        Int32 HdrInputIndex;
-        Int32 HdrOutputIndex;
-        Boolean IsHdrManaged { get; };
-        Boolean CanEditHdr { get; };
-        Boolean HasHdrInputParameters { get; };
-        Boolean HasHdrOutputParameters { get; };
-        EffectParametersViewModel HdrInputParameters { get; };
-        EffectParametersViewModel HdrOutputParameters { get; };
-        String HdrSummary { get; };
-        String HdrOutputDescription { get; };
-        String HdrProblem { get; };
-        Boolean HasHdrProblem { get; };
     }
 }

@@ -13,7 +13,6 @@
 #include "AppSettings.h"
 #include "ScalingModesService.h"
 #include "ScalingMode.h"
-#include "HdrGroupPlan.h"
 #include "EffectsService.h"
 #include "EffectDesc.h"
 #include "EffectParameterValue.h"
@@ -216,7 +215,9 @@ EffectParametersViewModel::EffectParametersViewModel(uint32_t scalingModeIdx, ui
 	_SynchronizeParameters();
 	_parameterChangedRevoker = ScalingModesService::Get().EffectParametersChanged(
 		auto_revoke, [this](uint32_t mode, uint32_t effect) {
-			if (!_IsRemoved() && mode == _scalingModeIdx && effect == _effectIdx) _SynchronizeParameters();
+			if (_IsRemoved() || mode != _scalingModeIdx) return;
+			if (effect == _effectIdx) _SynchronizeParameters();
+			else { _RefreshConditionalVisibility(); _RefreshLayoutWidth(); }
 		});
 }
 
@@ -267,9 +268,6 @@ void EffectParametersViewModel::_ScalingModeParameter_PropertyChanged(
 		sender.try_as<Magpie::ScalingModeParameter>());
 	if (paramImpl->Index() >= _effectInfo->params.size()) return;
 	const std::string& effectName = _effectInfo->params[paramImpl->Index()].name;
-	auto& mode=ScalingModesService::Get().GetScalingMode(_scalingModeIdx);
-	const auto before=mode.hdr.managed ? mode.effects : std::vector<EffectItem>{};
-	if (mode.effects[_effectIdx].hdrManagedRole!=HdrManagedRole::None && effectName=="mode") return;
 	_Data()[StrHelper::UTF8ToUTF16(effectName)] = paramImpl->IsBoolean()
 		? static_cast<float>(paramImpl->BooleanValue())
 		: paramImpl->IsChoice()
@@ -277,17 +275,9 @@ void EffectParametersViewModel::_ScalingModeParameter_PropertyChanged(
 			: static_cast<float>(paramImpl->Value());
 	_RefreshConditionalVisibility();
 	_RefreshLayoutWidth();
-	if (mode.hdr.managed) {
-		SynchronizeHdrGroupParameterChanges(before,mode.effects);
-		CaptureHdrGroupParameters(mode.effects,mode.hdr);
-	}
-	for (uint32_t i=0; i<mode.effects.size(); ++i) {
-		if (i!=_effectIdx && !(mode.hdr.managed && mode.effects[_effectIdx].hdrManagedRole==HdrManagedRole::InputMapping &&
-			mode.effects[i].hdrManagedRole==HdrManagedRole::InputMapping)) continue;
-		ScalingService::Get().EffectParameterEdited(_scalingModeIdx,i,effectName,
-			mode.effects[i].parameters.at(StrHelper::UTF8ToUTF16(effectName)));
-		ScalingModesService::Get().EffectParametersChanged.Invoke(_scalingModeIdx,i);
-	}
+	ScalingService::Get().EffectParameterEdited(_scalingModeIdx, _effectIdx, effectName,
+		_Data().at(StrHelper::UTF8ToUTF16(effectName)));
+	ScalingModesService::Get().EffectParametersChanged.Invoke(_scalingModeIdx, _effectIdx);
 
 	LazySaveAppSettings();
 }
@@ -298,7 +288,7 @@ void EffectParametersViewModel::_RefreshConditionalVisibility() {
 	std::vector<EffectOption> options;
 	for (const auto& item : ScalingModesService::Get().GetScalingMode(_scalingModeIdx).effects)
 		options.push_back(static_cast<EffectOption>(item));
-	const auto hdrPlan = BuildHdrComponentPlan(options, ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdr.CaptureIntent());
+	const auto hdrPlan = BuildHdrComponentPlan(options, ScalingModesService::Get().GetScalingMode(_scalingModeIdx).legacyHdrCaptureIntent);
 	auto getValue = [&](std::string_view name, float fallback) {
 		if (name == "__hdrHasPair") return hdrPlan.error == HdrComponentError::None && _effectIdx < hdrPlan.stages.size() &&
 			hdrPlan.stages[_effectIdx].pairIndex != size_t(-1) ? 1.f : 0.f;
@@ -317,15 +307,17 @@ void EffectParametersViewModel::_RefreshConditionalVisibility() {
 			parameter->SynchronizeValue(UsesFrontEdgeSyncFrameRate(frontEdgeSyncEnabled,
 				getValue(name, 0.0f)) ? 0.0f : 1.0f);
 		}
-		const auto role=ScalingModesService::Get().GetScalingMode(_scalingModeIdx).effects[_effectIdx].hdrManagedRole;
-		const bool visible = !(role!=HdrManagedRole::None && (name=="mode" || role==HdrManagedRole::PairRestore)) &&
-			IsEffectParameterVisible(effect, name, getValue);
+		const bool visible = IsEffectParameterVisible(effect, name, getValue);
 		parameter->IsVisible(visible);
 		parameter->IsEnabled(visible && IsEffectParameterEnabled(effect, name, frontEdgeSyncEnabled, getValue));
 		auto display = _effectInfo->params[parameter->Index()];
 		std::vector<EffectParameterDesc> localized{ std::move(display) };
 		EffectParameterLocalization::Localize(effect, localized);
-		parameter->Tooltip(to_hstring(EffectParameterLocalization::Tooltip(effect, localized.front(), parameter->IsEnabled())));
+		auto tooltip = EffectParameterLocalization::Tooltip(effect, localized.front(), parameter->IsEnabled());
+		if (name == "mode" && hdrPlan.error == HdrComponentError::None && _effectIdx < hdrPlan.stages.size() &&
+			hdrPlan.stages[_effectIdx].pairIndex != size_t(-1))
+			tooltip += '\n' + EffectParameterLocalization::HdrPairSource(hdrPlan.stages[_effectIdx].pairIndex);
+		parameter->Tooltip(to_hstring(tooltip));
 	}
 	for (const auto& group : _groupImpls) group->RefreshVisibility();
 }

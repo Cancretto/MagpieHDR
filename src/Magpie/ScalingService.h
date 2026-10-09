@@ -53,7 +53,6 @@ public:
 	void MainUIChanged(HWND window);
 	void EffectParameterEdited(uint32_t modeIdx, uint32_t effectIdx,
 		const std::string& parameter, float value);
-	void HdrGroupEdited(uint32_t modeIdx);
 	void RetryConfigurationSave(std::function<void(bool)> completed);
 
 	Event<bool, bool> IsTimerOnChanged;

@@ -522,7 +522,7 @@ void ScalingWindow::Start(HWND hwndSrc, ScalingOptions&& options) noexcept {
 
 	// Retired profile flags cannot enable HDR. Explicit conversion components
 	// derive capture/output domains for this session and every parameter restart.
-	options.hdrComponents = BuildHdrComponentPlan(options.effects, options.hdrCaptureIntent);
+	options.hdrComponents = BuildHdrComponentPlan(options.effects, options.legacyHdrCaptureIntent);
 	if (!IsValidFrameSyncMode(options.frameSyncMode)) options.frameSyncMode = FrameSyncMode::FrontEdge;
 	options.IsHdrCompatibilityEnabled(options.hdrComponents.enabled && options.hdrComponents.outputHdr);
 	options.Log();
@@ -817,40 +817,12 @@ void ScalingWindow::CleanAfterSrcRepositioned() noexcept {
 	_CancelParameterRestart();
 	_repositionOverlayState.reset();
 	_pendingManualParameterRestart.reset();
-	_pendingHdrGroupRestart.reset();
 	_pendingWindowedMode.reset();
 	if (_options.save) {
 		_options = {};
 	}
 	_lastWindowedRendererWidth = 0;
 	_isSrcRepositioning = false;
-}
-
-void ScalingWindow::RestartWithHdrGroup(std::vector<EffectOption>&& effects,
-	std::optional<bool> captureIntent,uint64_t revision) noexcept {
-	const HWND source=_srcTracker.Handle();
-	const bool waiting=IsWaitingForParameterRestart();
-	if ((!Handle() && !waiting) || !IsWindow(source) || effects.empty() || revision<=_options.hdrGroupRevision) return;
-	if (HasHeldParameterInput()) {
-		_pendingHdrGroupRestart.emplace(HdrGroupRestart{std::move(effects),captureIntent,revision});
-		return;
-	}
-	const auto overlayState=_renderer ? _renderer->CaptureOverlayState() : _restartOverlayState;
-	_pendingHdrGroupRestart.reset();
-	_pendingManualParameterRestart.reset();
-	_CancelParameterRestart();
-	_isSrcRepositioning=true;
-	if (!waiting) Destroy(); // joins backends and retires SDK/history/resources before changing the color contract
-	_isSrcRepositioning=false;
-	_options.effects=std::move(effects);
-	_options.hdrCaptureIntent=captureIntent;
-	_options.hdrGroupRevision=revision;
-	// Old save receipts remain alive in submitted requests, but cannot address
-	// this new topology. New controls get fresh applied/desired snapshots.
-	_options.parameterSession=std::make_shared<EffectParameterSessionState>(_options.effects,_options.frameRefresh);
-	Logger::Get().Info("HDR group method changed: rebuilding capture, effects and presentation");
-	Start(source,std::move(_options));
-	if (Handle() && _renderer) _renderer->RestoreOverlayState(overlayState);
 }
 
 bool ScalingWindow::QueueEffectParameterRestart(
@@ -907,12 +879,6 @@ void ScalingWindow::UpdateWaitingEffectParameter(
 void ScalingWindow::ProcessPendingParameterRestart() noexcept {
 	using Clock = EffectParameterRestartQueue::Clock;
 	if (HasHeldParameterInput()) return;
-	if (_pendingHdrGroupRestart && Handle()) {
-		auto request=std::move(*_pendingHdrGroupRestart);
-		_pendingHdrGroupRestart.reset();
-		RestartWithHdrGroup(std::move(request.effects),request.captureIntent,request.revision);
-		return;
-	}
 	if (_pendingWindowedMode && Handle()) {
 		const bool windowed = *_pendingWindowedMode;
 		_pendingWindowedMode.reset();

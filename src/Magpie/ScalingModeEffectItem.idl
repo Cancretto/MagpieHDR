@@ -25,8 +25,6 @@ namespace Magpie {
 		EffectParametersViewModel Parameters { get; };
 
 		void Remove();
-		Boolean CanRemove { get; };
-		Boolean IsVisible { get; };
 
 		Boolean CanDrag { get; };
 

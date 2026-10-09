@@ -20,6 +20,11 @@ struct EffectParameterLocalization {
 		return std::string(fallback);
 	}
 
+	static std::string HdrPairSource(size_t index) {
+		return fmt::format(fmt::runtime(Resource(L"HdrParameter_PairSource",
+			"Restores settings from HDR -> SDR at effect #{}.")), index + 1);
+	}
+
 	// Display-only help shared by XAML and the runtime overlay. DLSSNR names
 	// show purpose only; other effects retain their descriptor-based numeric help.
 	static std::string Tooltip(std::string_view effect, const EffectParameterDesc& parameter,
