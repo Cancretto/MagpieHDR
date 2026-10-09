@@ -4,6 +4,7 @@
 
 ## 中文
 
+- **VFX 更新：** 合入 `feature/nvidia-vfx-optimization` 的缓冲轮换、比较线程组归约、纹理视图缓存及编码匹配；四项统一套件改用经签名与哈希检查的十个运行 DLL 和完整许可通知。Async／CUDA 直连保持关闭，详细计时仍按原开关启用；真实 GPU 画质、稳定性及性能另行验收。
 - **RTSS 状态操作：** 初始化按钮简化为“初始化”；检测到 Magpie 独立不限帧配置后隐藏，配置改变或检测失败时保留重试。初始化与启动工具采用同页默认控件字号。
 - **配置页闪退修复：** RTSS 状态分段列表改用支持 XAML 对象绑定的集合，修复打开配置文件时的 `0x80070057` 异常。增加真实 ItemsSource 回归，覆盖全部状态、管理范围及状态更新。
 - **NVIDIA VFX 统一套件：** 本地构建启用匹配的官方 1.3.0.0 Core 与四项功能库。加入 Nvidia VFX Upscale 自动／五档倍率与最终尺寸适配；统一 VSR 的分类与档位、旧别名和参数迁移；接入 SDR VFG 2–8× 及逐输出帧 TrueHDR 后处理。TrueHDR 保留原四项参数、精确输入和步进，新增默认开启的去色带。四槽背压、资源代次与参数 revision 保留；实际 GPU 功能、颜色、稳定性和性能仍需验收。
@@ -15,6 +16,7 @@
 
 This local Beta5 retains deployed Beta4 (49de3f25). The public update entry stays at 0.6.9.
 
+- **VFX update:** integrate buffer rotation, group-reduced frame comparisons, cached texture views and encoding matching from `feature/nvidia-vfx-optimization`. Distribute the four-feature suite with ten verified runtime DLLs and license notices. Async/CUDA handoff stay disabled; GPU quality, stability and performance acceptance remain pending.
 - **RTSS status actions:** shorten the Initialize label, hide it once Magpie's own unlimited profile is verified, and restore it when initialization cannot be confirmed. Initialize and Launch tools inherit the normal control font size.
 - **Profile page crash fix:** use a XAML-bindable RTSS status collection to prevent `0x80070057` when opening a profile. Native ItemsSource regression covers all states, management scopes and status updates.
 - **Unified NVIDIA VFX:** enable the matched official 1.3.0.0 Core and Upscale/VSR/VFG/TrueHDR libraries for local testing. Add native upscale selection and final size adaptation, VSR categories and legacy migration, SDR VFG at 2–8x, and per-output-frame TrueHDR processing. Preserve exact HDR parameter input and stepping, with debanding enabled by default. GPU functionality, color, lifetime and performance acceptance remain pending.
