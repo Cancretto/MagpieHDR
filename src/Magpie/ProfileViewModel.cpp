@@ -840,7 +840,8 @@ IVector<hstring> ProfileViewModel::RtssStatusSegments() const {
 	case RtssState::MagpieAlreadyUnlimited: key = L"Rtss_Status_MagpieAlreadyUnlimited"; break;
 	default: break;
 	}
-	auto segments = single_threaded_vector<hstring>();
+	// XAML ItemsSource also needs the boxed IInspectable collection interfaces.
+	auto segments = single_threaded_observable_vector<hstring>();
 	auto add = [&](const std::wstring& value) {
 		if (!value.empty()) segments.Append(hstring(segments.Size() ? L"\u00a0-\u00a0" + value : value));
 	};
@@ -859,7 +860,7 @@ IVector<hstring> ProfileViewModel::RtssStatusSegments() const {
 	if (s.detectionDisabled) add(std::wstring(loader.GetString(L"Rtss_DetectionDisabled")));
 	if (s.targetOverridesGlobal) add(std::wstring(loader.GetString(L"Rtss_TargetOverridesGlobal")));
 	if (ShowRtssGlobalNotice() && !s.selfInitialization) add(std::wstring(loader.GetString(L"Rtss_GlobalNotice/Text")));
-	return segments;
+	return segments.as<IVector<hstring>>();
 }
 
 hstring ProfileViewModel::RtssStatusText() const {
