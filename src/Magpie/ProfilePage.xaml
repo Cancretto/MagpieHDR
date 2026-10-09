@@ -207,10 +207,14 @@
 										</ResourceDictionary.ThemeDictionaries>
 									</ResourceDictionary>
 								</Grid.Resources>
-								<Button Margin="0,0,8,0" MaxWidth="100" x:Uid="Rtss_InitializeMagpieButton" Content="{x:Bind ViewModel.RtssInitializeText, Mode=OneWay}"
+								<Button Margin="0,0,8,0" MaxWidth="100" HorizontalContentAlignment="Stretch" x:Uid="Rtss_InitializeMagpieButton" Content="{x:Bind ViewModel.RtssInitializeText, Mode=OneWay}"
 								        Visibility="{x:Bind ViewModel.ShowRtssInitialize, Mode=OneWay}"
 								        Style="{StaticResource RtssActionButtonStyle}" IsEnabled="{x:Bind ViewModel.CanInitializeMagpie, Mode=OneWay}"
-								        Click="{x:Bind ViewModel.InitializeMagpieRtss}" />
+								        Click="{x:Bind ViewModel.InitializeMagpieRtss}">
+									<Button.ContentTemplate>
+										<DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" VerticalAlignment="Center" /></DataTemplate>
+									</Button.ContentTemplate>
+								</Button>
 								<Button Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,0,8,0" x:Name="RtssToolsButton" x:Uid="Rtss_Tools" Style="{StaticResource RtssActionButtonStyle}">
 									<Button.ContentTemplate>
 										<DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
