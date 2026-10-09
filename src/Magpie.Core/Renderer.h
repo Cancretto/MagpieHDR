@@ -389,6 +389,7 @@ private:
 	uint32_t _vfxPairSamples = 0, _vfxPostSamples = 0;
 	double _vfxPairTotalMs = 0, _vfxPairMaxMs = 0, _vfxPostTotalMs = 0;
 	double _vfxPublicationCpuMs = 0, _vfxMutexWaitCpuMs = 0;
+	std::atomic<uint64_t> _vfxRingWaitNanoseconds = 0;
 	uint64_t _vfxLastReportedRingWaitNs = 0;
 	NvidiaVfxD3dTimings _vfxPostGpuTimings, _vfxPublicationGpuTimings;
 	std::mutex _vfxPresentTimingMutex;

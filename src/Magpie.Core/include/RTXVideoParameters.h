@@ -88,7 +88,7 @@ template <class Effect> bool MigrateEffectParametersR1(Effect &effect) {
 		// Only the former Denoise family changes category. Legacy quality indices
 		// remain strength 0..3; they are not the vendor's continuous Strength.
 		auto [category, inserted] = effect.parameters.try_emplace(L"category", family == 0 ? 3.f : 0.f);
-		const int selected = NvidiaVfxCategory(category->second);
+		const int selected = family == 0 ? 3 : NvidiaVfxCategory(category->second);
 		changed |= inserted || category->second != float(selected);
 		category->second = float(selected);
 		auto& tier = effect.parameters[L"strength"];

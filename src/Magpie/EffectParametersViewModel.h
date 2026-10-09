@@ -46,6 +46,11 @@ struct ScalingModeParameter : ScalingModeParameterT<ScalingModeParameter>,
 	void _RebuildChoices(
 		const std::vector<std::pair<int, hstring>>& choices
 	) {
+		// Keep the same collection and selection while a dropdown is active.
+		bool unchanged = _choices && _choices.Size() == choices.size() && _choiceValues.size() == choices.size();
+		for (size_t i = 0; unchanged && i < choices.size(); ++i)
+			unchanged = _choiceValues[i] == choices[i].first && _choices.GetAt(uint32_t(i)) == choices[i].second;
+		if (unchanged) return;
 		std::vector<hstring> items;
 		items.reserve(choices.size());
 		_choiceValues.clear();

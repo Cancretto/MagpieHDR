@@ -150,8 +150,8 @@ private:
 	bool _DrawEffectParameters(int& itemId) noexcept;
 	void _InitEffectParameterValues() noexcept;
 	void _SyncEffectParameterValues() noexcept;
-	std::vector<EffectOption> _BuildDraftEffectOptions() const noexcept;
-	bool _RequestEffectParameters(EffectParametersRequestKind kind) noexcept;
+	std::vector<EffectOption> _BuildDraftEffectOptions(bool restoreStartupSizing = false) const noexcept;
+	bool _RequestEffectParameters(EffectParametersRequestKind kind, bool restoreStartupSizing = false) noexcept;
 
 	const std::string& _GetResourceString(const std::wstring_view& key) noexcept;
 
@@ -177,6 +177,7 @@ private:
 
 	SmallVector<uint32_t> _timelineColors;
 	std::vector<std::vector<EffectParameterDesc>> _localizedEffectParameters;
+	std::vector<EffectOption> _startupEffectOptions;
 	std::vector<std::vector<float>> _startupEffectParameterValues;
 	std::vector<std::vector<float>> _appliedEffectParameterValues;
 	EffectParameterSessionState::Snapshot _parameterSessionSnapshot;

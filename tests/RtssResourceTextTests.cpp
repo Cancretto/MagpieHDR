@@ -116,6 +116,9 @@ int main() {
 		Require(!model.ShowRtssInitialize() && !model.CanInitializeMagpie(), "Initialized profile hides and disables the action across profiles");
 		RtssService::Get().initialized = false;
 		Require(model.ShowRtssInitialize() && model.CanInitializeMagpie(), "Recheck of changed profile restores the action");
+		RtssService::Get().initializationUnknown = true;
+		Require(!model.ShowRtssInitialize() && !model.CanInitializeMagpie(), "Read failure is unknown and cannot reintroduce initialization");
+		RtssService::Get().initializationUnknown = false;
 		RtssService::Get().launching = true;
 		Require(!model.CanInitializeMagpie(), "Button prevents conflicting launch command");
 		RtssService::Get().launching = false; RtssService::Get().pending = true;

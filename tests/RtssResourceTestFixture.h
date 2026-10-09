@@ -31,12 +31,16 @@ struct ResourceLoader {
 // Service/status fixtures exercise extracted production getter bodies.
 struct RtssToolInfo { std::wstring executable, version; bool running = false; };
 #include "RtssResourceCases.g.h"
+enum class RtssInitializationState : uint8_t { Unknown, Uninitialized, Initialized };
 struct RtssService {
 	RtssStatus status;
 	bool pending = false, launching = false, initialized = false;
+	bool initializationUnknown = false;
 	static RtssService& Get() { static RtssService service; return service; }
 	bool IsInitializingMagpie() const { return pending; }
 	bool IsMagpieInitialized() const { return initialized; }
+	RtssInitializationState MagpieInitialization() const { return initializationUnknown ? RtssInitializationState::Unknown :
+		initialized ? RtssInitializationState::Initialized : RtssInitializationState::Uninitialized; }
 	bool IsLaunching() const { return launching; }
 	RtssStatus Status() const { return status; }
 };

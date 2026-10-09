@@ -1515,7 +1515,7 @@
   <data name="Message_HdrCaptureRequired" xml:space="preserve"><value>HDR → SDR 需要保留 HDR 來源畫面。請在 Windows 顯示設定中開啟來源應用程式所在螢幕的 HDR；處理原生 SDR 時可直接使用 SDR 效果，再按需新增 SDR → HDR。</value></data>
   <data name="Message_HdrDisplayRequired" xml:space="preserve"><value>效果組輸出 HDR。請在 Windows 顯示設定中開啟目標螢幕的 HDR，或在效果組末尾使用 HDR → SDR 的顯示映射。跨螢幕輸出時，各目標螢幕都需要開啟 HDR。</value></data>
   <data name="Message_HdrCaptureMethodRequired" xml:space="preserve"><value>請在目前設定中將擷取方式改為 Graphics Capture，再嘗試 HDR → SDR。此路徑可以保留 HDR 擷取的亮度範圍。</value></data>
-  <data name="Message_RtxHdrUnavailable" xml:space="preserve"><value>RTX Video HDR 未能完成處理。請更新 NVIDIA 驅動程式，確認使用 RTX 20 系或更新顯示卡，並檢查本程式目錄中的 Magpie.RtxVideo.dll 與 nvngx_truehdr.dll 是否完整。可先將本項替換為 SDR → HDR 的原生 SDR 映射；仍失敗時完全結束 Magpie，重新開啟並複製詳細資料。</value></data>
+  <data name="Message_RtxHdrUnavailable" xml:space="preserve"><value>Nvidia VFX TrueHDR 未能完成處理。請檢查實際繪製顯示卡、NVIDIA 驅動程式及配套 VFX Core／TrueHDR 元件；仍失敗時完全結束 Magpie，重新開啟並複製詳細資料。</value></data>
   <data name="EffectParam_Color_HDR_to_SDR_mode_Label" xml:space="preserve"><value>轉換模式</value></data>
   <data name="EffectParam_Color_HDR_to_SDR_mode_Option_0" xml:space="preserve"><value>相容配對</value></data>
   <data name="EffectParam_Color_HDR_to_SDR_mode_Option_1" xml:space="preserve"><value>SDR 顯示映射</value></data>

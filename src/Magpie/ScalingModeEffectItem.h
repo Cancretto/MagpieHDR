@@ -94,6 +94,8 @@ private:
 	hstring _name;
 	const ::Magpie::EffectInfo* _effectInfo = nullptr;
 
+	bool _lastNvidiaVfxSameSize = false;
+	bool _refreshingScalingTypes = false;
 	com_ptr<EffectParametersViewModel> _parametersViewModel;
 	::Magpie::Event<uint32_t, uint32_t>::EventRevoker _parameterChangedRevoker;
 };

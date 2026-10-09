@@ -29,6 +29,7 @@ namespace Win32Helper { std::filesystem::path GetExePath() {
 RtssProfileFailure loggedFailure;
 void LogProfileFailure(const char*, const std::wstring&, const RtssProfileFailure& failure) { loggedFailure = failure; }
 }
+enum class RtssInitializationState : uint8_t { Unknown, Uninitialized, Initialized };
 class RtssService {
 public:
 	struct Session;
@@ -37,7 +38,8 @@ public:
 	std::shared_ptr<Session> _workerSession;
 	unsigned publications = 0;
 	std::atomic<bool> _notify = true;
-	std::atomic<bool> _magpieInitialized = false;
+	std::atomic<RtssInitializationState> _magpieInitialization = RtssInitializationState::Unknown;
+	bool IsMagpieInitialized() const { return _magpieInitialization == RtssInitializationState::Initialized; }
 	explicit RtssService(RtssProfileAccess& access) : _access(access) {}
 	bool _Prepare(RtssStatus& status);
 	void _RefreshMagpieInitialization(const RtssStatus& status);
@@ -67,26 +69,26 @@ int wmain(int argc, wchar_t** argv) {
 			WriteBytes(f.Path("game.exe"), Profile(0));
 			const auto global = ReadBytes(f.Path("")), game = ReadBytes(f.Path("game.exe"));
 			service._RefreshMagpieInitialization(status);
-			Require(!service._magpieInitialized, "Global/game unlimited do not initialize missing self profile");
+			Require(!service.IsMagpieInitialized(), "Global/game unlimited do not initialize missing self profile");
 			WriteBytes(f.Path(selfName), Profile(0));
 			service._RefreshMagpieInitialization(status);
-			Require(service._magpieInitialized, "Existing independent unlimited profile is detected");
+			Require(service.IsMagpieInitialized(), "Existing independent unlimited profile is detected");
 			RtssService reopened(f.access); reopened._RefreshMagpieInitialization(status);
-			Require(reopened._magpieInitialized, "Fresh service detects persisted initialization without cached success");
+			Require(reopened.IsMagpieInitialized(), "Fresh service detects persisted initialization without cached success");
 			WriteBytes(f.Path(selfName), Profile(60));
 			service._RefreshMagpieInitialization(status);
-			Require(!service._magpieInitialized, "External frame cap restores initialization action");
+			Require(!service.IsMagpieInitialized(), "External frame cap restores initialization action");
 			WriteBytes(f.Path(selfName), Profile(0, 1, 16));
 			service._RefreshMagpieInitialization(status);
-			Require(!service._magpieInitialized, "Time cap is not treated as unlimited");
+			Require(!service.IsMagpieInitialized(), "Time cap is not treated as unlimited");
 			WriteBytes(f.Path(selfName), "[Framerate]\nLimit=0\n"); f.getFailure = "FrametimeLimit";
 			service._RefreshMagpieInitialization(status);
-			Require(!service._magpieInitialized, "Unknown time cap does not hide initialization");
+			Require(!service.IsMagpieInitialized(), "Unknown time cap is distinct from known initialization");
 			f.getFailure.clear(); WriteBytes(f.Path(selfName), Profile(0));
 			service._RefreshMagpieInitialization(status);
-			Require(service._magpieInitialized, "Repaired self profile hides initialization again");
+			Require(service.IsMagpieInitialized(), "Repaired self profile hides initialization again");
 			status.readReady = false; service._RefreshMagpieInitialization(status);
-			Require(!service._magpieInitialized, "Unavailable read capability clears stale initialization");
+			Require(!service.IsMagpieInitialized(), "Unavailable read capability clears stale initialization");
 			Require(f.saves == 0 && f.reloads == 0 && f.deletes == 0 && f.setters.empty() &&
 				ReadBytes(f.Path("")) == global && ReadBytes(f.Path("game.exe")) == game,
 				"Initialization inventory is read-only and leaves target/global profiles unchanged");
@@ -178,7 +180,7 @@ int wmain(int argc, wchar_t** argv) {
 			const bool created = s->created;
 			service._InitializeMagpie();
 			Require(service._status.selfInitialization && service._status.profile == selfExe && service._status.state == RtssState::MagpieInitialized, "Initialization result labels its own profile");
-			Require(service._magpieInitialized, "Successful worker initialization hides action immediately");
+			Require(service.IsMagpieInitialized(), "Successful worker initialization hides action immediately");
 			Require(s->original == original && s->lastWritten == lastWritten && s->created == created && !s->finished && s->settings.exitPolicy == exit, "Initialization leaves game transaction ownership and policy intact");
 			const auto initialized = f.Snapshot(selfName).contents;
 			service._InitializeMagpie();

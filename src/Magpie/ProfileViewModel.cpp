@@ -896,7 +896,7 @@ bool ProfileViewModel::CanInitializeMagpie() const {
 		ShowRtssInitialize() && !RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie();
 }
 bool ProfileViewModel::ShowRtssInitialize() const {
-	return !RtssService::Get().IsMagpieInitialized();
+	return RtssService::Get().MagpieInitialization() == RtssInitializationState::Uninitialized;
 }
 hstring ProfileViewModel::RtssInitializeText() const {
 	return ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID).GetString(

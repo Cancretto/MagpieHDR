@@ -27,11 +27,19 @@ ScalingModeEffectItem::ScalingModeEffectItem(uint32_t scalingModeIdx, uint32_t e
 	: _scalingModeIdx(scalingModeIdx), _effectIdx(effectIdx)
 {
 	EffectItem& data = _Data();
+	_lastNvidiaVfxSameSize = _IsNvidiaVfxSameSize();
 	_parameterChangedRevoker = ScalingModesService::Get().EffectParametersChanged(
 		auto_revoke, [this](uint32_t mode, uint32_t effect) {
 			if (!_IsRemoved() && mode == _scalingModeIdx && effect == _effectIdx) {
+				const bool sameSize = _IsNvidiaVfxSameSize();
+				_refreshingScalingTypes = true;
+				auto reset = wil::scope_exit([this] { _refreshingScalingTypes = false; });
+				if (sameSize != _lastNvidiaVfxSameSize) {
+					_lastNvidiaVfxSameSize = sameSize;
+					RaisePropertyChanged(L"ScalingTypes");
+				}
 				RaisePropertyChanged(L"CanScale"); RaisePropertyChanged(L"ScalingType");
-				RaisePropertyChanged(L"ScalingTypes"); RaisePropertyChanged(L"IsShowScaleFactors");
+				RaisePropertyChanged(L"IsShowScaleFactors");
 				RaisePropertyChanged(L"IsShowScalingPixels");
 			}
 		});
@@ -176,7 +184,7 @@ static SIZE GetMonitorSize() noexcept {
 }
 
 void ScalingModeEffectItem::ScalingType(int value) {
-	if (_IsNvidiaVfxSameSize()) return;
+	if (_refreshingScalingTypes || _IsNvidiaVfxSameSize()) return;
 	if (!CanScale() || value < 0) {
 		return;
 	}

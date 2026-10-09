@@ -170,7 +170,7 @@ static HdrFormatRoutes GetHdrRoutesForEffect(
 			? EffectProtocolC::RTXVideoVsr()
 			: EffectProtocolC::RTXVideoDenoiser();
 	}
-	if (effect.name == "NvidiaVFX\\Upscale") return EffectProtocolC::RTXVideoVsr();
+	if (effect.name == "NvidiaVFX\\Upscale") return EffectProtocolC::NvidiaVfxUpscale();
 	if (effect.name == NVIDIA_VFX_VFG_ID) return EffectProtocolC::FrameGenerationMarker("NvidiaVFX");
 	if (group == "DLSSFG" || group == "XeSSFG" || group == "FSR3FG") {
 		return EffectProtocolC::FrameGenerationMarker(group);
@@ -509,7 +509,8 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 		frameGeneration.first == FrameGenerationEffectKind::DLSS, _isXeSSFrameGenerationActive,
 		frontEdgeSupported, pacingOptions.IsBenchmarkMode());
 	_frameSyncEnabled = _frameSyncBackend != FrameSyncBackend::None;
-	if (_frameSyncEnabled || frameGeneration.first == FrameGenerationEffectKind::DLSS) {
+	if (_frameSyncEnabled || frameGeneration.first == FrameGenerationEffectKind::DLSS ||
+		frameGeneration.first == FrameGenerationEffectKind::NvidiaVfx) {
 		_frameSyncConsumedEvent.reset(CreateEventW(nullptr, FALSE, FALSE, nullptr));
 		if (!_frameSyncConsumedEvent) {
 			Logger::Get().Win32Error("Create frame pacing event failed");
@@ -2804,7 +2805,7 @@ void Renderer::_LogNvidiaVfxMeasurements() noexcept {
 	}
 	const auto postGpu = _vfxPostGpuTimings.Take(_backendResources.GetD3DDC());
 	const auto publicationGpu = _vfxPublicationGpuTimings.Take(_backendResources.GetD3DDC());
-	const uint64_t ringWaitNs = _dlssFgRingWaitNanoseconds.load(std::memory_order_relaxed);
+	const uint64_t ringWaitNs = _vfxRingWaitNanoseconds.load(std::memory_order_relaxed);
 	const double ringWaitMs = double(ringWaitNs - _vfxLastReportedRingWaitNs) / 1000000.;
 	_vfxLastReportedRingWaitNs = ringWaitNs;
 	Logger::Get().Info(fmt::format("Nvidia VFX comparison: calls={} srvCreations={} cpuTotalMs={:.3f} readbackWaitCpuMs={:.3f} gpuSamples={} gpuSpanTotalMs={:.3f} gpuSkipped={} generatedCallbacks={} realCallbacks={} bypassedPairs={}",
@@ -3252,7 +3253,16 @@ void Renderer::_BackendThreadProc() noexcept {
 			const auto waitStart = std::chrono::steady_clock::now();
 			FrameTrace::Scope tracePressure(FrameTrace::Event::InputBackpressure);
 			HANDLE consumed = _frameSyncConsumedEvent.get();
-			MsgWaitForMultipleObjectsEx(1, &consumed, 50, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+			if (MsgWaitForMultipleObjectsEx(consumed ? 1 : 0, consumed ? &consumed : nullptr,
+				50, QS_ALLINPUT, MWMO_INPUTAVAILABLE) == WAIT_FAILED) {
+				Logger::Get().Win32Error("Wait for frame consumption failed");
+				_sessionLifetime->RequestStop();
+				ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime] {
+					auto& window = ScalingWindow::Get();
+					if (session->IsCurrent(ScalingWindow::RunId()) && window) window.Stop();
+				});
+				continue;
+			}
 			_captureCadenceQueueWait += std::chrono::steady_clock::now() - waitStart;
 		} else if (_pendingFrameGenerationInput) {
 			_fgInputClock.SetInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -3264,7 +3274,16 @@ void Renderer::_BackendThreadProc() noexcept {
 			_sharedTextureMutexKeys[0].load(std::memory_order_acquire)) {
 			waitedForContent = true;
 			HANDLE consumed = _frameSyncConsumedEvent.get();
-			MsgWaitForMultipleObjectsEx(1, &consumed, 50, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+			if (MsgWaitForMultipleObjectsEx(consumed ? 1 : 0, consumed ? &consumed : nullptr,
+				50, QS_ALLINPUT, MWMO_INPUTAVAILABLE) == WAIT_FAILED) {
+				Logger::Get().Win32Error("Wait for frame consumption failed");
+				_sessionLifetime->RequestStop();
+				ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime] {
+					auto& window = ScalingWindow::Get();
+					if (session->IsCurrent(ScalingWindow::RunId()) && window) window.Stop();
+				});
+				continue;
+			}
 		} else {
 			stepTimerStatus = _stepTimer.WaitForNextFrame(
 				waitForNewFrame && !_forceNextRender && stepTimerStatus != StepTimerStatus::WaitForFPSLimiter,
@@ -4242,9 +4261,10 @@ bool Renderer::_PublishBackendTexture(
 		}
 		const auto ringWait = std::chrono::steady_clock::now() - ringWaitStart;
 		_captureCadenceQueueWait += ringWait;
-		_dlssFgRingWaitNanoseconds.fetch_add(
-			(uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(ringWait).count(),
-			std::memory_order_relaxed);
+		const uint64_t ringWaitNs = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(ringWait).count();
+		_dlssFgRingWaitNanoseconds.fetch_add(ringWaitNs, std::memory_order_relaxed);
+		if constexpr (NativeBackendTiming::Enabled)
+			_vfxRingWaitNanoseconds.fetch_add(ringWaitNs, std::memory_order_relaxed);
 		_dlssFgRingWaitSamples.fetch_add(1, std::memory_order_relaxed);
 	}
 	auto releaseReservedSlot = [&]() noexcept {

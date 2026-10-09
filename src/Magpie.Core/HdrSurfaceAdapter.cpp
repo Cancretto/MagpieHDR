@@ -160,7 +160,7 @@ void Main(uint3 id : SV_DispatchThreadID) {
 	} else if (mode == 5) {
 		// Canonical scRGB is linear with 1.0 == 80 nit. HDR10 also requires
 		// Rec.2020 primaries, so convert the canonical Rec.709 values first.
-		float3 rec2020 = Rec709ToRec2020(max(value.rgb, 0.0));
+		float3 rec2020 = Rec709ToRec2020(value.rgb);
 		result = float3(
 			EncodePq(rec2020.r * 80.0),
 			EncodePq(rec2020.g * 80.0),
@@ -170,7 +170,7 @@ void Main(uint3 id : SV_DispatchThreadID) {
 			DecodePq(value.r) / 80.0,
 			DecodePq(value.g) / 80.0,
 			DecodePq(value.b) / 80.0);
-		result = max(Rec2020ToRec709(rec2020), 0.0);
+		result = Rec2020ToRec709(rec2020);
 	} else {
 		result = value.rgb;
 	}

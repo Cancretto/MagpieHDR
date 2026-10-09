@@ -17,24 +17,7 @@ namespace winrt::Magpie::implementation {
 void ProfilePage::OnNavigatedTo(Navigation::NavigationEventArgs const& args) {
 	int profileIdx = args.Parameter().try_as<int>().value();
 	_viewModel = make_self<ProfileViewModel>(profileIdx);
-	_showRtssInitialize = _viewModel->ShowRtssInitialize();
-	_rtssLayoutRevoker = ViewModel().as<Windows::UI::Xaml::Data::INotifyPropertyChanged>().PropertyChanged(
-		auto_revoke, [weak = get_weak()](IInspectable const&, Windows::UI::Xaml::Data::PropertyChangedEventArgs const& args) {
-			if (args.PropertyName() != L"ShowRtssInitialize") return;
-			const auto self = weak.get();
-			if (!self) return;
-			const bool visible = self->_viewModel->ShowRtssInitialize();
-			if (visible == self->_showRtssInitialize) return;
-			self->_showRtssInitialize = visible;
-			// Re-measure the local actions immediately on both visibility changes.
-			// Restore the tools' natural text+arrow width without touching other rows.
-			const auto tools = self->RtssToolsButton();
-			tools.ClearValue(FrameworkElement::WidthProperty());
-			tools.ClearValue(FrameworkElement::MaxWidthProperty());
-			tools.InvalidateMeasure();
-			self->RtssActionsPanel().InvalidateMeasure();
-			self->RtssActionsPanel().InvalidateArrange();
-		});
+
 }
 
 void ProfilePage::ComboBox_DropDownOpened(IInspectable const& sender, IInspectable const&) {

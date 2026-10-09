@@ -85,6 +85,11 @@ inline HdrFormatRoutes RTXVideoVsr() {
 	return { route };
 }
 
+inline HdrFormatRoutes NvidiaVfxUpscale() {
+    // Upscale and its private Bicubic adaptation share an RGBA8 boundary.
+    return { SdrRoute("NvidiaVFXUpscale", "Upscale-RGBA8-U8-sRGB-255", DXGI_FORMAT_R8G8B8A8_UNORM) };
+}
+
 inline HdrFormatRoutes RTXVideoDenoiser() {
 	return { SdrRoute("RTXVideoDenoise", "Denoise-BGRA8-U8", DXGI_FORMAT_B8G8R8A8_UNORM) };
 }

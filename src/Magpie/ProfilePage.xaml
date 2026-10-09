@@ -187,8 +187,9 @@
 									<ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
 								</ItemsControl>
 							</local:SettingsCard.Description>
-							<local:WrapPanel x:Name="RtssActionsPanel" HorizontalSpacing="8" VerticalSpacing="8" VerticalAlignment="Center">
-								<local:WrapPanel.Resources>
+							<Grid x:Name="RtssActionsPanel" Width="{StaticResource FrameRefreshControlColumnWidth}">
+								<Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+								<Grid.Resources>
 									<ResourceDictionary>
 										<ResourceDictionary.ThemeDictionaries>
 											<ResourceDictionary x:Key="Default">
@@ -205,14 +206,14 @@
 											</ResourceDictionary>
 										</ResourceDictionary.ThemeDictionaries>
 									</ResourceDictionary>
-								</local:WrapPanel.Resources>
-								<Button x:Uid="Rtss_InitializeMagpieButton" Content="{x:Bind ViewModel.RtssInitializeText, Mode=OneWay}"
+								</Grid.Resources>
+								<Button Margin="0,0,8,0" MaxWidth="100" x:Uid="Rtss_InitializeMagpieButton" Content="{x:Bind ViewModel.RtssInitializeText, Mode=OneWay}"
 								        Visibility="{x:Bind ViewModel.ShowRtssInitialize, Mode=OneWay}"
 								        Style="{StaticResource RtssActionButtonStyle}" IsEnabled="{x:Bind ViewModel.CanInitializeMagpie, Mode=OneWay}"
 								        Click="{x:Bind ViewModel.InitializeMagpieRtss}" />
-								<Button x:Name="RtssToolsButton" x:Uid="Rtss_Tools" Style="{StaticResource RtssActionButtonStyle}">
+								<Button Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,0,8,0" x:Name="RtssToolsButton" x:Uid="Rtss_Tools" Style="{StaticResource RtssActionButtonStyle}">
 									<Button.ContentTemplate>
-										<DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+										<DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
 											<TextBlock Text="{Binding}" TextWrapping="Wrap" VerticalAlignment="Center" />
 											<FontIcon Grid.Column="1" Glyph="&#xE70D;" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center" />
 										</Grid></DataTemplate>
@@ -224,8 +225,8 @@
 										</MenuFlyout>
 									</Button.Flyout>
 								</Button>
-								<Button x:Uid="Rtss_Recheck" MinWidth="32" Style="{StaticResource RtssActionButtonStyle}" Click="{x:Bind ViewModel.RefreshRtss}"><FontIcon Glyph="&#xE72C;" FontSize="16" /></Button>
-							</local:WrapPanel>
+								<Button Grid.Column="2" Width="32" x:Uid="Rtss_Recheck" MinWidth="32" Style="{StaticResource RtssActionButtonStyle}" Click="{x:Bind ViewModel.RefreshRtss}"><FontIcon Glyph="&#xE72C;" FontSize="16" /></Button>
+							</Grid>
 						</local:SettingsCard>
 						<local:SettingsCard x:Uid="Rtss_RateMode" IsWrapEnabled="True" IsEnabled="{x:Bind ViewModel.IsRtssManaged, Mode=OneWay}" Description="{x:Bind ViewModel.RtssSyncText, Mode=OneWay}">
 							<ComboBox x:Uid="Rtss_RateMode_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.RtssRateModeIndex, Mode=TwoWay}">

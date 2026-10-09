@@ -298,6 +298,26 @@ struct Harness {
 			Check(std::abs(halves[i][c] - expected[i][c]) <= std::abs(expected[i][c]) * .001f + 5e-5f,
 				"Packed HDR10 FP16 conversion lost precision or alpha");
 		}
+		// Independent double-precision ST2084 and BT.2020->BT.709 reference.
+		// Comparing mode 6 to mode 9 alone can hide the same gamut clipping bug.
+		const auto decode = [](uint32_t code) {
+			const double p = std::pow(double(code) / 1023.0, 32.0 / 2523.0);
+			return std::pow(std::max(p - 3424.0 / 4096.0, 0.0) /
+				(2413.0 / 128.0 - 2392.0 / 128.0 * p), 16384.0 / 2610.0) * 125.0;
+		};
+		unsigned negativeChannels = 0;
+		for (UINT i = 0; i < Width; ++i) {
+			const double r = decode(words[i] & 1023), g = decode((words[i] >> 10) & 1023), b = decode((words[i] >> 20) & 1023);
+			const double reference[] = {1.6604910*r - .5876411*g - .0728499*b,
+				-.1245505*r + 1.1328999*g - .0083494*b, -.0181508*r - .1005789*g + 1.1187297*b};
+			for (int c = 0; c < 3; ++c) {
+				Check(std::abs(actual[i][c] - reference[c]) < std::abs(reference[c]) * .0003 + .002,
+					"HDR10 wide-gamut output disagrees with signed scRGB reference");
+				if (reference[c] < -.01) { ++negativeChannels; Check(actual[i][c] < 0, "Valid negative scRGB channel was clipped"); }
+			}
+		}
+		Check(negativeChannels > 100, "Wide-gamut reference did not exercise negative channels");
+		std::cout << "PASS: signed scRGB agrees with independent PQ/matrix reference; negative channels=" << negativeChannels << '\n';
 	}
 
 	void TestResizedBoundaries() {

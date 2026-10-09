@@ -587,8 +587,14 @@ bool ScalingModesService::Import(const rapidjson::GenericObject<true, rapidjson:
 
 	bool migratedR1 = false;
 	for (auto& mode : scalingModes) {
-		if (mode.hdrMigrationInvalid || !mode.hdrMigrationBackup.empty()) continue;
-		for (auto& effect : mode.effects) migratedR1 |= MigrateEffectParametersR1(effect);
+		if (mode.hdrMigrationInvalid) continue;
+		for (auto& effect : mode.effects) {
+			if (effect.isRecoveryInvalid) continue;
+			// Recovered chains retain their raw backup and non-RTX nodes. Exact
+			// legacy RTX identities still need the supported canonical mapping.
+			if (!mode.hdrMigrationBackup.empty() && RTXVideoFamily(std::wstring_view(effect.name)) < 0) continue;
+			migratedR1 |= MigrateEffectParametersR1(effect);
+		}
 	}
 	if (migratedR1) {
 		Logger::Get().Info("v0.6.7-r1: migrated RTX Video strength / DLSSNR automatic HDR parameters");

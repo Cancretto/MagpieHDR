@@ -818,7 +818,7 @@ void ScalingService::_HandleEffectParametersRequest(
 		if (StrHelper::UTF16ToUTF8(destination.name) != session.name ||
 			request.effects[i].name != session.name ||
 			request.previousEffects[i].name != session.name ||
-			destination.scalingType != session.scalingType || destination.scale != session.scale) {
+			!MergeEffectScalingChanges(destination, request.previousEffects[i], request.effects[i])) {
 			fail(EffectParametersSaveError::Conflict);
 			return;
 		}

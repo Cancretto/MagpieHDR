@@ -38,6 +38,8 @@ struct RtssStatus {
 
 // UI commands and immutable status snapshots; external operations run on one
 // dedicated worker, never on the render/dispatcher threads.
+enum class RtssInitializationState : uint8_t { Unknown, Uninitialized, Initialized };
+
 class RtssService {
 public:
 	static RtssService& Get();
@@ -51,7 +53,8 @@ public:
 	void Launch(bool afterburner);
 	void InitializeMagpie();
 	bool IsInitializingMagpie() const noexcept { return _initializationPending; }
-	bool IsMagpieInitialized() const noexcept { return _magpieInitialized; }
+	RtssInitializationState MagpieInitialization() const noexcept { return _magpieInitialization.load(); }
+	bool IsMagpieInitialized() const noexcept { return MagpieInitialization() == RtssInitializationState::Initialized; }
 	bool IsLaunching() const noexcept { return _launchPending; }
 	void Preview(RtssSettings settings, std::wstring executable,
 		std::function<void(RtssStatus)> completed);
@@ -86,7 +89,7 @@ private:
 	bool _closing = false;
 	bool _exited = false;
 	std::atomic<bool> _notify = false;
-	std::atomic<bool> _magpieInitialized = false; // worker writes, UI reads
+	std::atomic<RtssInitializationState> _magpieInitialization = RtssInitializationState::Unknown; // worker writes, UI reads
 	bool _launchPending = false; // UI thread
 	bool _initializationPending = false; // UI thread
 	winrt::DispatcherQueueTimer _launchTimer{ nullptr };

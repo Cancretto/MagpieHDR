@@ -114,12 +114,10 @@ bool NvidiaVfxImageBackend::Initialize(DeviceResources& resources, ID3D11Texture
 	candidate->kind = kind;
 	if (!candidate->session.Initialize(resources, library)) return false;
 	NvidiaVfxContextScope scope(candidate->session.Context());
-	// Mixed RGBA/BGRA VSR I/O swaps R/B in Core 1.3.0.0 on the synthetic
-	// D3D11 probe. Keep the model contract RGBA; convert at the texture edges.
-	const auto inputEncoding = kind == NvidiaVfxImageKind::Vsr ? NVCV_RGBA :
-		in.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? NVCV_BGRA : NVCV_RGBA;
-	const auto outputEncoding = kind == NvidiaVfxImageKind::Vsr ? NVCV_RGBA :
-		out.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? NVCV_BGRA : NVCV_RGBA;
+	// Every RGB8 model requires RGBA. Import/Export converts BGRA texture
+	// boundaries explicitly; TrueHDR alone produces packed RGB10A2.
+	constexpr auto inputEncoding = NVCV_RGBA;
+	constexpr auto outputEncoding = NVCV_RGBA;
 	if (!scope || !NvidiaVfxSucceeded(NvCVImage_Alloc(&candidate->session.input, in.Width, in.Height,
 		inputEncoding, NVCV_U8, NVCV_INTERLEAVED, NVCV_GPU, 32), "Alloc(input)") ||
 		!NvidiaVfxSucceeded(NvCVImage_Alloc(&candidate->session.output,
@@ -137,7 +135,7 @@ bool NvidiaVfxImageBackend::Initialize(DeviceResources& resources, ID3D11Texture
 		if (!candidate->packedHdr || !candidate->adapter.Initialize(resources, candidate->descriptors)) return false;
 	}
 	if (kind == NvidiaVfxImageKind::Upscale && upscale.adaptation != NvidiaVfxAdaptation::None) {
-		candidate->nativeUpscale = DirectXHelper::CreateTexture2D(resources.GetD3DDevice(), out.Format,
+		candidate->nativeUpscale = DirectXHelper::CreateTexture2D(resources.GetD3DDevice(), DXGI_FORMAT_R8G8B8A8_UNORM,
 			upscale.native.width, upscale.native.height, D3D11_BIND_SHADER_RESOURCE);
 		candidate->descriptors.Initialize(resources.GetD3DDevice());
 		EffectOption resize{ .name = "Bicubic", .parameters{{"paramB", 0.f}, {"paramC", .5f}},
@@ -146,6 +144,12 @@ bool NvidiaVfxImageBackend::Initialize(DeviceResources& resources, ID3D11Texture
 		if (!candidate->nativeUpscale || EffectCompiler::Compile(desc, EffectCompilerFlags::InlineParams, &resize.parameters)) return false;
 		ID3D11Texture2D* handoff = candidate->nativeUpscale.get();
 		if (!candidate->adaptation.Initialize(desc, resize, resources, candidate->descriptors, &handoff)) return false;
+		D3D11_TEXTURE2D_DESC adapted{};
+		candidate->adaptation.GetOutputTexture()->GetDesc(&adapted);
+		if (adapted.Format != out.Format || adapted.Width != out.Width || adapted.Height != out.Height) {
+			Logger::Get().Error("Nvidia VFX Upscale adaptation output is incompatible with its texture boundary");
+			return false;
+		}
 	}
 	candidate->session.effect = candidate->CreateCandidate(option);
 	if (!candidate->session.effect) return false;

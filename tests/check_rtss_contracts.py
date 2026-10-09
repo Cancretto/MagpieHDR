@@ -63,7 +63,7 @@ check(uids["Rtss_Tools"] in list(status.iter()), "launcher in status row")
 check(len([n for n in status.iter() if n.tag.endswith("MenuFlyoutItem")]) == 2, "two distinct launch actions")
 check(all(uids[uid].get("Style") == "{StaticResource RtssActionButtonStyle}" for uid in
           ("Rtss_InitializeMagpieButton", "Rtss_Tools", "Rtss_Recheck")), "shared neutral action style")
-check("FrameRefreshControlColumnWidth" not in ET.tostring(status, encoding="unicode"), "status buttons size to content")
+check("FrameRefreshControlColumnWidth" in ET.tostring(status, encoding="unicode"), "status actions share the standard control column")
 action_style = next(n for n in nodes if n.get(x + "Key") == "RtssActionButtonStyle")
 setters = {n.get("Property"): n.get("Value") for n in action_style}
 check(action_style.get("BasedOn") == "{StaticResource DefaultButtonStyle}" and setters.get("BorderThickness") == "0", "ordinary action template and zero border")

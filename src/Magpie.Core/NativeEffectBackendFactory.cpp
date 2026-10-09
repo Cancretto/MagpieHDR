@@ -267,11 +267,20 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 	const int rtxFamily = effectName == RTXVideoCanonicalId<char>(0) ? 0
 		: effectName == RTXVideoCanonicalId<char>(1) ? 1 : -1;
 	if (rtxFamily >= 0) {
-		const bool isVsr = rtxFamily == 1;
+		const auto categoryParameter = option.parameters.find("category");
+		const int category = rtxFamily == 0 ? 3 : NvidiaVfxCategory(
+			categoryParameter == option.parameters.end() ? 0.f : categoryParameter->second);
+		// The legacy SDK supports Standard and Denoise only. Reject newer
+		// categories rather than silently replacing them with another effect.
+		if (category != 0 && category != 3) {
+			Logger::Get().Error("This build's legacy RTX Video backend does not support the selected VFX category");
+			return { true, nullptr, ScalingError::NoError, "Unsupported legacy RTX Video category" };
+		}
+		const bool isVsr = category == 0;
 		const auto strength = option.parameters.find("strength");
 		const int tier = strength == option.parameters.end() ? RTX_VIDEO_DEFAULT_STRENGTH
 			: NormalizeRTXVideoStrength(strength->second);
-		const uint32_t qualityLevel = RTXVideoQualityLevel(rtxFamily, tier);
+		const uint32_t qualityLevel = RTXVideoQualityLevel(isVsr ? 1 : 0, tier);
 		auto backend = std::make_unique<RTXVideoDenoiser>();
 		Logger::DiagnosticCapture diagnostic;
 		if (!backend->Initialize(resources, input, output, qualityLevel,

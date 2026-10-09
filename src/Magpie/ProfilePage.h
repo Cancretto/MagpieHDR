@@ -23,8 +23,6 @@ struct ProfilePage : ProfilePageT<ProfilePage> {
 
 private:
 	com_ptr<ProfileViewModel> _viewModel;
-	Windows::UI::Xaml::Data::INotifyPropertyChanged::PropertyChanged_revoker _rtssLayoutRevoker;
-	bool _showRtssInitialize = false;
 };
 
 }

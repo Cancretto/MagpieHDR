@@ -8,6 +8,8 @@
 #include <vector>
 #include "NvidiaVfxParameterPolicy.h"
 #include "NvidiaVfxExecutionPlan.h"
+#include "RTXVideoParameters.h"
+#include "EffectParameterPersistence.h"
 
 struct StoredEffect {
 	std::string name;
@@ -17,6 +19,22 @@ struct StoredEffect {
 };
 int main() {
 	using namespace Magpie;
+	// Category-restored dimensions are saved with the parameters, while
+	// independent editor changes and conflicting transactions remain protected.
+	StoredEffect before{std::string(NVIDIA_VFX_VSR_ID),{{"category",0.f}},1,{1.f,1.f}};
+	StoredEffect after = before; after.scalingType = 2; after.scale = {1920.f,1080.f};
+	StoredEffect current = before;
+	assert(MergeEffectScalingChanges(current,before,after) && current.scale == after.scale);
+	assert(MergeEffectScalingChanges(current,before,after));
+	current.scale = {1280.f,720.f};
+	assert(!MergeEffectScalingChanges(current,before,after));
+	assert(MergeEffectScalingChanges(current,before,before) && current.scale.first == 1280.f);
+	for (float category : {-1.f,0.f,1.f,2.f,3.f,4.f,5.f,.5f}) {
+		struct LegacyEffect { std::wstring name; std::map<std::wstring,float> parameters; };
+		LegacyEffect old{L"RTXVideo\\RTXVideo_Denoise_Medium",{{L"category",category}}};
+		assert(MigrateEffectParametersR1(old) && old.parameters.at(L"category") == 3.f && old.parameters.at(L"strength") == 1.f);
+		assert(!MigrateEffectParametersR1(old));
+	}
 	const int expected[5][4]{{1,2,3,4},{16,17,18,19},{-1,21,-1,23},{8,9,10,11},{12,13,14,15}};
 	for (int family=0; family<5; ++family) for(int tier=0; tier<4; ++tier) {
 		assert(NvidiaVfxTierValid(family,float(tier)) == (expected[family][tier] != -1));

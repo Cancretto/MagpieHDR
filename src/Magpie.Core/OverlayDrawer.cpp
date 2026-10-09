@@ -1341,6 +1341,7 @@ void OverlayDrawer::_InitEffectParameterValues() noexcept {
 	_draftEffectParameterValues = _startupEffectParameterValues;
 	_submittedEffectParameterValues = _startupEffectParameterValues;
 	_submittedEffectOptions = options.effects;
+	_startupEffectOptions = options.effects;
 	_startupFrameRefresh = options.frameRefresh;
 	_draftFrameRefresh = _submittedFrameRefresh = _startupFrameRefresh;
 	_effectParametersInitialized = true;
@@ -1395,7 +1396,7 @@ void OverlayDrawer::_SyncEffectParameterValues() noexcept {
 	_submittedEffectOptions = _parameterSessionSnapshot.desired;
 }
 
-std::vector<EffectOption> OverlayDrawer::_BuildDraftEffectOptions() const noexcept {
+std::vector<EffectOption> OverlayDrawer::_BuildDraftEffectOptions(bool restoreStartupSizing) const noexcept {
 	std::vector<EffectOption> effects = _submittedEffectOptions;
 	const std::vector<const EffectDesc*>& descriptions =
 		ScalingWindow::Get().Renderer().ActiveEffectDescs();
@@ -1408,13 +1409,20 @@ std::vector<EffectOption> OverlayDrawer::_BuildDraftEffectOptions() const noexce
 			for (size_t p = 0; p < description.params.size(); ++p)
 				if (description.params[p].name == "category")
 					ChangeNvidiaVfxVsrCategory(effects[effectIdx], NvidiaVfxCategory(_draftEffectParameterValues[effectIdx][p]));
+			if (restoreStartupSizing && effectIdx < _startupEffectOptions.size()) {
+				effects[effectIdx].scalingType = _startupEffectOptions[effectIdx].scalingType;
+				effects[effectIdx].scale = _startupEffectOptions[effectIdx].scale;
+			}
 		}
 		for (size_t parameterIdx = 0;
 			parameterIdx < description.params.size() &&
 				parameterIdx < _draftEffectParameterValues[effectIdx].size();
 			++parameterIdx) {
-			if (ParameterValuesEqual(_draftEffectParameterValues[effectIdx][parameterIdx],
-				_submittedEffectParameterValues[effectIdx][parameterIdx])) continue;
+			// Category restoration may replace the tier even when it equals the
+			// last submitted value. Always apply the complete visible VSR draft.
+			if (effects[effectIdx].name != NVIDIA_VFX_VSR_ID &&
+				ParameterValuesEqual(_draftEffectParameterValues[effectIdx][parameterIdx],
+					_submittedEffectParameterValues[effectIdx][parameterIdx])) continue;
 			effects[effectIdx].parameters[description.params[parameterIdx].name] =
 				_draftEffectParameterValues[effectIdx][parameterIdx];
 		}
@@ -1422,12 +1430,12 @@ std::vector<EffectOption> OverlayDrawer::_BuildDraftEffectOptions() const noexce
 	return effects;
 }
 
-bool OverlayDrawer::_RequestEffectParameters(EffectParametersRequestKind kind) noexcept {
+bool OverlayDrawer::_RequestEffectParameters(EffectParametersRequestKind kind, bool restoreStartupSizing) noexcept {
 	const ScalingOptions& options = ScalingWindow::Get().Options();
 	const uint64_t revision = ++options.parameterSession->saveRevision;
 	_effectParametersRevision = revision;
 	try {
-		auto effects = _BuildDraftEffectOptions();
+		auto effects = _BuildDraftEffectOptions(restoreStartupSizing);
 		EffectParametersRequest request{
 			.kind = kind,
 			.effects = effects,
@@ -1622,6 +1630,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	std::vector<std::tuple<uint32_t, uint32_t, float>> liveUpdates;
 	bool parameterEdited = false;
 	bool requestRestart = false;
+	bool restoreStartupSizing = false;
 	ImGui::PushID("frameRefresh");
 	ImGui::SeparatorText(_GetResourceString(L"FrameRefresh/Header").c_str());
 	ImGui::TextDisabled("%s", _GetResourceString(L"FrameRefresh_RestartNotice").c_str());
@@ -1729,15 +1738,13 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		ImGui::PushID(itemId++);
 		ImGui::SeparatorText(
 			std::string(GetEffectDisplayName(description)).c_str());
-		const auto process = renderer.NvidiaVfxProcessDescription(effectIdx);
-		if (!process.empty()) ImGui::TextWrapped("%s", process.c_str());
 		const auto hdrPlan = BuildHdrComponentPlan(_BuildDraftEffectOptions(),
 			ScalingWindow::Get().Options().legacyHdrCaptureIntent);
 		if (hdrPlan.error == HdrComponentError::None && effectIdx < hdrPlan.stages.size() &&
 			hdrPlan.stages[effectIdx].pairIndex != size_t(-1))
 			ImGui::TextWrapped("%s", EffectParameterLocalization::HdrPairSource(hdrPlan.stages[effectIdx].pairIndex).c_str());
 
-		std::string_view currentGroup;
+		std::string currentGroup;
 		// 仅在 _DEBUG 下读取（参数元数据一致性告警），release 下以 maybe_unused 抑制 ClangCL -Werror
 		[[maybe_unused]] uint32_t validCount = 0;
 		[[maybe_unused]] uint32_t invalidCount = 0;
@@ -2017,6 +2024,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 			_GetResourceString(L"Overlay_EffectParameters_Revert").c_str())) {
 			parameterEdited = true;
 			_draftEffectParameterValues = _startupEffectParameterValues;
+			restoreStartupSizing = true;
 			_draftFrameRefresh = _startupFrameRefresh;
 			for (size_t effectIdx = 0;
 				effectIdx < configuredEffectCount; ++effectIdx) {
@@ -2045,7 +2053,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	bool submitted = true;
 	if (parameterEdited || requestRestart) {
 		submitted = _RequestEffectParameters(requestRestart ? EffectParametersRequestKind::SaveAndRestart
-			: EffectParametersRequestKind::AutoSave);
+			: EffectParametersRequestKind::AutoSave, restoreStartupSizing);
 	}
 	// Publish desired values and enqueue persistence before waking the backend.
 	// Otherwise an immediate load failure could race ahead of the edit it rolls back.
