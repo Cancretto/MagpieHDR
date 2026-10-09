@@ -14,7 +14,7 @@
 
 // Required by NVIDIA's MIT-licensed proxy loader. USE_APP_PATH below makes it
 // load the runtime copied beside Magpie.exe rather than an obsolete system SDK.
-char* g_nvVFXSDKPath = nullptr;
+// The common NvidiaVfxRuntime owns the SDK proxy path symbol.
 
 namespace Magpie {
 

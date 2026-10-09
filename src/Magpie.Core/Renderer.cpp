@@ -1,4 +1,6 @@
 #include "pch.h"
+#include "NvidiaVfxFrameGenerator.h"
+#include "EffectParameterLocalization.h"
 #include "NvidiaForegroundCompatibility.h"
 #include "DlssnrAutoHdr.h"
 #include "DLSSNRParameters.h"
@@ -123,7 +125,7 @@ static bool IsXeSSFrameGenerationEffect(std::string_view name) noexcept {
 }
 
 static bool IsFrameGenerationEffect(std::string_view name) noexcept {
-	return IsDLSSFrameGenerationEffect(name) || IsXeSSFrameGenerationEffect(name);
+	return ClassifyFrameGenerationEffect(name) != FrameGenerationEffectKind::None;
 }
 
 static HdrFormatRoutes GetHdrRoutesForEffect(
@@ -161,10 +163,15 @@ static HdrFormatRoutes GetHdrRoutesForEffect(
 		return GetGroupBHdrRoutes(group);
 	}
 	if (group == "RTXVideo") {
-		return RTXVideoFamily(std::string_view(effect.name)) == 1
+		if (effect.name == "RTXVideo\\RTXVideo_HDR") return EffectProtocolC::RTXVideoHdr();
+		const int family = RTXVideoFamily(std::string_view(effect.name));
+		if (family < 0) return {};
+		return family == 1
 			? EffectProtocolC::RTXVideoVsr()
 			: EffectProtocolC::RTXVideoDenoiser();
 	}
+	if (effect.name == "NvidiaVFX\\Upscale") return EffectProtocolC::RTXVideoVsr();
+	if (effect.name == NVIDIA_VFX_VFG_ID) return EffectProtocolC::FrameGenerationMarker("NvidiaVFX");
 	if (group == "DLSSFG" || group == "XeSSFG" || group == "FSR3FG") {
 		return EffectProtocolC::FrameGenerationMarker(group);
 	}
@@ -373,7 +380,8 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 
 	_hasFrameGeneration = frameGeneration.HasFrameGeneration();
 	_configuredFrameGenerationMultiplier = 1;
-	_frameSyncUsesSharedSlot = frameGeneration.first != FrameGenerationEffectKind::DLSS;
+	_frameSyncUsesSharedSlot = frameGeneration.first != FrameGenerationEffectKind::DLSS &&
+		frameGeneration.first != FrameGenerationEffectKind::NvidiaVfx;
 	std::optional<XeSSFGVariant> xessVariant;
 	uint32_t xessFrameGenerationMultiplier = 2;
 	for (const EffectOption& effect : effects) {
@@ -381,7 +389,8 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 			ClassifyFrameGenerationEffect(effect.name);
 		if (kind != FrameGenerationEffectKind::None) {
 			_configuredFrameGenerationMultiplier = kind == FrameGenerationEffectKind::XeSSX2 ? 2u :
-				static_cast<uint32_t>(ReadIntegralEffectParameter(effect, "multiplier", 2, 4,
+				static_cast<uint32_t>(ReadIntegralEffectParameter(effect, "multiplier", 2,
+					kind == FrameGenerationEffectKind::NvidiaVfx ? 8 : 4,
 					2));
 		}
 		if (kind != FrameGenerationEffectKind::XeSSX2 &&
@@ -424,7 +433,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	const DXGI_ADAPTER_DESC1 adapterDesc =
 		LogAdapter(_frontendResources.GetGraphicsAdapter());
 	ForegroundPresentationPath presentationPath = xessVariant ? ForegroundPresentationPath::XeSSProxy :
-		frameGeneration.first == FrameGenerationEffectKind::DLSS ? ForegroundPresentationPath::DLSSFrontendDXGI :
+		(frameGeneration.first == FrameGenerationEffectKind::DLSS || frameGeneration.first == FrameGenerationEffectKind::NvidiaVfx) ? ForegroundPresentationPath::DLSSFrontendDXGI :
 		ForegroundPresentationPath::OrdinaryDXGI;
 	if (!xessVariant && ScalingWindow::Get().Options().IsDirectFlipDisabled())
 		presentationPath = ForegroundPresentationPath::Composition;
@@ -549,7 +558,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 		return ScalingError::SharedTextureOpenFailed;
 	}
 
-	_hasFrameGeneration = _dlssFrameGenerator != nullptr || _isXeSSFrameGenerationActive;
+	_hasFrameGeneration = _HasSoftwareFrameGenerator() || _isXeSSFrameGenerationActive;
 
 	_UpdateDestRect();
 
@@ -603,6 +612,7 @@ void Renderer::OnSourceFocusChanged() noexcept {
 				FrameGuidanceResetReason::CaptureInterrupted);
 		}
 		if (_dlssFrameGenerator) _dlssFrameGenerator->RequestHistoryReset();
+		if (_nvidiaVfxFrameGenerator) _nvidiaVfxFrameGenerator->RequestHistoryReset();
 	});
 }
 
@@ -1258,7 +1268,7 @@ bool Renderer::Render(bool force, bool waitForGpu) noexcept {
 	_frontendPacingDeadline.reset();
 	// In synchronous DLSSFG mode regular capture work remains owned by the FIFO.
 	// RenderOverlay uses the stable frontend copy and never consumes a ring slot.
-	if (_dlssFrameGenerator &&
+	if (_HasSoftwareFrameGenerator() &&
 		_synchronousFramePresentationEnabled.load(std::memory_order_acquire)) {
 		// Timed overlays must advance even when a static source produces no
 		// FIFO work. RenderOverlay only redraws the last presented stable image.
@@ -1301,7 +1311,7 @@ bool Renderer::Render(bool force, bool waitForGpu) noexcept {
 bool Renderer::RenderOverlay() noexcept {
 	// For regular/XeSS rendering, consume available content first. An input
 	// message must not insert a replay of the old image ahead of the new one.
-	if (!_dlssFrameGenerator ||
+	if (!_HasSoftwareFrameGenerator() ||
 		!_synchronousFramePresentationEnabled.load(std::memory_order_acquire)) {
 		return Render();
 	}
@@ -1309,7 +1319,7 @@ bool Renderer::RenderOverlay() noexcept {
 	// presentation opportunity replaying an old frame while FIFO content waits.
 	// The next FIFO frame draws/acknowledges the same queued input. The atomic
 	// count also covers frame notifications not yet dispatched by the UI thread.
-	if (_dlssFrameGenerator &&
+	if (_HasSoftwareFrameGenerator() &&
 		_synchronousFramePresentationEnabled.load(std::memory_order_acquire) &&
 		_pendingDLSSFGFrontendFrames.load(std::memory_order_acquire) != 0) {
 		return false;
@@ -1337,7 +1347,7 @@ bool Renderer::HasUrgentOverlayInput() const noexcept {
 
 bool Renderer::HasPendingContent() const noexcept {
 	if (_pendingFrontendFrame || _frontendPacingDeadline) return true;
-	if (_dlssFrameGenerator &&
+	if (_HasSoftwareFrameGenerator() &&
 		_synchronousFramePresentationEnabled.load(std::memory_order_acquire)) {
 		return _pendingDLSSFGFrontendFrames.load(std::memory_order_acquire) != 0;
 	}
@@ -1870,6 +1880,13 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 	const std::vector<EffectOption>& effects = _runtimeEffectOptions;
 	assert(!effects.empty());
 	const uint32_t effectCount = (uint32_t)effects.size();
+	_vfxExecutionPlan = PlanNvidiaVfxExecution(effects, _runtimeHdrComponents);
+	if (_vfxExecutionPlan.error != NvidiaVfxPlanError::None) {
+		_backendInitError = ScalingError::FrameGenerationInitFailed;
+		_backendInitContext = fmt::format("Nvidia VFX VFG plan error={} at effect #{}. VFG requires SDR input and supports only TrueHDR/Bicubic/Bilinear/CAS/RCAS after its boundary.",
+			int(_vfxExecutionPlan.error), _vfxExecutionPlan.errorIndex + 1);
+		return nullptr;
+	}
 
 	// 并行编译所有效果
 	_effectDescs.resize(effects.size());
@@ -1932,6 +1949,14 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 	HdrFrame initialHdrFrame = MakePipelineInputFrame(inOutTexture,
 		_frameSource->GetHdrFrameMetadata(), options.IsHdrCaptureEnabled());
 	for (uint32_t i = 0; i < effectCount; ++i) {
+		if (_vfxExecutionPlan.enabled && i == _vfxExecutionPlan.postStart) {
+			_vfxSourceTexture.copy_from(inOutTexture);
+			D3D11_TEXTURE2D_DESC td{}; inOutTexture->GetDesc(&td);
+			_vfxPostInput = DirectXHelper::CreateTexture2D(_backendResources.GetD3DDevice(), td.Format, td.Width, td.Height,
+				D3D11_BIND_SHADER_RESOURCE);
+			if (!_vfxPostInput) return nullptr;
+			inOutTexture = _vfxPostInput.get();
+		}
 		const bool component = ClassifyHdrComponent(effects[i].name) != HdrComponentKind::None;
 		const bool hdrInput = options.IsEffectHdrEnabled(i) && !component;
 		HdrEffectBoundaryContext initialHdrBoundary{};
@@ -2025,9 +2050,18 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 			inOutTexture, *dlssFrameGenerationSettings)) {
 		return nullptr;
 	}
+	if (_vfxExecutionPlan.enabled) {
+		if (_vfxExecutionPlan.postStart == effectCount) {
+			// Without TrueHDR, final layout/scaling remains in the SDR pre-stage.
+			_vfxExecutionPlan.postStart = _effectDrawers.size();
+			_vfxSourceTexture.copy_from(inOutTexture);
+		}
+		if (!_InitializeNvidiaVfxFrameGenerator()) return nullptr;
+	}
 
 	_UpdateActiveEffectDescs();
 	_UpdateHdrEffectBoundaryContexts();
+	_UpdateNvidiaVfxDescriptions();
 	_effectFrameStates.assign(_effectDrawers.size(), {});
 
 	// 初始化所有效果共用的动态常量缓冲区
@@ -2121,6 +2155,9 @@ void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 				info.restartReason = IsOpticalFlowParameter(parameter.name)
 					? EffectParameterRestartReason::FrameGuidance
 					: EffectParameterRestartReason::FrameGeneration;
+			} else if (option.name == NVIDIA_VFX_VFG_ID) {
+				info.applyMode = parameter.name == "model" ? EffectParameterApplyMode::Live : EffectParameterApplyMode::RestartRequired;
+				info.restartReason = info.applyMode == EffectParameterApplyMode::Live ? EffectParameterRestartReason::None : EffectParameterRestartReason::FrameGeneration;
 			} else if (IsXeSSFrameGenerationEffect(option.name)) {
 				info.restartReason = EffectParameterRestartReason::FrameGeneration;
 			} else if (_nativeEffectBackends[effectIdx]) {
@@ -2262,12 +2299,17 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 			_runtimeEffectOptions[effectIdx] = std::move(candidate);
 			_UpdateFrameRateLimits();
 			succeeded = true;
+		} else if (valid && candidate.name == NVIDIA_VFX_VFG_ID && _nvidiaVfxFrameGenerator && changedNames.size() == 1 && changedNames.front() == "model") {
+			succeeded = _nvidiaVfxFrameGenerator->ApplyModel(_backendResources, _vfxSourceTexture.get(), uint32_t(candidate.parameters.at("model")));
+			if (succeeded) {
+				_runtimeEffectOptions[effectIdx] = std::move(candidate);
+				_vfxExecutionPlan.settings = _nvidiaVfxFrameGenerator->Settings();
+			}
 		} else if (valid && _nativeEffectBackends[effectIdx]) {
 			ScalingWindow::Get().Options().parameterSession->Applying(true);
 			succeeded = _nativeEffectBackends[effectIdx]->ApplyParameters(
 				candidate, changedNames);
-			ScalingWindow::Get().Options().parameterSession->Applying(false,
-				!succeeded && RTXVideoFamily(std::string_view(candidate.name)) >= 0);
+			ScalingWindow::Get().Options().parameterSession->Applying(false, !succeeded);
 			if (succeeded) {
 				_runtimeEffectOptions[effectIdx] = std::move(candidate);
 			}
@@ -2285,13 +2327,14 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 				"Live effect parameter update rejected: effect#{} ({})",
 				effectIdx, _runtimeEffectOptions[effectIdx].name));
 			const auto& options = ScalingWindow::Get().Options();
-			if (RTXVideoFamily(std::string_view(_runtimeEffectOptions[effectIdx].name)) >= 0) {
+			if (_nativeEffectBackends[effectIdx] || _runtimeEffectOptions[effectIdx].name == NVIDIA_VFX_VFG_ID) {
 				for (const auto& update : effectUpdates) {
 					if (effectIdx >= _effectDescs.size() || update.parameterIdx >= _effectDescs[effectIdx].params.size()) continue;
 					const auto& parameter = _effectDescs[effectIdx].params[update.parameterIdx];
 					const auto& previousOption = _runtimeEffectOptions[effectIdx];
 					const auto old = previousOption.parameters.find(parameter.name);
-					const float previous = old == previousOption.parameters.end() ? float(RTX_VIDEO_DEFAULT_STRENGTH) : old->second;
+					const float fallback = parameter.constant.index() == 0 ? std::get<0>(parameter.constant).defaultValue : float(std::get<1>(parameter.constant).defaultValue);
+					const float previous = old == previousOption.parameters.end() ? fallback : old->second;
 					options.parameterSession->RevertDesired(effectIdx, parameter.name, update.value, previous);
 					if (options.revertEffectParameter) options.revertEffectParameter(
 						effectIdx, previousOption, parameter.name, update.value, previous);
@@ -2319,7 +2362,11 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 					return DLSSNRParameterPass(name) <= activePasses;
 				});
 			}
-			if (changesOutput) _effectFrameStates[effectIdx].ParametersChanged();
+			if (changesOutput) {
+				_effectFrameStates[effectIdx].ParametersChanged();
+				++_vfxParameterRevision;
+				if (_nvidiaVfxFrameGenerator && effectIdx < _vfxExecutionPlan.postStart) _nvidiaVfxFrameGenerator->RequestHistoryReset();
+			}
 		}
 	}
 
@@ -2353,6 +2400,16 @@ void Renderer::_UpdateActiveEffectDescs() noexcept {
 
 bool Renderer::_ShouldAppendBicubic(ID3D11Texture2D* outTexture) noexcept {
 	const ScalingOptions& options = ScalingWindow::Get().Options();
+	for (auto it = _runtimeEffectOptions.rbegin(); it != _runtimeEffectOptions.rend(); ++it) {
+		if (it->name == NVIDIA_VFX_UPSCALE_ID) {
+			const auto mode = it->parameters.find("upscaleMode");
+			// Its private Bicubic has already fitted the proportional content.
+			// The frontend crops/letterboxes it; a second Fill would stretch it.
+			if (mode == it->parameters.end() || mode->second == 0.f) return false;
+			break;
+		}
+		if (it->HasScale()) break;
+	}
 
 	D3D11_TEXTURE2D_DESC texDesc;
 	outTexture->GetDesc(&texDesc);
@@ -2373,7 +2430,7 @@ bool Renderer::_AppendBicubic(ID3D11Texture2D** inOutTexture) noexcept {
 	const bool hdrEnabled = options.IsHdrCompatibilityEnabled();
 	EffectDesc& bicubicDesc = GetBicubicDesc(hdrEnabled);
 
-	const EffectOption bicubicOption{
+	EffectOption bicubicOption{
 		.name = "Bicubic",
 		.parameters{
 			{"paramB", 0.0f},
@@ -2381,6 +2438,13 @@ bool Renderer::_AppendBicubic(ID3D11Texture2D** inOutTexture) noexcept {
 		},
 		.scalingType = options.IsWindowedMode() ? ScalingType::Fill : ScalingType::Fit
 	};
+	if (std::ranges::any_of(_runtimeEffectOptions, [](const auto& effect) { return effect.name == NVIDIA_VFX_UPSCALE_ID; })) {
+		D3D11_TEXTURE2D_DESC td{}; (*inOutTexture)->GetDesc(&td);
+		const auto target = Win32Helper::GetSizeOfRect(ScalingWindow::Get().RendererRect());
+		const double factor = std::min(double(target.cx) / td.Width, double(target.cy) / td.Height);
+		bicubicOption.scalingType = ScalingType::Absolute;
+		bicubicOption.scale = {float(std::lround(td.Width * factor)), float(std::lround(td.Height * factor))};
+	}
 
 	if (bicubicDesc.name.empty()) {
 		// 参数不会改变，因此可以内联
@@ -2423,6 +2487,21 @@ bool Renderer::_AppendBicubic(ID3D11Texture2D** inOutTexture) noexcept {
 }
 
 ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
+	if (_nvidiaVfxFrameGenerator || std::ranges::any_of(_runtimeEffectOptions, [](const auto& effect) { return effect.name == NVIDIA_VFX_UPSCALE_ID; })) {
+		if (!_DrainNgxConsumers()) return nullptr;
+		_ReleaseNgxConsumers();
+		_effectDrawers.clear(); _effectFrameStates.clear();
+		ID3D11Texture2D* result = _BuildEffects();
+		if (result) {
+			_overlayDrawer.UpdateAfterActiveEffectsChanged();
+			if (_effectsProfiler.IsProfiling()) {
+				uint32_t passes = 0;
+				for (auto* desc : _activeEffectDescs) passes += uint32_t(desc->passes.size());
+				_effectsProfiler.SetPassCount(_backendResources.GetD3DDevice(), passes);
+			}
+		}
+		return result;
+	}
 	// Invalidate before resources are touched, even if a later resize fails.
 	for (auto& state : _effectFrameStates) state.Invalidate();
 	const auto priorityCheck = wil::scope_exit([this] { _EnsureGpuPriority(true); });
@@ -2556,7 +2635,99 @@ ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
 	}
 
 	_effectFrameStates.resize(_effectDrawers.size());
+	_UpdateNvidiaVfxDescriptions();
 	return inOutTexture;
+}
+
+std::string Renderer::NvidiaVfxProcessDescription(size_t effect) const {
+	std::scoped_lock lock(_vfxDescriptionMutex);
+	return effect < _vfxDescriptions.size() ? _vfxDescriptions[effect] : std::string{};
+}
+
+void Renderer::_UpdateNvidiaVfxDescriptions() {
+	std::vector<std::string> descriptions(_runtimeEffectOptions.size());
+	for (size_t i = 0; i < descriptions.size(); ++i) {
+		const auto& option = _runtimeEffectOptions[i];
+		if (option.name == NVIDIA_VFX_VFG_ID) {
+			descriptions[i] = EffectParameterLocalization::Resource(L"NvidiaVfx_Vfg_Process", "SDR pre-effects -> VFG -> each real/generated frame -> TrueHDR (when selected) -> presentation");
+			continue;
+		}
+		if (option.name != NVIDIA_VFX_UPSCALE_ID) continue;
+		D3D11_TEXTURE2D_DESC in{}, out{};
+		_effectDrawers[i].GetTexture(0)->GetDesc(&in); _effectDrawers[i].GetOutputTexture()->GetDesc(&out);
+		const auto it = option.parameters.find("upscaleMode");
+		const auto plan = PlanNvidiaVfxUpscale({in.Width,in.Height}, {out.Width,out.Height}, it == option.parameters.end() ? 0 : int(it->second));
+		if (!plan.valid) continue;
+		const auto ratio = NVIDIA_VFX_UPSCALE_RATIOS[plan.ratioIndex];
+		descriptions[i] = fmt::format(fmt::runtime(EffectParameterLocalization::Resource(L"NvidiaVfx_Upscale_Process", "{}x{} -> Nvidia VFX {}/{}x: {}x{}")),
+			in.Width,in.Height,ratio.numerator,ratio.denominator,plan.native.width,plan.native.height);
+		if (plan.adaptation != NvidiaVfxAdaptation::None) descriptions[i] += fmt::format(fmt::runtime(
+			EffectParameterLocalization::Resource(plan.adaptation == NvidiaVfxAdaptation::Upsample ? L"NvidiaVfx_Upscale_Up" : L"NvidiaVfx_Upscale_Down",
+				" -> Bicubic: {}x{}")),out.Width,out.Height);
+		if (it != option.parameters.end() && it->second != 0.f && _effectDrawers.size() > _runtimeEffectOptions.size() &&
+			std::none_of(_runtimeEffectOptions.begin() + i + 1, _runtimeEffectOptions.end(), [](const auto& effect) { return effect.HasScale(); })) {
+			D3D11_TEXTURE2D_DESC final{}; _effectDrawers.back().GetExternalOutputTexture()->GetDesc(&final);
+			if (final.Width != out.Width || final.Height != out.Height) descriptions[i] += fmt::format(fmt::runtime(
+				EffectParameterLocalization::Resource(final.Width > out.Width || final.Height > out.Height ? L"NvidiaVfx_Upscale_Up" : L"NvidiaVfx_Upscale_Down", " -> Bicubic: {}x{}")), final.Width,final.Height);
+		}
+	}
+	std::scoped_lock lock(_vfxDescriptionMutex); _vfxDescriptions = std::move(descriptions);
+}
+
+uint32_t Renderer::_SoftwareFrameMultiplier() const noexcept {
+	return _nvidiaVfxFrameGenerator ? _nvidiaVfxFrameGenerator->Multiplier() :
+		_dlssFrameGenerator ? _dlssFrameGenerator->Multiplier() : 1u;
+}
+
+bool Renderer::_InitializeNvidiaVfxFrameGenerator() noexcept {
+	auto candidate = std::make_unique<NvidiaVfxFrameGenerator>();
+	Logger::DiagnosticCapture diagnostic;
+	if (!candidate->Initialize(_backendResources, _vfxSourceTexture.get(), _vfxExecutionPlan.settings)) {
+		_backendInitError = ScalingError::FrameGenerationInitFailed;
+		_backendInitContext = "Nvidia VFX VFG / " + diagnostic.Details();
+		_backendInitSystemError = diagnostic.SystemError(); return false;
+	}
+	_nvidiaVfxFrameGenerator = std::move(candidate);
+	return true;
+}
+
+bool Renderer::_DrawNvidiaVfxPostEffects(ID3D11Texture2D* input, uint32_t index, uint32_t multiplier) noexcept {
+	const auto started = std::chrono::steady_clock::now();
+	_vfxOutputIndex = index; _vfxOutputMultiplier = multiplier;
+	ID3D11Texture2D* result = input;
+	if (_vfxExecutionPlan.postStart < _effectDrawers.size()) {
+		if (!_vfxPostInput) return false;
+		auto* dc = _backendResources.GetD3DDC();
+		dc->ClearState(); dc->CopyResource(_vfxPostInput.get(), input);
+		result = _vfxPostInput.get();
+		FrameGuidanceView noGuidance{};
+		for (size_t i = _vfxExecutionPlan.postStart; i < _effectDrawers.size(); ++i) {
+			auto& drawer = _effectDrawers[i];
+			drawer.SetHdrInputSource(result);
+			if (i < _nativeEffectBackends.size() && _nativeEffectBackends[i]) {
+				if (!drawer.PrepareHdrInput()) return false;
+				const NativeEffectDrawContext context{
+					.input = drawer.GetTexture(0), .output = drawer.GetOutputTexture(),
+					.inputMetadata = drawer.GetHdrBoundary().inputFrame.metadata,
+					.outputMetadata = drawer.GetHdrBoundary().inputFrame.metadata,
+					.frameId = _capturedFrameId, .previousCaptureFrameId = _previousCapturedFrameId,
+					.inputRevision = (_capturedFrameId << 3) + index,
+					.inputHistoryRevision = _vfxParameterRevision,
+					.isNewCaptureFrame = index == multiplier,
+					.frameGuidance = noGuidance, .zeroFrameGuidance = noGuidance
+				};
+				if (!_nativeEffectBackends[i]->Draw(context) || !drawer.CompleteHdrOutput()) return false;
+			} else if (!drawer.Draw(_vfxPostProfiler)) return false;
+			result = drawer.GetExternalOutputTexture();
+		}
+	}
+	_vfxPostTotalMs += std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now() - started).count();
+	++_vfxPostSamples;
+	const bool success = _PublishBackendTexture(result, true, index < multiplier, _captureSequence,
+		_frameSource->ResourceGeneration(), _reflex.NextPresentId());
+	FrameTrace::Mark(FrameTrace::Event::NativeEffect, index,
+		std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count());
+	return success;
 }
 
 bool Renderer::_InitializeDLSSFrameGenerator(
@@ -2669,6 +2840,7 @@ void Renderer::_DisableDLSSFrameGenerationForSession() noexcept {
 
 bool Renderer::_DrainNgxConsumers() noexcept {
 	bool succeeded = true;
+	if (_nvidiaVfxFrameGenerator && !_nvidiaVfxFrameGenerator->Drain()) succeeded = false;
 	if (_dlssFrameGenerator && !_dlssFrameGenerator->Drain()) {
 		Logger::Get().Warn("Drain DLSSFG queue failed");
 		succeeded = false;
@@ -2685,6 +2857,8 @@ bool Renderer::_DrainNgxConsumers() noexcept {
 void Renderer::_ReleaseNgxConsumers() noexcept {
 	_DrainNgxConsumers();
 	_dlssFrameGenerator.reset();
+	_nvidiaVfxFrameGenerator.reset();
+	_vfxSourceTexture = nullptr; _vfxPostInput = nullptr;
 	_nativeEffectBackends.clear();
 }
 
@@ -2776,8 +2950,8 @@ HANDLE Renderer::_CreateSharedTexture(ID3D11Texture2D* effectsOutput) noexcept {
 				color.sdrWhiteNits, _dlssFgHdrNormalizationScale));
 		}
 	}
-	_sharedTextureSlotCount = _dlssFrameGenerator ?
-		std::clamp(_dlssFrameGenerator->Multiplier(), 2u, MAX_SHARED_TEXTURE_SLOTS) : 1u;
+	_sharedTextureSlotCount = _HasSoftwareFrameGenerator() ?
+		std::clamp(_SoftwareFrameMultiplier(), 2u, MAX_SHARED_TEXTURE_SLOTS) : 1u;
 	_sharedTextureGeneration.fetch_add(1, std::memory_order_release);
 	_pendingDLSSFGFrontendFrames.store(0, std::memory_order_release);
 	_nextBackendSharedTextureSlot = 0;
@@ -3038,6 +3212,10 @@ void Renderer::_BackendThreadProc() noexcept {
 		// Refresh StepTimer's frame-start timestamp before accepting new input.
 		if (waitedForContent) continue;
 		if (!_pendingEffectParameterUpdates.empty()) {
+			// Complete the previous revision before applying a new per-output snapshot.
+			if (_nvidiaVfxFrameGenerator && _pendingDLSSFGFrontendFrames.load(std::memory_order_acquire) != 0) {
+				MsgWaitForMultipleObjectsEx(0, nullptr, 10, QS_ALLINPUT, MWMO_INPUTAVAILABLE); continue;
+			}
 			_ApplyPendingEffectParameters();
 		}
 
@@ -3110,7 +3288,7 @@ void Renderer::_BackendThreadProc() noexcept {
 			_backendMayDeferFG = false;
 			// DLSSFG uses synchronous, individually paced presentation so generated
 			// frames cannot be coalesced into the following real frame.
-			if (!_dlssFrameGenerator ||
+			if (!_HasSoftwareFrameGenerator() ||
 				!_synchronousFramePresentationEnabled.load(std::memory_order_acquire)) {
 				PostMessage(ScalingWindow::Get().Handle(),
 					CommonSharedConstants::WM_FRONTEND_RENDER, 0, 0);
@@ -3207,7 +3385,7 @@ void Renderer::_UpdateFrameRateLimits() noexcept {
 	}
 	// Exactly one owner for the base FPS. Capacity/resource waits remain active.
 	const bool consumerPacing = (_appliedFrameSyncBackend == FrameSyncBackend::FrontEdge &&
-		(_frameSyncUsesSharedSlot || _dlssFrameGenerator || _effectDrawers.empty())) ||
+		(_frameSyncUsesSharedSlot || _HasSoftwareFrameGenerator() || _effectDrawers.empty())) ||
 		_appliedFrameSyncBackend == FrameSyncBackend::XeLL || _appliedFrameSyncBackend == FrameSyncBackend::Reflex;
 	const std::optional<float> fallbackLimit = _frameSyncEnabled ?
 		std::optional<float>(float(_FrameSyncFrameRate())) : maxFrameRate;
@@ -3228,8 +3406,8 @@ void Renderer::_UpdateFrameRateLimits() noexcept {
 		try { options.contentTargetChanged(ScalingWindow::Get().SrcTracker().Handle(), fixedContent, _baseFrameRateLimit, constrained); }
 		catch (...) { Logger::Get().Warn("Unable to notify the frontend of the content target"); }
 	}
-	if (_dlssFrameGenerator) _synchronousPresentInterval =
-		_captureCadence.Interval(_dlssFrameGenerator->Multiplier(), _baseFrameRateLimit);
+	if (_HasSoftwareFrameGenerator()) _synchronousPresentInterval =
+		_captureCadence.Interval(_SoftwareFrameMultiplier(), _baseFrameRateLimit);
 }
 
 HANDLE Renderer::_InitBackend() noexcept {
@@ -3443,6 +3621,7 @@ void Renderer::_BackendRender(
 					_frameGuidanceService.ResetHistory(FrameGuidanceResetReason::CaptureInterrupted);
 				}
 				if (_dlssFrameGenerator) _dlssFrameGenerator->RequestHistoryReset();
+		if (_nvidiaVfxFrameGenerator) _nvidiaVfxFrameGenerator->RequestHistoryReset();
 			}
 			Logger::Get().Info(fmt::format(
 				"Capture sequence accepted: sequence={} frameId={} timestamp100ns={} historyResetRequested={}",
@@ -3460,13 +3639,14 @@ void Renderer::_BackendRender(
 			// and reset temporal consumers in the branch above.
 			Logger::Get().Info("Capture cadence gap observed; preserving temporal history until capture sequence changes");
 		}
-		if (_dlssFrameGenerator) _synchronousPresentInterval =
-			_captureCadence.Interval(_dlssFrameGenerator->Multiplier(), _baseFrameRateLimit);
+		if (_HasSoftwareFrameGenerator()) _synchronousPresentInterval =
+			_captureCadence.Interval(_SoftwareFrameMultiplier(), _baseFrameRateLimit);
 		_lastCapturedFrameTime = captureTime;
 		// A cancelled Reflex candidate may leave a gap. Keep NGX's
 		// BackbufferFrameID, guidance and Reflex on the same monotonic base ID.
 		_previousCapturedFrameId = _capturedFrameId;
 		_capturedFrameId = std::max(_capturedFrameId + 1, _reflex.CaptureFrameId());
+		_vfxPreviousTimestamp100ns = _acceptedCaptureTimestamp100ns;
 		_acceptedCaptureTimestamp100ns = _frameSource->CaptureTimestamp100ns();
 		FrameTrace::SetFrame(_capturedFrameId);
 		FrameTrace::Mark(FrameTrace::Event::CaptureAccepted, _frameSource->CaptureTimestamp100ns(), sequence);
@@ -3511,7 +3691,8 @@ void Renderer::_BackendRender(
 
 	uint64_t inputRevision = _capturedFrameId;
 	uint64_t inputHistoryRevision = 0;
-	for (uint32_t i = 0; i < _effectDrawers.size(); ++i) {
+	const size_t preEnd = _nvidiaVfxFrameGenerator ? _vfxExecutionPlan.postStart : _effectDrawers.size();
+	for (uint32_t i = 0; i < preEnd; ++i) {
 		const EffectDrawer& effectDrawer = _effectDrawers[i];
 		const EffectDesc& desc = *_activeEffectDescs[i];
 		auto resourceKey = [](ID3D11Texture2D* texture) noexcept {
@@ -3686,11 +3867,17 @@ void Renderer::_BackendRender(
 		}
 	}
 
+	if (_nvidiaVfxFrameGenerator) {
+		_vfxUpstreamHistoryRevision = inputHistoryRevision;
+		for (size_t i = preEnd; i < _effectDrawers.size(); ++i)
+			for (size_t p = 0; p < _activeEffectDescs[i]->passes.size(); ++p) _effectsProfiler.OnEndPass(d3dDC);
+		effectsOutput = _vfxSourceTexture.get();
+	}
 	_effectsProfiler.OnEndEffects(d3dDC);
 	// Keep the pacing/queue optimization, while avoiding duplicate real-frame
 	// submissions during a capture gap. FG must advance from a new canonical
 	// capture or its own generated frame, never from a repeated stale input.
-	if (!isNewCaptureFrame && (_dlssFrameGenerator || _isXeSSFrameGenerationActive)) {
+	if (!isNewCaptureFrame && (_HasSoftwareFrameGenerator() || _isXeSSFrameGenerationActive)) {
 		d3dDC->Flush();
 		return;
 	}
@@ -3767,8 +3954,26 @@ void Renderer::_CompleteBackendFrame(
 	_reflex.EndCaptureRender();
 	const auto finishReflexCapture = wil::scope_exit([this] { _reflex.CompleteCapture(); });
 	if (_frameSyncEnabled) _baseFrameRateLimit = _FrameSyncFrameRate();
-	if (_dlssFrameGenerator) _synchronousPresentInterval =
-		_captureCadence.Interval(_dlssFrameGenerator->Multiplier(), _baseFrameRateLimit);
+	if (_HasSoftwareFrameGenerator()) _synchronousPresentInterval =
+		_captureCadence.Interval(_SoftwareFrameMultiplier(), _baseFrameRateLimit);
+	if (_nvidiaVfxFrameGenerator) {
+		const auto pairStarted = std::chrono::steady_clock::now();
+		const bool success = _nvidiaVfxFrameGenerator->Draw(effectsOutput,
+			{_capturedFrameId, captureSequence, _frameSource->ResourceGeneration(), _vfxUpstreamHistoryRevision},
+			isNewCaptureFrame, [this](ID3D11Texture2D* frame, uint32_t index, uint32_t multiplier) {
+				return _DrawNvidiaVfxPostEffects(frame, index, multiplier);
+			});
+		if (!success && !_sessionLifetime->IsStopping()) _FailColorPipeline("Nvidia VFX VFG -> TrueHDR", ScalingError::EffectResourceFailed);
+		const double elapsed = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now() - pairStarted).count();
+		_vfxPairTotalMs += elapsed; _vfxPairMaxMs = std::max(_vfxPairMaxMs, elapsed);
+		if (++_vfxPairSamples == 120) {
+			Logger::Get().Info(fmt::format("Nvidia VFX VFG output budget: multiplier={} pairAvgMs={:.3f} pairMaxMs={:.3f} postOutputs={} postAvgMs={:.3f} intervalMs={:.3f} ringCapacity={}; pair includes SDK, post-processing and publication/backpressure",
+				_SoftwareFrameMultiplier(), _vfxPairTotalMs / _vfxPairSamples, _vfxPairMaxMs, _vfxPostSamples,
+				_vfxPostSamples ? _vfxPostTotalMs / _vfxPostSamples : 0., _synchronousPresentInterval.count() / 1000000., _sharedTextureSlotCount));
+			_vfxPairSamples = _vfxPostSamples = 0; _vfxPairTotalMs = _vfxPairMaxMs = _vfxPostTotalMs = 0;
+		}
+		_effectsProfiler.QueryTimings(d3dDC); return;
+	}
 	if (_dlssFrameGenerator && isNewCaptureFrame) {
 		D3D11_TEXTURE2D_DESC sourceDesc{};
 		_frameSource->GetPipelineTexture()->GetDesc(&sourceDesc);
@@ -3861,7 +4066,7 @@ bool Renderer::_PublishBackendTexture(
 	}
 	ID3D11DeviceContext4* d3dDC = _backendResources.GetD3DDC();
 	ID3D11Texture2D* publicationTexture = texture;
-	HdrFrameMetadata publicationMetadata = ScalingWindow::Get().Options().hdrComponents.enabled
+	HdrFrameMetadata publicationMetadata = (ScalingWindow::Get().Options().hdrComponents.enabled || _nvidiaVfxFrameGenerator)
 		? _pipelineOutputMetadata : HdrFrameMetadata{};
 	if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
 		publicationMetadata = _pipelineOutputMetadata;
@@ -3898,6 +4103,16 @@ bool Renderer::_PublishBackendTexture(
 	publicationMetadata.resourceGeneration = currentGeneration;
 	publicationMetadata.timestamp100ns = _frameSource ? _frameSource->CaptureTimestamp100ns() : 0;
 	publicationMetadata.generated = generatedFrame;
+	if (_nvidiaVfxFrameGenerator) {
+		publicationMetadata.stage = generatedFrame ? HdrFrameStage::GeneratedOutput : HdrFrameStage::PublishedOutput;
+		publicationMetadata.parameterRevision = _vfxParameterRevision;
+		publicationMetadata.previousFrameId = _previousCapturedFrameId;
+		publicationMetadata.frameIndex = _vfxOutputIndex;
+		publicationMetadata.frameMultiplier = _vfxOutputMultiplier;
+		if (generatedFrame && _vfxPreviousTimestamp100ns > 0 && publicationMetadata.timestamp100ns > _vfxPreviousTimestamp100ns)
+			publicationMetadata.timestamp100ns = _vfxPreviousTimestamp100ns +
+				(publicationMetadata.timestamp100ns - _vfxPreviousTimestamp100ns) * _vfxOutputIndex / _vfxOutputMultiplier;
+	}
 	const bool queuedPresentation = synchronous &&
 		_synchronousFramePresentationEnabled.load(std::memory_order_acquire);
 	const uint32_t sharedTextureSlot =

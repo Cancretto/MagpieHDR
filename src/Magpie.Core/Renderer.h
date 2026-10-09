@@ -16,6 +16,7 @@
 #include "ScalingOptions.h"
 #include "ScalingSessionLifetime.h"
 #include "StepTimer.h"
+#include "NvidiaVfxExecutionPlan.h"
 #include <mutex>
 #include <unordered_map>
 
@@ -48,6 +49,7 @@ public:
 	bool RenderOverlay() noexcept;
 	bool HasFrameGeneration() const noexcept { return _hasFrameGeneration; }
 	PresentationRateSnapshot PresentationRate() const noexcept { return _presentationRate.Get(); }
+	std::string NvidiaVfxProcessDescription(size_t effect) const;
 	DLSSFGFrameRenderResult RenderDLSSFGFrame(
 		uint32_t sharedTextureSlot,
 		uint32_t sharedTextureGeneration,
@@ -224,7 +226,7 @@ private:
 
 	void _BackendThreadProc() noexcept;
 	bool _IsDLSSFGQueueFull() const noexcept {
-		return _dlssFrameGenerator && _synchronousFramePresentationEnabled.load(std::memory_order_acquire) &&
+		return _HasSoftwareFrameGenerator() && _synchronousFramePresentationEnabled.load(std::memory_order_acquire) &&
 			_pendingDLSSFGFrontendFrames.load(std::memory_order_acquire) >= _sharedTextureSlotCount;
 	}
 
@@ -300,7 +302,10 @@ private:
 	PassThroughFrames _passThroughFrames;
 	bool _isPassThroughActive = false;
 
-	static constexpr uint32_t MAX_SHARED_TEXTURE_SLOTS = 4;
+	// Ring capacity is independent of the SDK's 2–8x multiplier. Reuse the
+	// reference-image capacity and apply backpressure rather than allocating
+	// seven extra HDR outputs before the frontend can consume them.
+	static constexpr uint32_t MAX_SHARED_TEXTURE_SLOTS = PassThroughFrames::MAX_SLOTS;
 	std::array<winrt::com_ptr<ID3D11Texture2D>, MAX_SHARED_TEXTURE_SLOTS>
 		_frontendSharedTextures;
 	std::array<winrt::com_ptr<IDXGIKeyedMutex>, MAX_SHARED_TEXTURE_SLOTS>
@@ -353,6 +358,22 @@ private:
 	bool _forceNextRender = false;
 	std::vector<std::unique_ptr<class NativeEffectBackend>> _nativeEffectBackends;
 	std::unique_ptr<class DLSSFrameGenerator> _dlssFrameGenerator;
+	std::unique_ptr<class NvidiaVfxFrameGenerator> _nvidiaVfxFrameGenerator;
+	NvidiaVfxExecutionPlan _vfxExecutionPlan;
+	winrt::com_ptr<ID3D11Texture2D> _vfxSourceTexture, _vfxPostInput;
+	EffectsProfiler _vfxPostProfiler;
+	uint64_t _vfxUpstreamHistoryRevision = 0, _vfxParameterRevision = 1;
+	uint32_t _vfxOutputIndex = 0, _vfxOutputMultiplier = 1;
+	uint32_t _vfxPairSamples = 0, _vfxPostSamples = 0;
+	double _vfxPairTotalMs = 0, _vfxPairMaxMs = 0, _vfxPostTotalMs = 0;
+	int64_t _vfxPreviousTimestamp100ns = 0;
+	mutable std::mutex _vfxDescriptionMutex;
+	std::vector<std::string> _vfxDescriptions;
+	void _UpdateNvidiaVfxDescriptions();
+	bool _HasSoftwareFrameGenerator() const noexcept { return _dlssFrameGenerator || _nvidiaVfxFrameGenerator; }
+	uint32_t _SoftwareFrameMultiplier() const noexcept;
+	bool _InitializeNvidiaVfxFrameGenerator() noexcept;
+	bool _DrawNvidiaVfxPostEffects(ID3D11Texture2D* input, uint32_t index, uint32_t multiplier) noexcept;
 	uint32_t _dlssFgConsecutiveFailures = 0;
 	uint32_t _dlssFgRecoveryAttempts = 0;
 

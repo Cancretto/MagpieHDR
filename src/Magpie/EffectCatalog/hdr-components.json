@@ -40,17 +40,17 @@
     },
     {
       "id": "RTXVideo\\RTXVideo_HDR",
-      "name": "RTX Video HDR",
+      "name": "Nvidia VFX TrueHDR",
       "category": "hdr-components",
       "subcategory": "",
       "purposes": [
         "hdr-components"
       ],
-      "summary": "通过 NVIDIA AI 将 SDR 扩展为 HDR。",
-      "details": "保持输入尺寸，放在 SDR 效果段之后；HDR 输入先用 HDR → SDR。AI 会重新塑造亮度与颜色，不代表恢复原始 HDR。\n\n需要受支持的 NVIDIA RTX 显卡、驱动与随附 RTX Video HDR 运行库，输出屏幕需开启 Windows HDR。按显示器设置峰值亮度，再比较对比度、饱和度和中间灰。四项参数可实时调整；开销随分辨率和显卡变化。",
+      "summary": "将 SDR 扩展为 HDR，包含去色带。",
+      "details": "保留旧 RTX Video HDR 的效果 ID、参数、精确输入和普通／Shift 刻度。对比度、饱和度 0–200（默认 100）；中灰 10–100（50）；峰值 400–2000 nits（1000）。去色带默认开启。配合 VFG 时每张真实／生成帧都处理；HDR 源先转 SDR。输出屏幕开启 Windows HDR。AI 重塑亮度和颜色，不代表恢复原始 HDR。",
       "level": "situational",
       "recommendation": "特定场景推荐",
-      "search": "RTXVideo\\RTXVideo_HDR RTX Video HDR HDR 组件  通过 NVIDIA AI 将 SDR 扩展为 HDR。 保持输入尺寸，放在 SDR 效果段之后；HDR 输入先用 HDR → SDR。AI 会重新塑造亮度与颜色，不代表恢复原始 HDR。  需要受支持的 NVIDIA RTX 显卡、驱动与随附 RTX Video HDR 运行库，输出屏幕需开启 Windows HDR。按显示器设置峰值亮度，再比较对比度、饱和度和中间灰。四项参数可实时调整；开销随分辨率和显卡变化。 RTXVideo\\RTXVideo_HDR Contrast Saturation Middle gray Peak brightness (nits)",
+      "search": "RTXVideo\\RTXVideo_HDR Nvidia VFX TrueHDR 将 SDR 扩展为 HDR，包含去色带。 保留旧 RTX Video HDR 的效果 ID、参数、精确输入和普通／Shift 刻度。对比度、饱和度 0–200（默认 100）；中灰 10–100（50）；峰值 400–2000 nits（1000）。去色带默认开启。配合 VFG 时每张真实／生成帧都处理；HDR 源先转 SDR。输出屏幕开启 Windows HDR。AI 重塑亮度和颜色，不代表恢复原始 HDR。 RTXVideo\\RTXVideo_HDR RTX Video HDR HDR 组件  通过 NVIDIA AI 将 SDR 扩展为 HDR。 保持输入尺寸，放在 SDR 效果段之后；HDR 输入先用 HDR → SDR。AI 会重新塑造亮度与颜色，不代表恢复原始 HDR。  需要受支持的 NVIDIA RTX 显卡、驱动与随附 RTX Video HDR 运行库，输出屏幕需开启 Windows HDR。按显示器设置峰值亮度，再比较对比度、饱和度和中间灰。四项参数可实时调整；开销随分辨率和显卡变化。 RTXVideo\\RTXVideo_HDR Contrast Saturation Middle gray Peak brightness (nits)",
       "family": null,
       "subfamily": null
     }

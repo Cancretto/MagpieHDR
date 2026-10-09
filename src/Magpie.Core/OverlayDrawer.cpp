@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "HdrParameterPolicy.h"
+#include "NvidiaVfxParameterPolicy.h"
 #include "OverlayDrawer.h"
 #include "CursorManager.h"
 #include "DeviceResources.h"
@@ -1403,6 +1404,11 @@ std::vector<EffectOption> OverlayDrawer::_BuildDraftEffectOptions() const noexce
 			effectIdx < effects.size() && effectIdx < descriptions.size();
 		++effectIdx) {
 		const EffectDesc& description = *descriptions[effectIdx];
+		if (effects[effectIdx].name == NVIDIA_VFX_VSR_ID) {
+			for (size_t p = 0; p < description.params.size(); ++p)
+				if (description.params[p].name == "category")
+					ChangeNvidiaVfxVsrCategory(effects[effectIdx], NvidiaVfxCategory(_draftEffectParameterValues[effectIdx][p]));
+		}
 		for (size_t parameterIdx = 0;
 			parameterIdx < description.params.size() &&
 				parameterIdx < _draftEffectParameterValues[effectIdx].size();
@@ -1700,6 +1706,12 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		return fallback;
 	};
 	auto isSessionLive = [&](size_t effectIdx, size_t parameterIdx) noexcept {
+		if (effectIdx < descriptions.size() && descriptions[effectIdx]->name == NVIDIA_VFX_VSR_ID &&
+			descriptions[effectIdx]->params[parameterIdx].name == "strength") {
+			const auto applied = _parameterSessionSnapshot.applied[effectIdx].parameters.find("category");
+			if (NvidiaVfxCategory(getDraftValue(effectIdx, *descriptions[effectIdx], "category", 0.f)) !=
+				NvidiaVfxCategory(applied == _parameterSessionSnapshot.applied[effectIdx].parameters.end() ? 0.f : applied->second)) return false;
+		}
 		if (effectIdx >= runtimeInfos.size() ||
 			parameterIdx >= runtimeInfos[effectIdx].size() ||
 			runtimeInfos[effectIdx][parameterIdx].applyMode !=
@@ -1717,6 +1729,8 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		ImGui::PushID(itemId++);
 		ImGui::SeparatorText(
 			std::string(GetEffectDisplayName(description)).c_str());
+		const auto process = renderer.NvidiaVfxProcessDescription(effectIdx);
+		if (!process.empty()) ImGui::TextWrapped("%s", process.c_str());
 		const auto hdrPlan = BuildHdrComponentPlan(_BuildDraftEffectOptions(),
 			ScalingWindow::Get().Options().legacyHdrCaptureIntent);
 		if (hdrPlan.error == HdrComponentError::None && effectIdx < hdrPlan.stages.size() &&
@@ -1729,10 +1743,10 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		[[maybe_unused]] uint32_t invalidCount = 0;
 		for (size_t parameterIdx = 0;
 			parameterIdx < description.params.size(); ++parameterIdx) {
-			const EffectParameterDesc& parameter =
-				_localizedEffectParameters[effectIdx][parameterIdx];
+			auto parameter = _localizedEffectParameters[effectIdx][parameterIdx];
 			const std::string& effectName =
 				ScalingWindow::Get().Options().effects[effectIdx].name;
+			FilterNvidiaVfxVsrChoices(effectName, parameter, NvidiaVfxCategory(getDraftValue(effectIdx, description, "category", 0.f)));
 			if (!IsEffectParameterVisible(effectName, parameter.name,
 				[&](std::string_view name, float fallback) { return getDraftValue(effectIdx, description, name, fallback); })) continue;
 			if (parameter.group != currentGroup) {
@@ -1900,6 +1914,11 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 			ImGui::EndDisabled();
 
 			if (changed && parameterValid && parameterEnabled) {
+				if (effectName == NVIDIA_VFX_VSR_ID && parameter.name == "category") {
+					const auto switched = _BuildDraftEffectOptions();
+					for (size_t p = 0; p < description.params.size(); ++p)
+						if (description.params[p].name == "strength") _draftEffectParameterValues[effectIdx][p] = switched[effectIdx].parameters.at("strength");
+				}
 				parameterEdited = true;
 				value = NormalizeEffectParameterInput(parameter, value);
 				if (isLive) liveUpdates.emplace_back(static_cast<uint32_t>(effectIdx),

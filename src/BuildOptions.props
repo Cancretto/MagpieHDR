@@ -46,6 +46,10 @@
     <XeSSSdkDir></XeSSSdkDir>
     <!-- NVIDIA Video Super Resolution same-resolution denoise modes (8-11). -->
     <EnableRTXVideoDenoise>false</EnableRTXVideoDenoise>
+    <!-- Unified suite requires matched Core 1.3 headers, proxies and features. -->
+    <EnableNvidiaVfx>false</EnableNvidiaVfx>
+    <VFXIncludeDir></VFXIncludeDir>
+    <VFXProxyDir></VFXProxyDir>
     <VFXSdkDir></VFXSdkDir>
     <VFXRuntimeDir></VFXRuntimeDir>
     <VFXLicenseDir></VFXLicenseDir>
@@ -61,6 +65,11 @@
   <!-- 用户自定义编译选项 -->
   <Import Project="$(MSBuildThisFileDirectory)\BuildOptions.props.user" Condition="Exists('$(MSBuildThisFileDirectory)\BuildOptions.props.user')" />
   <PropertyGroup>
+    <VFXSdkDir Condition="'$(VFXSdkDir)' == '' And Exists('$(MSBuildThisFileDirectory)..\..\dependencies\NVIDIA-VFX-SDK-1.3.0.0-windows-x64\core\VideoFX\videofx_version.h')">$(MSBuildThisFileDirectory)..\..\dependencies\NVIDIA-VFX-SDK-1.3.0.0-windows-x64\core\VideoFX</VFXSdkDir>
+    <VFXSdkDir Condition="'$(VFXSdkDir)' == ''">$(MSBuildThisFileDirectory)..\..\..\dependencies\NVIDIA-VFX-SDK-1.3.0.0-windows-x64\core\VideoFX</VFXSdkDir>
+    <VFXRuntimeDir Condition="'$(VFXRuntimeDir)' == ''">$(VFXSdkDir)\bin</VFXRuntimeDir>
+    <VFXIncludeDir Condition="'$(VFXIncludeDir)' == ''">$(VFXSdkDir)\nvvfx\include</VFXIncludeDir>
+    <VFXProxyDir Condition="'$(VFXProxyDir)' == ''">$(VFXSdkDir)\nvvfx\src</VFXProxyDir>
     <!-- Preserve existing local/CI overrides while using the accurate name internally. -->
     <EnableDLSSSR Condition="'$(EnableDLSSSR)' == ''">$(EnableDLSSZeroMV)</EnableDLSSSR>
     <EnableAmdOpticalFlow Condition="'$(EnableAmdOpticalFlow)' == ''">$(EnableFSR3ZeroMV)</EnableAmdOpticalFlow>

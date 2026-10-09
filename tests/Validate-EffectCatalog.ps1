@@ -2,8 +2,8 @@
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 & (Join-Path $repoRoot 'scripts/Generate-EffectCatalog.ps1') -Check
-$review = Get-Content -LiteralPath (Join-Path $repoRoot 'docs/experimental/reviews/20261002-effect-description-review.json') -Raw | ConvertFrom-Json
-if ($review.effects.Count -ne 162 -or $review.families.Count -ne 13 -or $review.subfamilies.Count -ne 2) { throw 'Current review coverage differs.' }
+$review = & (Join-Path $repoRoot 'scripts/Read-EffectCatalogReview.ps1')
+if ($review.effects.Count -ne 164 -or $review.families.Count -ne 13 -or $review.subfamilies.Count -ne 2) { throw 'Current review coverage differs.' }
 foreach ($entry in $review.effects) {
     if ($entry.review.status -ne 'source-reviewed') { throw "Unreviewed effect: $($entry.id)" }
     $sourcePath = Join-Path $repoRoot $entry.source.path
@@ -72,10 +72,15 @@ foreach ($id in @('FSR2\FSR2_SR', 'FSR3\FSR3_SR', 'FSR4\FSR4_SR', 'XeSS\XeSS_SR'
 $rtx = @($catalog.effects | Where-Object id -in @('RTXVideo\RTXVideo_Denoise','RTXVideo\RTXVideo_VSR'))
 if ($rtx.Count -ne 2 -or @($rtx.name | Sort-Object -Unique).Count -ne 2) { throw 'RTX Video grouping regression' }
 foreach ($entry in $rtx) {
-    if ($entry.level -ne 'situational' -or $entry.details -notmatch '实时切换') { throw 'RTX Video maturity or live-strength regression' }
+    if ($entry.level -ne 'situational' -or ($entry.id -eq 'RTXVideo\RTXVideo_Denoise' -and $entry.details -notmatch '实时切换')) { throw 'RTX Video maturity or live-strength regression' }
     $file = Join-Path $effectRoot ($entry.id + '.hlsl')
     if ((Get-Content -LiteralPath $file -Raw) -notmatch '(?s)//!DEFAULT 1.*//!OPTION 0 Low.*//!OPTION 3 Ultra.*int strength;') { throw 'RTX strength metadata regression.' }
     foreach ($tier in @('Low','Medium','High','Ultra')) { if (!$entry.search.Contains($entry.id + '_' + $tier)) { throw 'Missing legacy search alias' } }
+}
+$vsr = $catalog.effects | Where-Object id -eq 'RTXVideo\RTXVideo_VSR'
+if ($vsr.name -ne 'Nvidia VFX VSR' -or $vsr.details -notmatch '去模糊' -or $vsr.details -notmatch 'Ampere') { throw 'Unified VSR category guidance regression' }
+foreach ($item in @(@('NvidiaVFX\Upscale','Nvidia VFX Upscale'), @('NvidiaVFX\VFG','Nvidia VFX VFG'), @('RTXVideo\RTXVideo_HDR','Nvidia VFX TrueHDR'))) {
+    if (($catalog.effects | Where-Object id -eq $item[0]).name -ne $item[1]) { throw "VFX suite name regression: $($item[0])" }
 }
 if (@($catalog.effects | Where-Object { $_.id -like 'XeSSFG\*' -and $_.name -like '*ZeroMV*' }).Count) { throw 'XeSS display alias regression' }
 $cunny = @($catalog.effects | Where-Object { $_.family.id -eq 'cunny' })

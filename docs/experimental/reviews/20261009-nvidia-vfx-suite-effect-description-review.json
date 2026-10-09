@@ -1,0 +1,369 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-09",
+  "baseReview": "20261002-effect-description-review.json",
+  "scope": "Source-only VFX supplement; no compilation, deployment or GPU acceptance",
+  "effects": [
+    {
+      "id": "RTXVideo\\RTXVideo_VSR",
+      "category": "upscale",
+      "purposes": [
+        "upscale",
+        "cleanup"
+      ],
+      "family": null,
+      "subfamily": null,
+      "level": "situational",
+      "source": {
+        "path": "src/Effects/RTXVideo/RTXVideo_VSR.hlsl",
+        "sha256": "ba22335376f5630eb8c3a034b771e5aa13b4f4418853ee04c3fe9285812cf6d2",
+        "output": {},
+        "passCount": 1,
+        "parameters": [
+          {
+            "name": "category",
+            "type": "int",
+            "options": [
+              {
+                "value": "0",
+                "label": "Standard"
+              },
+              {
+                "value": "1",
+                "label": "High bitrate"
+              },
+              {
+                "value": "2",
+                "label": "Streaming"
+              },
+              {
+                "value": "3",
+                "label": "Denoise"
+              },
+              {
+                "value": "4",
+                "label": "Deblur"
+              }
+            ],
+            "label": "Category",
+            "default": "0"
+          },
+          {
+            "name": "strength",
+            "type": "int",
+            "options": [
+              {
+                "value": "0",
+                "label": "Low"
+              },
+              {
+                "value": "1",
+                "label": "Medium"
+              },
+              {
+                "value": "2",
+                "label": "High"
+              },
+              {
+                "value": "3",
+                "label": "Ultra"
+              }
+            ],
+            "label": "Quality level",
+            "default": "1"
+          }
+        ],
+        "includes": []
+      },
+      "review": {
+        "status": "source-reviewed",
+        "recommendationBasis": "source-capability-only",
+        "runtimeEvidence": [],
+        "externalReferences": [
+          "https://docs.nvidia.com/maxine/vfx/1.3.0/"
+        ],
+        "notVerified": [
+          "C++ compilation",
+          "GPU feature execution",
+          "colour and performance acceptance",
+          "WinUI interaction"
+        ],
+        "scope": "2026-10-09 source integration; no build or deployment"
+      },
+      "zh-Hans": {
+        "name": "Nvidia VFX VSR",
+        "subcategory": "通用",
+        "summary": "常规、高码率、流媒体、降噪、去模糊，两级选择。",
+        "details": "分类内选择 Low／Medium／High／Ultra；流媒体仅 Medium／Ultra，要求 Ampere 及更新渲染 GPU。降噪与去模糊保持输入尺寸；每类记住自己的档位与缩放。旧 VSR、Denoise 与后缀档位配置继续迁移，档位不会被更名重置。分类改变重启应用，单独档位通过候选模型切换。HDR 通过 SDR 兼容映射处理。",
+        "search": "RTXVideo\\RTXVideo_VSR Nvidia VFX VSR 常规、高码率、流媒体、降噪、去模糊，两级选择。 分类内选择 Low／Medium／High／Ultra；流媒体仅 Medium／Ultra，要求 Ampere 及更新渲染 GPU。降噪与去模糊保持输入尺寸；每类记住自己的档位与缩放。旧 VSR、Denoise 与后缀档位配置继续迁移，档位不会被更名重置。分类改变重启应用，单独档位通过候选模型切换。HDR 通过 SDR 兼容映射处理。 RTXVideo\\RTXVideo_VSR RTXVideo_VSR 放大与超分 通用 AI 视频放大，四档处理强度。 适合视频与串流内容的放大，输出尺寸由效果组设置。Low／Medium／High／Ultra 是处理档位，先从默认 Medium 比较纹理与噪声。  需要受支持的 NVIDIA RTX 显卡、驱动与随附 Video Effects 运行库。强度越高不一定越适合素材；HDR 会经过 SDR 兼容映射与量化，请检查高光和颜色。强度可实时切换；模型准备可能暂时增加开销。 RTXVideo\\RTXVideo_VSR RTXVideo\\RTXVideo_VSR_High RTXVideo\\RTXVideo_VSR_Low RTXVideo\\RTXVideo_VSR_Medium RTXVideo\\RTXVideo_VSR_Ultra Strength"
+      },
+      "en-US": {
+        "name": "Nvidia VFX VSR",
+        "subcategory": "General purpose",
+        "summary": "Category and quality selection across five VSR families.",
+        "details": "Standard, high bitrate, streaming, denoise, and deblur. Streaming has Medium/Ultra only and needs Ampere or later on the rendering GPU. Denoise/deblur keep the input size; families remember quality and scaling. Existing VSR/Denoise aliases migrate without resetting quality. Category changes require a restart; quality changes load a candidate model. HDR uses an SDR compatibility boundary.",
+        "search": "RTXVideo\\RTXVideo_VSR Nvidia VFX VSR Category and quality selection across five VSR families. Standard, high bitrate, streaming, denoise, and deblur. Streaming has Medium/Ultra only and needs Ampere or later on the rendering GPU. Denoise/deblur keep the input size; families remember quality and scaling. Existing VSR/Denoise aliases migrate without resetting quality. Category changes require a restart; quality changes load a candidate model. HDR uses an SDR compatibility boundary. RTXVideo\\RTXVideo_VSR RTXVideo_VSR Upscaling and super resolution General purpose AI video upscaling with four strength levels. For upscaling video and streams, using the group’s output size. Low/Medium/High/Ultra are processing levels; start at Medium and compare texture and noise.  Requires a supported NVIDIA RTX GPU, driver, and bundled Video Effects runtime. Higher strength is not always a better match. HDR uses SDR-compatible mapping and quantization, so inspect highlights and color. Strength updates live; preparing the new model may temporarily add overhead. RTXVideo\\RTXVideo_VSR RTXVideo\\RTXVideo_VSR_High RTXVideo\\RTXVideo_VSR_Low RTXVideo\\RTXVideo_VSR_Medium RTXVideo\\RTXVideo_VSR_Ultra Strength"
+      }
+    },
+    {
+      "id": "RTXVideo\\RTXVideo_HDR",
+      "category": "hdr-components",
+      "purposes": [
+        "hdr-components"
+      ],
+      "family": null,
+      "subfamily": null,
+      "level": "situational",
+      "source": {
+        "path": "src/Effects/RTXVideo/RTXVideo_HDR.hlsl",
+        "sha256": "58cbc9a6c234ee0ad3c74d71d5f68418dc737b2619a1fee1277d638ab7d2ffb7",
+        "output": {
+          "WIDTH": "INPUT_WIDTH",
+          "HEIGHT": "INPUT_HEIGHT"
+        },
+        "passCount": 1,
+        "parameters": [
+          {
+            "name": "contrast",
+            "type": "int",
+            "options": [],
+            "label": "Contrast",
+            "default": "100",
+            "min": "0",
+            "max": "200",
+            "step": "1"
+          },
+          {
+            "name": "saturation",
+            "type": "int",
+            "options": [],
+            "label": "Saturation",
+            "default": "100",
+            "min": "0",
+            "max": "200",
+            "step": "1"
+          },
+          {
+            "name": "middleGray",
+            "type": "int",
+            "options": [],
+            "label": "Middle gray",
+            "default": "50",
+            "min": "10",
+            "max": "100",
+            "step": "1"
+          },
+          {
+            "name": "peakNits",
+            "type": "int",
+            "options": [],
+            "label": "Peak brightness (nits)",
+            "default": "1000",
+            "min": "400",
+            "max": "2000",
+            "step": "1"
+          },
+          {
+            "name": "debanding",
+            "type": "int",
+            "options": [],
+            "label": "Debanding",
+            "default": "1",
+            "min": "0",
+            "max": "1",
+            "step": "1"
+          }
+        ],
+        "includes": []
+      },
+      "review": {
+        "status": "source-reviewed",
+        "recommendationBasis": "source-capability-only",
+        "runtimeEvidence": [],
+        "externalReferences": [
+          "https://docs.nvidia.com/maxine/vfx/1.3.0/"
+        ],
+        "notVerified": [
+          "C++ compilation",
+          "GPU feature execution",
+          "colour and performance acceptance",
+          "WinUI interaction"
+        ],
+        "scope": "2026-10-09 source integration; no build or deployment"
+      },
+      "zh-Hans": {
+        "name": "Nvidia VFX TrueHDR",
+        "subcategory": "",
+        "summary": "将 SDR 扩展为 HDR，包含去色带。",
+        "details": "保留旧 RTX Video HDR 的效果 ID、参数、精确输入和普通／Shift 刻度。对比度、饱和度 0–200（默认 100）；中灰 10–100（50）；峰值 400–2000 nits（1000）。去色带默认开启。配合 VFG 时每张真实／生成帧都处理；HDR 源先转 SDR。输出屏幕开启 Windows HDR。AI 重塑亮度和颜色，不代表恢复原始 HDR。",
+        "search": "RTXVideo\\RTXVideo_HDR Nvidia VFX TrueHDR 将 SDR 扩展为 HDR，包含去色带。 保留旧 RTX Video HDR 的效果 ID、参数、精确输入和普通／Shift 刻度。对比度、饱和度 0–200（默认 100）；中灰 10–100（50）；峰值 400–2000 nits（1000）。去色带默认开启。配合 VFG 时每张真实／生成帧都处理；HDR 源先转 SDR。输出屏幕开启 Windows HDR。AI 重塑亮度和颜色，不代表恢复原始 HDR。 RTXVideo\\RTXVideo_HDR RTX Video HDR HDR 组件  通过 NVIDIA AI 将 SDR 扩展为 HDR。 保持输入尺寸，放在 SDR 效果段之后；HDR 输入先用 HDR → SDR。AI 会重新塑造亮度与颜色，不代表恢复原始 HDR。  需要受支持的 NVIDIA RTX 显卡、驱动与随附 RTX Video HDR 运行库，输出屏幕需开启 Windows HDR。按显示器设置峰值亮度，再比较对比度、饱和度和中间灰。四项参数可实时调整；开销随分辨率和显卡变化。 RTXVideo\\RTXVideo_HDR Contrast Saturation Middle gray Peak brightness (nits)"
+      },
+      "en-US": {
+        "name": "Nvidia VFX TrueHDR",
+        "subcategory": "",
+        "summary": "Expand SDR to HDR with debanding.",
+        "details": "Retains the RTX Video HDR ID, parameters, exact integer input and ordinary/Shift steps. Contrast and saturation 0–200 (100), middle gray 10–100 (50), peak 400–2000 nits (1000). Debanding is on by default. With VFG, every real/generated frame is processed. Convert HDR sources to SDR first and enable Windows HDR on the output. AI reshapes brightness and color; it does not recover original HDR.",
+        "search": "RTXVideo\\RTXVideo_HDR Nvidia VFX TrueHDR Expand SDR to HDR with debanding. Retains the RTX Video HDR ID, parameters, exact integer input and ordinary/Shift steps. Contrast and saturation 0–200 (100), middle gray 10–100 (50), peak 400–2000 nits (1000). Debanding is on by default. With VFG, every real/generated frame is processed. Convert HDR sources to SDR first and enable Windows HDR on the output. AI reshapes brightness and color; it does not recover original HDR. RTXVideo\\RTXVideo_HDR RTX Video HDR HDR components  Expand SDR into HDR using NVIDIA AI. Keeps the input size, after the SDR effects section; convert HDR input through HDR → SDR first. AI reshapes brightness and color rather than restoring the original HDR.  Requires a supported NVIDIA RTX GPU, driver, and bundled RTX Video HDR runtime, with Windows HDR enabled on the output display. Set peak brightness for the display, then compare contrast, saturation, and middle gray. All four parameters update live; cost depends on resolution and GPU. RTXVideo\\RTXVideo_HDR Contrast Saturation Middle gray Peak brightness (nits)"
+      }
+    },
+    {
+      "id": "NvidiaVFX\\Upscale",
+      "category": "upscale",
+      "purposes": [
+        "upscale"
+      ],
+      "level": "advanced",
+      "family": null,
+      "subfamily": null,
+      "zh-Hans": {
+        "name": "Nvidia VFX Upscale",
+        "subcategory": "",
+        "summary": "五档固定倍率，或自动适配目标尺寸。",
+        "details": "4/3×、1.5×、2×、3×、4×。自动从低档选择合法倍率，原生输出后用 Bicubic 等比适配目标；4× 不足时继续放大。锐化 0–1，默认 0.4。运行面板显示原生尺寸与后续适配。",
+        "search": "NvidiaVFX\\Upscale Nvidia VFX Upscale 五档固定倍率，或自动适配目标尺寸。 4/3×、1.5×、2×、3×、4×。自动从低档选择合法倍率，原生输出后用 Bicubic 等比适配目标；4× 不足时继续放大。锐化 0–1，默认 0.4。运行面板显示原生尺寸与后续适配。 "
+      },
+      "en-US": {
+        "name": "Nvidia VFX Upscale",
+        "subcategory": "",
+        "summary": "Five exact ratios or automatic target fitting.",
+        "details": "4/3x, 1.5x, 2x, 3x, or 4x. Automatic mode chooses the lowest legal ratio, then proportionally fits the target with Bicubic; targets beyond 4x use an additional resize. Sharpness 0–1, default 0.4. The running panel shows native dimensions and adaptation.",
+        "search": "NvidiaVFX\\Upscale Nvidia VFX Upscale Five exact ratios or automatic target fitting. 4/3x, 1.5x, 2x, 3x, or 4x. Automatic mode chooses the lowest legal ratio, then proportionally fits the target with Bicubic; targets beyond 4x use an additional resize. Sharpness 0–1, default 0.4. The running panel shows native dimensions and adaptation. "
+      },
+      "source": {
+        "path": "src/Effects/NvidiaVFX/Upscale.hlsl",
+        "sha256": "5b4054e65beba11cc713a19701be6bdac331c781cb68f2ab56bba31fbd0212a2",
+        "output": {},
+        "passCount": 1,
+        "parameters": [
+          {
+            "name": "sharpness",
+            "type": "float",
+            "options": [],
+            "label": "Sharpness",
+            "default": "0.4",
+            "min": "0",
+            "max": "1",
+            "step": "0.01"
+          }
+        ],
+        "includes": []
+      },
+      "review": {
+        "status": "source-reviewed",
+        "recommendationBasis": "source-capability-only",
+        "runtimeEvidence": [],
+        "externalReferences": [
+          "https://docs.nvidia.com/maxine/vfx/1.3.0/"
+        ],
+        "notVerified": [
+          "C++ compilation",
+          "GPU feature execution",
+          "colour and performance acceptance",
+          "WinUI interaction"
+        ],
+        "scope": "2026-10-09 source integration; no build or deployment"
+      }
+    },
+    {
+      "id": "NvidiaVFX\\VFG",
+      "category": "frame",
+      "purposes": [
+        "frame"
+      ],
+      "level": "advanced",
+      "family": null,
+      "subfamily": null,
+      "zh-Hans": {
+        "name": "Nvidia VFX VFG",
+        "subcategory": "",
+        "summary": "SDR 2–8× 补帧，可逐帧接入 TrueHDR。",
+        "details": "Windows x64 需要 Ada／Blackwell 渲染 GPU。默认 2×、Medium、自动场切和重复帧过滤开启。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。",
+        "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR 2–8× 补帧，可逐帧接入 TrueHDR。 Windows x64 需要 Ada／Blackwell 渲染 GPU。默认 2×、Medium、自动场切和重复帧过滤开启。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。 "
+      },
+      "en-US": {
+        "name": "Nvidia VFX VFG",
+        "subcategory": "",
+        "summary": "SDR interpolation at 2–8x, with per-output TrueHDR.",
+        "details": "Windows x64 requires an Ada/Blackwell rendering GPU. Defaults: 2x, Medium, automatic shot detection and duplicate filtering enabled. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported.",
+        "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR interpolation at 2–8x, with per-output TrueHDR. Windows x64 requires an Ada/Blackwell rendering GPU. Defaults: 2x, Medium, automatic shot detection and duplicate filtering enabled. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported. "
+      },
+      "source": {
+        "path": "src/Effects/NvidiaVFX/VFG.hlsl",
+        "sha256": "9857b3ce6ef04e3d82f2387b3982d60fe1fbf8a04267a53e48c4f3b933ce79f7",
+        "output": {
+          "WIDTH": "INPUT_WIDTH",
+          "HEIGHT": "INPUT_HEIGHT"
+        },
+        "passCount": 1,
+        "parameters": [
+          {
+            "name": "multiplier",
+            "type": "int",
+            "options": [],
+            "label": "Frame multiplier",
+            "default": "2",
+            "min": "2",
+            "max": "8",
+            "step": "1"
+          },
+          {
+            "name": "model",
+            "type": "int",
+            "options": [
+              {
+                "value": "0",
+                "label": "Low"
+              },
+              {
+                "value": "1",
+                "label": "Medium"
+              },
+              {
+                "value": "2",
+                "label": "High"
+              }
+            ],
+            "label": "Model",
+            "default": "1"
+          },
+          {
+            "name": "automaticShotDetection",
+            "type": "int",
+            "options": [],
+            "label": "Automatic shot detection",
+            "default": "1",
+            "min": "0",
+            "max": "1",
+            "step": "1"
+          },
+          {
+            "name": "duplicateFrameFiltering",
+            "type": "int",
+            "options": [],
+            "label": "Duplicate frame filtering",
+            "default": "1",
+            "min": "0",
+            "max": "1",
+            "step": "1"
+          }
+        ],
+        "includes": []
+      },
+      "review": {
+        "status": "source-reviewed",
+        "recommendationBasis": "source-capability-only",
+        "runtimeEvidence": [],
+        "externalReferences": [
+          "https://docs.nvidia.com/maxine/vfx/1.3.0/"
+        ],
+        "notVerified": [
+          "C++ compilation",
+          "GPU feature execution",
+          "colour and performance acceptance",
+          "WinUI interaction"
+        ],
+        "scope": "2026-10-09 source integration; no build or deployment"
+      }
+    }
+  ]
+}

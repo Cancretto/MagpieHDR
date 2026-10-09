@@ -1526,9 +1526,7 @@
   <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Option_3" xml:space="preserve">
     <value>Ultra</value>
   </data>
-  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Label" xml:space="preserve">
-    <value>Strength</value>
-  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Label" xml:space="preserve"><value>Quality level</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_0" xml:space="preserve">
     <value>Low</value>
   </data>
@@ -1542,13 +1540,13 @@
     <value>Ultra</value>
   </data>
   <data name="Message_HdrComponentExpectedHdr" xml:space="preserve"><value>The input to HDR to SDR is already SDR. Remove the duplicate conversion, or move it after a component that produces HDR.</value></data>
-  <data name="Message_HdrComponentExpectedSdr" xml:space="preserve"><value>SDR to HDR and RTX Video HDR need SDR input. Remove the preceding HDR expansion, or add HDR to SDR before this component.</value></data>
+  <data name="Message_HdrComponentExpectedSdr" xml:space="preserve"><value>SDR to HDR and Nvidia VFX TrueHDR need SDR input. Remove the preceding HDR expansion, or add HDR to SDR before this component.</value></data>
   <data name="Message_HdrComponentMissingPair" xml:space="preserve"><value>No compatibility pair is available. Add an earlier HDR to SDR in compatibility mode, or select Auto / Native SDR mapping in SDR to HDR.</value></data>
   <data name="Message_HdrComponentInvalidParameters" xml:space="preserve"><value>An HDR component parameter is outside its supported range. Restore the component defaults in the effect group and retry; copy the details if it still fails.</value></data>
   <data name="Message_HdrCaptureRequired" xml:space="preserve"><value>HDR to SDR needs HDR capture. Enable HDR for the source display in Windows settings. For native SDR, use SDR effects directly and optionally append SDR to HDR.</value></data>
   <data name="Message_HdrDisplayRequired" xml:space="preserve"><value>This group outputs HDR. Enable HDR for the target display in Windows settings, or finish the group with HDR to SDR in display mode. Enable HDR on every target when spanning displays.</value></data>
   <data name="Message_HdrCaptureMethodRequired" xml:space="preserve"><value>Select Graphics Capture in this profile, then retry HDR to SDR. This capture path preserves the HDR brightness range.</value></data>
-  <data name="Message_RtxHdrUnavailable" xml:space="preserve"><value>RTX Video HDR could not process this frame. Update the NVIDIA driver, use an RTX 20-series or newer GPU, and restore Magpie.RtxVideo.dll and nvngx_truehdr.dll from the complete package. You can replace this component with native SDR mapping in SDR to HDR. If it still fails, fully restart Magpie and copy the details.</value></data>
+  <data name="Message_RtxHdrUnavailable" xml:space="preserve"><value>Nvidia VFX TrueHDR could not process this frame. Check the selected rendering GPU, NVIDIA driver and matched VFX Core/TrueHDR components. Fully restart Magpie and copy the details if it still fails.</value></data>
   <data name="EffectParam_Color_HDR_to_SDR_mode_Label" xml:space="preserve"><value>Mapping</value></data>
   <data name="EffectParam_Color_HDR_to_SDR_mode_Option_0" xml:space="preserve"><value>Compatibility pair</value></data>
   <data name="EffectParam_Color_HDR_to_SDR_mode_Option_1" xml:space="preserve"><value>SDR display tone map</value></data>
@@ -1916,4 +1914,25 @@
   <data name="Rtss_Failure_Verify" xml:space="preserve"><value>Could not verify the profile.</value></data>
   <data name="Rtss_Failure_Reload" xml:space="preserve"><value>Could not reload the profile.</value></data>
   <data name="Rtss_Failure_TimeMode" xml:space="preserve"><value>Could not switch from frame time mode.</value></data>
+
+  <data name="NvidiaVfx_Upscale_Auto" xml:space="preserve"><value>Auto fit target</value></data>
+  <data name="NvidiaVfx_Upscale_AutoHelp" xml:space="preserve"><value>Choose the lowest legal ratio, then fit the target with Bicubic.</value></data>
+  <data name="NvidiaVfx_Upscale_FixedHelp" xml:space="preserve"><value>Exact native ratio; width and height must be integers.</value></data>
+  <data name="NvidiaVfx_Vsr_SameSize" xml:space="preserve"><value>Keep input size</value></data>
+  <data name="NvidiaVfx_Upscale_Process" xml:space="preserve"><value>{}x{} -&gt; Nvidia VFX {}/{}x: {}x{}</value></data>
+  <data name="NvidiaVfx_Upscale_Up" xml:space="preserve"><value> -&gt; Bicubic upscale: {}x{}</value></data>
+  <data name="NvidiaVfx_Upscale_Down" xml:space="preserve"><value> -&gt; Bicubic downsample: {}x{}</value></data>
+  <data name="NvidiaVfx_Vfg_Process" xml:space="preserve"><value>SDR pre-effects -&gt; VFG -&gt; every real/generated frame -&gt; TrueHDR (when selected) -&gt; presentation</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Label" xml:space="preserve"><value>Category</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_debanding_Label" xml:space="preserve"><value>Debanding</value></data>
+  <data name="EffectParam_NvidiaVFX_Upscale_sharpness_Label" xml:space="preserve"><value>Sharpness</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_multiplier_Label" xml:space="preserve"><value>Frame multiplier</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_model_Label" xml:space="preserve"><value>Model</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_automaticShotDetection_Label" xml:space="preserve"><value>Automatic shot detection</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_duplicateFrameFiltering_Label" xml:space="preserve"><value>Duplicate frame filtering</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_0" xml:space="preserve"><value>Standard</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_1" xml:space="preserve"><value>High bitrate</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_2" xml:space="preserve"><value>Streaming</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_3" xml:space="preserve"><value>Denoise</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_4" xml:space="preserve"><value>Deblur</value></data>
 </root>

@@ -122,6 +122,7 @@ HdrComponentPlan BuildHdrComponentPlan(const Effects& effects, std::optional<boo
 			read("contrast", 100, 0, 200, true);
 			read("saturation", 100, 0, 200, true);
 			read("middleGray", 50, 10, 100, true);
+			read("debanding", 1, 0, 1, true);
 			if (plan.error != HdrComponentError::None) return plan;
 			pair = static_cast<size_t>(-1);
 			hdr = true;
