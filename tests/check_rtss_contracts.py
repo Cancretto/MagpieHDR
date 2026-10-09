@@ -140,8 +140,8 @@ check("saveAttempted = true" in access and "else if (saveAttempted &&" in servic
 check("readbackComplete && RtssProfileAccess::SameRate(before, written)" in service, "verified unchanged failed writes do not fabricate ownership")
 check("current.contents != lastWritten.contents" in access, "new profile deletion ownership")
 check("disk.contents != current.contents" in access, "restore concurrent edit guard")
-check("_Set(\"AppDetectionLevel\", 1)" in access, "new profile Low")
-check("before.exists && (!NonRateEqual" in access, "existing non-rate preservation check")
+check("_SetIfChanged(\"AppDetectionLevel\", 1, error)" in access, "new profile Low")
+check("before.exists && !NonRateEqual" in access, "existing non-rate preservation check")
 check("std::chrono::milliseconds(750)" in service and "_thread.detach()" in service, "bounded final shutdown")
 check("Recheck(false)" in service and "retry && Status().state != RtssState::Conflict" in service, "launch readiness does not retry failures")
 check("session->cancelled = true" in service and "session->finished = true" in service, "stop cancellation and one cleanup")
@@ -159,6 +159,25 @@ check("GuardProfile" in access and "GuardProperty" in access and "GuardReload" i
 check("catch (...) { error = L\"WriteException\"; }" in service, "write exceptions retain save-attempt cleanup")
 check("original.fields.contains(key) != after.fields.contains(key)" in access, "restore does not claim a changed expression is identical")
 check("timeout && !selectedRunning" in service and "Rtss_Failure_StartTimeout" in service, "launch timeout is a reported failure")
+
+setter = access.split("bool RtssProfileAccess::_SetIfChanged(", 1)[1].split("\n}", 1)[0]
+check("_failure.observed != value" in setter and "_Get(property" in setter and "_Set(property, value)" in setter,
+      "shared setter only changes different values and checks readback")
+for method in ("Apply", "Restore"):
+    body = access.split("bool RtssProfileAccess::" + method + "(", 1)[1].split("\n}", 1)[0]
+    check('_SetIfChanged("FrametimeLimit"' in body and '_Set("FrametimeLimit"' not in body, method + " skips unchanged time")
+check("RtssFailureStage::Setting" in access and "RtssFailureStage::Verify" in access and "RtssFailureStage::Reload" in access,
+      "typed transaction failures")
+check("TimeModeUnsupported" in access and "Rtss_Failure_TimeMode" in service, "unsupported time mode remains explicit")
+check("LogProfileFailure" in service and "observedKnown={} " in service and "nativeFault={} fileError={}" in service,
+      "transaction failure logs preserve values and native/file distinction")
+check("GetLastError()" not in setter, "SDK BOOL rejection does not use stale last error")
+check('_CheckWriteAccess(profile, before.exists, error)' in access and '_CheckWriteAccess(profile, true, error)' in access,
+      "Apply/Restore check the caller's file write rights")
+check("FILE_ADD_FILE" in access and "FILE_FLAG_BACKUP_SEMANTICS" in access and "CREATE_NEW" not in access,
+      "new-profile permission probe opens only the existing directory")
+check("failure.fileError == ERROR_ACCESS_DENIED" in service and "Rtss_Failure_Permission" in service,
+      "permission errors have a specific UI result")
 
 ns = {"msb": "http://schemas.microsoft.com/developer/msbuild/2003"}
 project = ET.fromstring(read("src/Magpie/Magpie.vcxproj"))

@@ -37,3 +37,18 @@ if ($LASTEXITCODE) { throw 'Production rate code extraction failed.' }
 if ($LASTEXITCODE) { throw 'RTSS rate display test compilation failed.' }
 & (Join-Path $rtssOutput 'RtssRateDisplayTests.exe')
 if ($LASTEXITCODE) { throw 'RTSS rate display tests failed.' }
+& python (Join-Path $PSScriptRoot 'prepare_rtss_profile_tests.py') $rtssOutput
+if ($LASTEXITCODE) { throw 'Production profile code extraction failed.' }
+& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX /DNOMINMAX `
+    "/I$rtssOutput" (Join-Path $PSScriptRoot 'RtssProfileTransactionTests.cpp') `
+    (Join-Path $rtssOutput 'RtssProfileAccess.g.cpp') "/Fe:$rtssOutput/RtssProfileTransactionTests.exe" "/Fo:$rtssOutput/"
+if ($LASTEXITCODE) { throw 'RTSS transaction test compilation failed.' }
+& (Join-Path $rtssOutput 'RtssProfileTransactionTests.exe') $rtssOutput
+if ($LASTEXITCODE) { throw 'RTSS transaction tests failed.' }
+& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX /DNOMINMAX `
+    "/I$rtssOutput" "/I$rtssRepo/src/Magpie" "/I$rtssRepo/src/Magpie.Core/include" `
+    (Join-Path $PSScriptRoot 'RtssSessionTransactionTests.cpp') `
+    (Join-Path $rtssOutput 'RtssProfileAccess.g.cpp') "/Fe:$rtssOutput/RtssSessionTransactionTests.exe" "/Fo:$rtssOutput/"
+if ($LASTEXITCODE) { throw 'RTSS session transaction test compilation failed.' }
+& (Join-Path $rtssOutput 'RtssSessionTransactionTests.exe') $rtssOutput
+if ($LASTEXITCODE) { throw 'RTSS session transaction tests failed.' }

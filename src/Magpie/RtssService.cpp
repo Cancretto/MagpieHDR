@@ -87,6 +87,29 @@ void LogFailure(const char* stage, const std::wstring& error) {
 	Logger::Get().Warn(fmt::format("RTSS {}: {}", stage, StrHelper::UTF16ToUTF8(error)));
 }
 
+const wchar_t* ProfileFailureText(const RtssProfileFailure& failure, const std::wstring& error, bool restoring) {
+	if (failure.nativeFault || error == L"InterfaceFault") return L"Rtss_Failure_Interface";
+	if (failure.fileError == ERROR_ACCESS_DENIED || failure.fileError == ERROR_PRIVILEGE_NOT_HELD) return L"Rtss_Failure_Permission";
+	if (error == L"TimeModeUnsupported") return L"Rtss_Failure_TimeMode";
+	switch (failure.stage) {
+	case RtssFailureStage::Read: return L"Rtss_Failure_Read";
+	case RtssFailureStage::Setting: return L"Rtss_Failure_Set";
+	case RtssFailureStage::Save: return L"Rtss_Failure_Write";
+	case RtssFailureStage::Verify: return L"Rtss_Failure_Verify";
+	case RtssFailureStage::Reload: return L"Rtss_Failure_Reload";
+	default: return restoring ? L"Rtss_Failure_Restore" : L"Rtss_Failure_Write";
+	}
+}
+
+void LogProfileFailure(const char* operation, const std::wstring& error, const RtssProfileFailure& failure) {
+	Logger::Get().Warn(fmt::format(
+		"RTSS {}: {} stage={} profile={} version={} property={} requested={} observed={} observedKnown={} "
+		"saveAttempted={} readbackComplete={} nativeFault={} fileError={}",
+		operation, StrHelper::UTF16ToUTF8(error), int(failure.stage), failure.profile.empty() ? "Global" : failure.profile,
+		StrHelper::UTF16ToUTF8(failure.version), failure.property, failure.requested, failure.observed, failure.observedKnown,
+		failure.saveAttempted, failure.readbackComplete, failure.nativeFault, failure.fileError));
+}
+
 }
 
 struct RtssService::Session {
@@ -190,7 +213,7 @@ bool RtssService::_Prepare(RtssStatus& status) {
 		status.state = Incompatible(error) ? RtssState::Incompatible : RtssState::Failed;
 		status.failureStage = error == L"InterfaceFault" ? L"Rtss_Failure_Interface" : error == L"LibraryMissing" ?
 			L"Rtss_Failure_LibraryMissing" : error == L"AccessDenied" ? L"Rtss_Failure_Permission" : L"Rtss_Failure_Access";
-		LogFailure("check", error); return false;
+		LogProfileFailure("check", error, _access.Failure()); return false;
 	}
 	return true;
 }
@@ -289,7 +312,9 @@ void RtssService::_TryApply(const std::shared_ptr<Session>& session) {
 	std::wstring error;
 	status.state = RtssState::Applying; _Publish(status);
 	if (!_access.Read(session->profile, before, error)) {
-		LogFailure("read", error); status.state = RtssState::Failed; status.failureStage = L"Rtss_Failure_Read"; _Publish(std::move(status)); return;
+		LogProfileFailure("read", error, _access.Failure());
+		status.state = RtssState::Failed; status.failureStage = ProfileFailureText(_access.Failure(), error, false);
+		_Publish(std::move(status)); return;
 	}
 	if (session->modified && (!RtssProfileAccess::SameRate(before, session->lastWritten) ||
 		(session->created && (before.contents != session->lastWritten.contents || before.detectionLevel != session->lastWritten.detectionLevel)))) {
@@ -323,8 +348,8 @@ void RtssService::_TryApply(const std::shared_ptr<Session>& session) {
 	}
 	if (!success) {
 		if (error == L"Cancelled") return;
-		LogFailure("write", error); status.state = error == L"Conflict" ? RtssState::Conflict : RtssState::Failed;
-		status.failureStage = L"Rtss_Failure_Write";
+		LogProfileFailure("write", error, _access.Failure()); status.state = error == L"Conflict" ? RtssState::Conflict : RtssState::Failed;
+		status.failureStage = error == L"Conflict" ? L"" : ProfileFailureText(_access.Failure(), error, false);
 		session->suspended = true; _Publish(std::move(status)); return;
 	}
 	status.state = RtssState::Written; status.currentRate = status.desiredRate;
@@ -343,6 +368,7 @@ void RtssService::_Finish(const std::shared_ptr<Session>& session) {
 	if (!session->modified) return;
 	auto status = Status();
 	status.rateKnown = false;
+	status.failureStage.clear();
 	status.profileIdentity = session->identity;
 	status.profile = session->profile.empty() ? L"Global" : session->initialTarget->exe;
 	if (session->settings.exitPolicy == RtssExitPolicy::KeepChanges) {
@@ -364,8 +390,8 @@ void RtssService::_Finish(const std::shared_ptr<Session>& session) {
 	try { restored = _access.Restore(session->profile, session->original, session->lastWritten, session->created, conflict, error); }
 	catch (...) { error = L"RestoreException"; }
 	if (!restored) {
-		LogFailure("restore", error); status.state = conflict ? RtssState::Conflict : RtssState::RestoreFailed;
-		status.failureStage = L"Rtss_Failure_Restore";
+		LogProfileFailure("restore", error, _access.Failure()); status.state = conflict ? RtssState::Conflict : RtssState::RestoreFailed;
+		status.failureStage = conflict ? L"" : ProfileFailureText(_access.Failure(), error, true);
 	} else status.state = RtssState::Restored;
 	_Publish(std::move(status));
 }
@@ -442,7 +468,10 @@ void RtssService::Preview(RtssSettings settings, std::wstring executable, std::f
 					status.rateKnown = true;
 					status.timeLimit = snapshot.rate[2] > 0;
 					status.detectionDisabled = !snapshot.detectionLevel;
-				} else { status.state = RtssState::Failed; LogFailure("preview", error); }
+				} else {
+					status.state = RtssState::Failed; status.failureStage = ProfileFailureText(_access.Failure(), error, false);
+					LogProfileFailure("preview", error, _access.Failure());
+				}
 			}
 		}
 		if (_notify) _dispatcher.TryEnqueue([this, status = std::move(status), completed] {
