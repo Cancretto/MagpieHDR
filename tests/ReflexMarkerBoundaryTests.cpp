@@ -181,9 +181,12 @@ struct Renderer {
     AdaptivePresenter* _presenter;
     winrt::com_ptr<ID3D11Texture2D> _frontendBaseTexture, _frontendPresentedBaseTexture, _frontendMotionTexture;
     void SetPassThroughActive(bool value) { _isPassThroughActive = value; }
+    // Diagnostic-only sampling is outside this marker boundary fixture.
+    uint32_t _FrontendDiagnosticReasons() const noexcept { return 0; }
     FrontendBaseResult _UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept;
     bool Render(uint32_t sharedTextureSlot, FrontendRenderTimings* timings = nullptr, bool stableBaseOnly = false, bool* droppedFrame = nullptr) {
 /* ADMISSION */
+        (void)diagnosticReasons;
         _frontendResources.GetD3DDC()->CopyResource(frameTex.get(), baseTexture);
         return _presenter->EndFrame();
     }
