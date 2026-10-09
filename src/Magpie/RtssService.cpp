@@ -229,7 +229,10 @@ void RtssService::ContentTargetChanged(uint64_t sessionId, HWND source, bool fix
 		session->target = rebound;
 	}
 	if (session->settings.rateMode == RtssRateMode::ContentSync) {
-		session->desiredRate = session->settings.ResolveRate(fixed, baseRate).value_or(0);
+		const auto rate = session->settings.ResolveRate(fixed, baseRate).value_or(0);
+		if (session->desiredRate.exchange(rate) != rate && _notify) {
+			_dispatcher.TryEnqueue([this] { if (_notify) StatusChanged.Invoke(); });
+		}
 		session->contentConstrained = constrained;
 	}
 	if (session->updateQueued.exchange(true)) return;
@@ -243,10 +246,20 @@ void RtssService::End() {
 	if (!_uiSession) return;
 	auto session = std::exchange(_uiSession, nullptr);
 	session->cancelled = true;
+	// Clear the display even if nothing was written and _Finish publishes no result.
+	if (_notify) _dispatcher.TryEnqueue([this] { if (_notify) StatusChanged.Invoke(); });
 	_Queue([this, session] {
 		_Finish(session);
 		if (_workerSession == session) _workerSession.reset();
 	});
+}
+
+uint32_t RtssService::ContentSyncRate(std::weak_ptr<const uint8_t> identity) const noexcept {
+	const auto session = _uiSession;
+	const auto profile = identity.lock();
+	if (!session || session->cancelled || !profile || profile != session->identity.lock() ||
+		session->settings.rateMode != RtssRateMode::ContentSync) return 0;
+	return session->desiredRate.load();
 }
 
 void RtssService::ReleaseProfile(std::weak_ptr<const uint8_t> identity) {

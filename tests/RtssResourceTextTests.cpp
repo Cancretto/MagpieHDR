@@ -65,6 +65,13 @@ int main() {
 			Resources::Core::ResourceContext::SetGlobalQualifierValue(L"Language", language);
 			auto resources = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
 			for (auto key : ResourceKeys) Require(!resources.GetString(key).empty(), "Empty RTSS resource");
+#ifdef RTSS_SOURCE_RESOURCES
+			const bool chinese = std::wstring_view(language) == L"zh-Hans";
+			Require(resources.GetString(L"Rtss_Rate_Sync/Content") == (chinese ? L"与内容帧率同步" : L"Sync with content frame rate"), "Sync option wording");
+			Require(resources.GetString(L"Rtss_Status_Written") == (chinese ? L"配置已更新。" : L"Profile updated."), "Written result wording");
+			Require(resources.GetString(L"Rtss_GlobalNotice/Text") == (chinese ? L"使用全局配置的应用共用此上限。" : L"Applications using the global profile share this limit."), "Global factual hint");
+			Require(resources.GetString(L"Rtss_TargetOverridesGlobal") == (chinese ? L"目标使用独立配置。" : L"The target uses its own profile."), "Target factual hint");
+#endif
 			ProfileViewModel vm;
 			for (auto state : States) for (auto scope : {RtssScope::None, RtssScope::Global, RtssScope::Target}) {
 				vm.data.rtss.scope = scope;
@@ -87,7 +94,7 @@ int main() {
 			Require(vm.RtssSyncText() == resources.GetString(L"Rtss_SyncAtStart"), "Pending sync text");
 			vm.status.profileIdentity = vm.data.runtimeIdentity; vm.status.desiredRate = 60;
 			vm.status.contentConstrained = true;
-			Require(vm.RtssSyncText() == L"60 FPS\n" + resources.GetString(L"Rtss_ContentConstrained"), "Active sync text");
+			Require(vm.RtssSyncText() == resources.GetString(L"Rtss_SyncAtStart"), "Active sync description does not repeat the numeric row");
 			for (auto toolState : {0, 1, 2}) {
 				vm.status.rtss.executable = vm.status.afterburner.executable = toolState ? L"tool.exe" : L"";
 				vm.status.rtss.running = vm.status.afterburner.running = toolState == 2;

@@ -20,9 +20,9 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
-- [RTSS 界面文案精简与控件样式 TODO](todos/20261009-rtss-ui-text-and-style-TODO.md)：同步选项改为“与内容帧率同步”，移除防御性描述并保留简短事实提示；取消 RTSS 内层高级选项，停止处理直接放在限制帧率下方。限制帧率行采用固定布局，同步时禁用编辑并显示同步 FPS；工具按钮组合、菜单和同级停止处理行列为重点对齐项。
+- [RTSS 界面文案精简与控件样式 TODO](todos/20261009-rtss-ui-text-and-style-TODO.md)：固定帧率行、只读同步 FPS、停止策略直接排列和精简文案已在原分支完成，工具按钮局部对齐沿用原生样式。297 项合同、176 项设置、54 项生产代码显示回归、334 项当前资源原生检查通过；产品构建、主题/DPI 与真实交互交给独立会话。[实施与交接](reviews/20261009-rtss-ui-text-and-style.md)。
 
-- [069 RTSS 目标应用限帧开发](todos/20261005-v0.6.9-rtss-target-frame-rate-TODO.md)：`feature/069-rtss-target-frame-rate` 已接入配置/四部分界面、工具入口、公开配置接口及会话同步与一次恢复；Beta3 动态文字读取错误资源表导致的配置页闪退已修复，209 项源码合同、325 项独立原生资源检查及原有刷新/GPU 位置合同通过。修复尚未编译部署到产品或进行真实写入与游戏验收，详见[闪退修复记录](reviews/20261005-rtss-profile-page-crash-fix.md)、[实施与编译交接](reviews/20261005-v0.6.9-rtss-target-frame-rate-implementation.md)和[功能文档](design/20261005-v0.6.9-rtss-target-frame-rate-plan.md)。
+- [069 RTSS 目标应用限帧开发](todos/20261005-v0.6.9-rtss-target-frame-rate-TODO.md)：`feature/069-rtss-target-frame-rate` 已接入配置、工具入口、公开配置接口、会话同步与一次恢复，并修复配置页动态文字读取错误资源表的问题。原始源码及资源检查见[闪退修复记录](reviews/20261005-rtss-profile-page-crash-fix.md)和[实施记录](reviews/20261005-v0.6.9-rtss-target-frame-rate-implementation.md)；当前界面要求以[功能文档](design/20261005-v0.6.9-rtss-target-frame-rate-plan.md)和上方界面 TODO 为准，真实写入与游戏验收仍保留在交接清单。
 
 - [069 渲染显卡常驻与选择状态整理 TODO](todos/20261004-v0.6.9-rendering-gpu-selection-TODO.md)：已在 `feature/069-rendering-gpu-selection` 实现“性能”分组中的常驻显卡选择、单卡自动／指定选项及设备缺失提示；79 项选择回归、51 项原有适配器回归、20 种语言资源合同和当前 IDL／XAML／页面语法检查通过。完整 Release 编译部署与实际 UI／热插拔／GPU 验收交给后续独立会话。[实施记录](reviews/20261004-v0.6.9-rendering-gpu-selection.md)。
 

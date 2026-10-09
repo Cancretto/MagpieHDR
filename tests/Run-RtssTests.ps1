@@ -29,3 +29,11 @@ if (!$rtssRapid) { throw 'Restore rapidjson before compiling the RTSS settings t
 if ($LASTEXITCODE) { throw 'RTSS settings test compilation failed.' }
 & (Join-Path $rtssOutput 'RtssSettingsTests.exe')
 if ($LASTEXITCODE) { throw 'RTSS settings tests failed.' }
+& python (Join-Path $PSScriptRoot 'prepare_rtss_rate_tests.py') $rtssOutput
+if ($LASTEXITCODE) { throw 'Production rate code extraction failed.' }
+& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX /DNOMINMAX `
+    "/I$rtssOutput" "/I$rtssRepo/src/Magpie" "/I$rtssRepo/src/Magpie.Core/include" `
+    (Join-Path $PSScriptRoot 'RtssRateDisplayTests.cpp') "/Fe:$rtssOutput/RtssRateDisplayTests.exe" "/Fo:$rtssOutput/RtssRateDisplayTests.obj"
+if ($LASTEXITCODE) { throw 'RTSS rate display test compilation failed.' }
+& (Join-Path $rtssOutput 'RtssRateDisplayTests.exe')
+if ($LASTEXITCODE) { throw 'RTSS rate display tests failed.' }

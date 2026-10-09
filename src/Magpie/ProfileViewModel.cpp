@@ -19,6 +19,7 @@
 #include "App.h"
 #include "MainWindow.h"
 #include "AdaptersService.h"
+#include <limits>
 
 using namespace ::Magpie;
 using namespace winrt;
@@ -724,8 +725,8 @@ void ProfileViewModel::_SaveFrameRefresh() {
 }
 
 void ProfileViewModel::_NotifyRtssChanged() {
-	for (const auto property : { L"RtssScopeIndex", L"RtssRateModeIndex", L"RtssCustomRate", L"RtssExitPolicyIndex",
-		L"IsRtssManaged", L"ShowRtssCustomRate", L"IsRtssSyncAvailable", L"ShowRtssGlobalNotice", L"RtssStatusText",
+	for (const auto property : { L"RtssScopeIndex", L"RtssRateModeIndex", L"RtssCustomRate", L"RtssSyncedRate", L"RtssExitPolicyIndex",
+		L"IsRtssManaged", L"ShowRtssCustomRate", L"ShowRtssSyncedRate", L"IsRtssSyncAvailable", L"ShowRtssGlobalNotice", L"RtssStatusText",
 		L"RtssSyncText", L"CanLaunchRtss", L"CanLaunchAfterburner", L"RtssLaunchText", L"AfterburnerLaunchText" })
 		RaisePropertyChanged(property);
 }
@@ -775,6 +776,8 @@ void ProfileViewModel::RtssRateModeIndex(int32_t value) {
 }
 double ProfileViewModel::RtssCustomRate() const noexcept { return _data->rtss.customRate; }
 void ProfileViewModel::RtssCustomRate(double value) {
+	// A hidden editor's delayed binding callback must not change the manual preference.
+	if (!IsRtssManaged() || !ShowRtssCustomRate()) return;
 	const auto rate = RtssSettings::EditedRate(value);
 	if (!rate) { RaisePropertyChanged(L"RtssCustomRate"); return; }
 	if (*rate == _data->rtss.customRate) {
@@ -783,6 +786,12 @@ void ProfileViewModel::RtssCustomRate(double value) {
 	}
 	_data->rtss.customRate = *rate; _SaveRtss();
 }
+double ProfileViewModel::RtssSyncedRate() const noexcept {
+	if (IsRtssManaged() && ShowRtssSyncedRate() && IsRtssSyncAvailable()) {
+		if (const auto rate = RtssService::Get().ContentSyncRate(_data->runtimeIdentity)) return double(rate);
+	}
+	return std::numeric_limits<double>::quiet_NaN();
+}
 int32_t ProfileViewModel::RtssExitPolicyIndex() const noexcept { return int32_t(_data->rtss.exitPolicy); }
 void ProfileViewModel::RtssExitPolicyIndex(int32_t value) {
 	if (value < 0 || value > 1 || RtssExitPolicyIndex() == value) return;
@@ -790,6 +799,7 @@ void ProfileViewModel::RtssExitPolicyIndex(int32_t value) {
 }
 bool ProfileViewModel::IsRtssManaged() const noexcept { return _data->rtss.scope != RtssScope::None; }
 bool ProfileViewModel::ShowRtssCustomRate() const noexcept { return _data->rtss.rateMode == RtssRateMode::Custom; }
+bool ProfileViewModel::ShowRtssSyncedRate() const noexcept { return _data->rtss.rateMode == RtssRateMode::ContentSync; }
 bool ProfileViewModel::IsRtssSyncAvailable() const noexcept { return _data->frameRefresh.contentMode != ContentFrameRateMode::Source; }
 bool ProfileViewModel::ShowRtssGlobalNotice() const noexcept { return _data->rtss.scope == RtssScope::Global; }
 
@@ -836,12 +846,6 @@ hstring ProfileViewModel::RtssSyncText() const {
 	const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
 	if (!IsRtssSyncAvailable()) return loader.GetString(L"Rtss_SyncUnavailable");
 	if (_data->rtss.rateMode == RtssRateMode::Custom) return loader.GetString(L"Rtss_CustomAtStart");
-	const auto s = _RtssStatus();
-	if (s.desiredRate && s.profileIdentity.lock() == _data->runtimeIdentity) {
-		auto text = fmt::format(L"{} FPS", s.desiredRate);
-		if (s.contentConstrained) text += L"\n" + std::wstring(loader.GetString(L"Rtss_ContentConstrained"));
-		return hstring(text);
-	}
 	return loader.GetString(L"Rtss_SyncAtStart");
 }
 
