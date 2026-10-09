@@ -3271,17 +3271,18 @@
     },
     {
       "id": "RTXVideo\\RTXVideo_VSR",
-      "name": "RTXVideo_VSR",
+      "name": "Nvidia VFX VSR",
       "category": "upscale",
       "subcategory": "General purpose",
       "purposes": [
-        "upscale"
+        "upscale",
+        "cleanup"
       ],
-      "summary": "AI video upscaling with four strength levels.",
-      "details": "For upscaling video and streams, using the group’s output size. Low/Medium/High/Ultra are processing levels; start at Medium and compare texture and noise.\n\nRequires a supported NVIDIA RTX GPU, driver, and bundled Video Effects runtime. Higher strength is not always a better match. HDR uses SDR-compatible mapping and quantization, so inspect highlights and color. Strength updates live; preparing the new model may temporarily add overhead.",
+      "summary": "Category and quality selection across five VSR families.",
+      "details": "Standard, high bitrate, streaming, denoise, and deblur. Streaming has Medium/Ultra only and needs Ampere or later on the rendering GPU. Denoise/deblur keep the input size; families remember quality and scaling. Existing VSR/Denoise aliases migrate without resetting quality. Category changes require a restart; quality changes load a candidate model. HDR uses an SDR compatibility boundary.",
       "level": "situational",
       "recommendation": "Situational",
-      "search": "RTXVideo\\RTXVideo_VSR RTXVideo_VSR Upscaling and super resolution General purpose AI video upscaling with four strength levels. For upscaling video and streams, using the group’s output size. Low/Medium/High/Ultra are processing levels; start at Medium and compare texture and noise.  Requires a supported NVIDIA RTX GPU, driver, and bundled Video Effects runtime. Higher strength is not always a better match. HDR uses SDR-compatible mapping and quantization, so inspect highlights and color. Strength updates live; preparing the new model may temporarily add overhead. RTXVideo\\RTXVideo_VSR RTXVideo\\RTXVideo_VSR_High RTXVideo\\RTXVideo_VSR_Low RTXVideo\\RTXVideo_VSR_Medium RTXVideo\\RTXVideo_VSR_Ultra Strength",
+      "search": "RTXVideo\\RTXVideo_VSR Nvidia VFX VSR Category and quality selection across five VSR families. Standard, high bitrate, streaming, denoise, and deblur. Streaming has Medium/Ultra only and needs Ampere or later on the rendering GPU. Denoise/deblur keep the input size; families remember quality and scaling. Existing VSR/Denoise aliases migrate without resetting quality. Category changes require a restart; quality changes load a candidate model. HDR uses an SDR compatibility boundary. RTXVideo\\RTXVideo_VSR RTXVideo_VSR Upscaling and super resolution General purpose AI video upscaling with four strength levels. For upscaling video and streams, using the group’s output size. Low/Medium/High/Ultra are processing levels; start at Medium and compare texture and noise.  Requires a supported NVIDIA RTX GPU, driver, and bundled Video Effects runtime. Higher strength is not always a better match. HDR uses SDR-compatible mapping and quantization, so inspect highlights and color. Strength updates live; preparing the new model may temporarily add overhead. RTXVideo\\RTXVideo_VSR RTXVideo\\RTXVideo_VSR_High RTXVideo\\RTXVideo_VSR_Low RTXVideo\\RTXVideo_VSR_Medium RTXVideo\\RTXVideo_VSR_Ultra Strength",
       "family": null,
       "subfamily": null
     },
@@ -3319,17 +3320,49 @@
     },
     {
       "id": "RTXVideo\\RTXVideo_HDR",
-      "name": "RTX Video HDR",
+      "name": "Nvidia VFX TrueHDR",
       "category": "hdr-components",
       "subcategory": "",
       "purposes": [
         "hdr-components"
       ],
-      "summary": "Expand SDR into HDR using NVIDIA AI.",
-      "details": "Keeps the input size, after the SDR effects section; convert HDR input through HDR → SDR first. AI reshapes brightness and color rather than restoring the original HDR.\n\nRequires a supported NVIDIA RTX GPU, driver, and bundled RTX Video HDR runtime, with Windows HDR enabled on the output display. Set peak brightness for the display, then compare contrast, saturation, and middle gray. All four parameters update live; cost depends on resolution and GPU.",
+      "summary": "Expand SDR to HDR with debanding.",
+      "details": "Retains the RTX Video HDR ID, parameters, exact integer input and ordinary/Shift steps. Contrast and saturation 0–200 (100), middle gray 10–100 (50), peak 400–2000 nits (1000). Debanding is on by default. With VFG, every real/generated frame is processed. Convert HDR sources to SDR first and enable Windows HDR on the output. AI reshapes brightness and color; it does not recover original HDR.",
       "level": "situational",
       "recommendation": "Situational",
-      "search": "RTXVideo\\RTXVideo_HDR RTX Video HDR HDR components  Expand SDR into HDR using NVIDIA AI. Keeps the input size, after the SDR effects section; convert HDR input through HDR → SDR first. AI reshapes brightness and color rather than restoring the original HDR.  Requires a supported NVIDIA RTX GPU, driver, and bundled RTX Video HDR runtime, with Windows HDR enabled on the output display. Set peak brightness for the display, then compare contrast, saturation, and middle gray. All four parameters update live; cost depends on resolution and GPU. RTXVideo\\RTXVideo_HDR Contrast Saturation Middle gray Peak brightness (nits)",
+      "search": "RTXVideo\\RTXVideo_HDR Nvidia VFX TrueHDR Expand SDR to HDR with debanding. Retains the RTX Video HDR ID, parameters, exact integer input and ordinary/Shift steps. Contrast and saturation 0–200 (100), middle gray 10–100 (50), peak 400–2000 nits (1000). Debanding is on by default. With VFG, every real/generated frame is processed. Convert HDR sources to SDR first and enable Windows HDR on the output. AI reshapes brightness and color; it does not recover original HDR. RTXVideo\\RTXVideo_HDR RTX Video HDR HDR components  Expand SDR into HDR using NVIDIA AI. Keeps the input size, after the SDR effects section; convert HDR input through HDR → SDR first. AI reshapes brightness and color rather than restoring the original HDR.  Requires a supported NVIDIA RTX GPU, driver, and bundled RTX Video HDR runtime, with Windows HDR enabled on the output display. Set peak brightness for the display, then compare contrast, saturation, and middle gray. All four parameters update live; cost depends on resolution and GPU. RTXVideo\\RTXVideo_HDR Contrast Saturation Middle gray Peak brightness (nits)",
+      "family": null,
+      "subfamily": null
+    },
+    {
+      "id": "NvidiaVFX\\Upscale",
+      "name": "Nvidia VFX Upscale",
+      "category": "upscale",
+      "subcategory": "",
+      "purposes": [
+        "upscale"
+      ],
+      "summary": "Five exact ratios or automatic target fitting.",
+      "details": "4/3x, 1.5x, 2x, 3x, or 4x. Automatic mode chooses the lowest legal ratio, then proportionally fits the target with Bicubic; targets beyond 4x use an additional resize. Sharpness 0–1, default 0.4. The running panel shows native dimensions and adaptation.",
+      "level": "advanced",
+      "recommendation": "Advanced / experimental",
+      "search": "NvidiaVFX\\Upscale Nvidia VFX Upscale Five exact ratios or automatic target fitting. 4/3x, 1.5x, 2x, 3x, or 4x. Automatic mode chooses the lowest legal ratio, then proportionally fits the target with Bicubic; targets beyond 4x use an additional resize. Sharpness 0–1, default 0.4. The running panel shows native dimensions and adaptation. ",
+      "family": null,
+      "subfamily": null
+    },
+    {
+      "id": "NvidiaVFX\\VFG",
+      "name": "Nvidia VFX VFG",
+      "category": "frame",
+      "subcategory": "",
+      "purposes": [
+        "frame"
+      ],
+      "summary": "SDR interpolation at 2–8x, with per-output TrueHDR.",
+      "details": "Windows x64 requires an Ada/Blackwell rendering GPU. Defaults: 2x, Medium, automatic shot detection and duplicate filtering enabled. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported.",
+      "level": "advanced",
+      "recommendation": "Advanced / experimental",
+      "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR interpolation at 2–8x, with per-output TrueHDR. Windows x64 requires an Ada/Blackwell rendering GPU. Defaults: 2x, Medium, automatic shot detection and duplicate filtering enabled. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported. ",
       "family": null,
       "subfamily": null
     }

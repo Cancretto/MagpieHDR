@@ -35,6 +35,8 @@
 	  <AdditionalIncludeDirectories Condition="$(EnableXeSSFrameGeneration) And '$(Platform)' == 'x64'">$(XeSSSdkDir)\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="$(EnableRTXVideoDenoise) And '$(Platform)' == 'x64'">MP_ENABLE_RTX_VIDEO_DENOISE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories Condition="$(EnableRTXVideoDenoise) And '$(Platform)' == 'x64'">$(VFXSdkDir)\nvvfx\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions Condition="$(EnableNvidiaVfx) And '$(Platform)' == 'x64'">MP_ENABLE_NVIDIA_VFX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories Condition="$(EnableNvidiaVfx) And '$(Platform)' == 'x64'">$(VFXIncludeDir);$(VFXSdkDir)\features\nvvfxupscale\include;$(VFXSdkDir)\features\nvvfxvideosuperres\include;$(VFXSdkDir)\features\nvvfxvideoframegeneration\include;$(VFXSdkDir)\features\nvvfxtruehdr\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat Condition="'$(DisablePDB)' == 'true'">None</DebugInformationFormat>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
       <AdditionalOptions Condition="'$(ReproducibleBuild)' == 'true'">/Brepro %(AdditionalOptions)</AdditionalOptions>

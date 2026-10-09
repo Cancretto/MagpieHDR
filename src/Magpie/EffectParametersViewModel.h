@@ -61,6 +61,8 @@ struct ScalingModeParameter : ScalingModeParameterT<ScalingModeParameter>,
 		}
 		assert(_choices.Size() == choices.size());
 		assert(_choices.try_as<IIterable<IInspectable>>());
+		RaisePropertyChanged(L"Choices");
+		RaisePropertyChanged(L"ChoiceIndex");
 	}
 
 	uint32_t Index() const noexcept {

@@ -211,8 +211,9 @@ void ScalingRuntime::UpdateEffectParameterFromSettings(uint32_t modeIdx, std::ws
 		if ((!window && !waiting) || options.scalingModeIdx != modeIdx || options.scalingModeName != modeName ||
 			effectIdx >= options.effects.size()) return;
 		const auto& active = options.effects[effectIdx];
-		if (active.name != effect.name || active.scale != effect.scale ||
-			active.scalingType != effect.scalingType) return;
+		const bool vsrCategoryEdit = effect.name == "RTXVideo\\RTXVideo_VSR" && parameter == "category";
+		if (active.name != effect.name || (!vsrCategoryEdit && (active.scale != effect.scale ||
+			active.scalingType != effect.scalingType))) return;
 		if (waiting) {
 			window.UpdateWaitingEffectParameter(effectIdx, parameter, value);
 			return;
@@ -224,7 +225,23 @@ void ScalingRuntime::UpdateEffectParameterFromSettings(uint32_t modeIdx, std::ws
 		const auto it = std::ranges::find(parameters, parameter, &EffectParameterDesc::name);
 		if (it == parameters.end()) return;
 		const float normalized = NormalizeEffectParameterValue(*it, value);
+		if (vsrCategoryEdit) {
+			EffectParameterSessionState::Snapshot snapshot;
+			options.parameterSession->ReadIfChanged(snapshot);
+			if (effectIdx < snapshot.desired.size()) {
+				snapshot.desired[effectIdx] = effect;
+				options.parameterSession->Desired(snapshot.desired);
+			}
+			window.RenderOverlay(); return;
+		}
 		options.parameterSession->Desired(effectIdx, parameter, normalized);
+		if (effect.name == "RTXVideo\\RTXVideo_VSR" && parameter == "strength") {
+			const auto appliedOptions = options.parameterSession->Applied();
+			const auto category = [](const EffectOption& option) {
+				const auto it = option.parameters.find("category"); return it == option.parameters.end() ? 0.f : it->second;
+			};
+			if (effectIdx >= appliedOptions.size() || category(appliedOptions[effectIdx]) != category(effect)) return;
+		}
 		const auto index = static_cast<uint32_t>(it - parameters.begin());
 		const auto& infos = renderer.EffectParameterRuntimeInfos();
 		if (effectIdx < infos.size() && index < infos[effectIdx].size() &&

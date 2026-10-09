@@ -71,7 +71,7 @@ inline double ResolvePresentationFrameRate(double requested, double existingLimi
 	requested = SanitizePresentationFrameRate(static_cast<float>(requested));
 	if (!(std::isfinite(existingLimit) && existingLimit > 0)) existingLimit = 0;
 	if (!(std::isfinite(refreshRate) && refreshRate >= 10 && refreshRate <= 1000)) refreshRate = 60;
-	const double target = requested > 0 ? requested : refreshRate / std::clamp(multiplier, 1u, 4u);
+	const double target = requested > 0 ? requested : refreshRate / std::clamp(multiplier, 1u, 8u);
 	return std::clamp(existingLimit > 0 ? std::min(target, existingLimit) : target, 1.0, 1000.0);
 }
 

@@ -3271,17 +3271,18 @@
     },
     {
       "id": "RTXVideo\\RTXVideo_VSR",
-      "name": "RTXVideo_VSR",
+      "name": "Nvidia VFX VSR",
       "category": "upscale",
       "subcategory": "通用",
       "purposes": [
-        "upscale"
+        "upscale",
+        "cleanup"
       ],
-      "summary": "AI 视频放大，四档处理强度。",
-      "details": "适合视频与串流内容的放大，输出尺寸由效果组设置。Low／Medium／High／Ultra 是处理档位，先从默认 Medium 比较纹理与噪声。\n\n需要受支持的 NVIDIA RTX 显卡、驱动与随附 Video Effects 运行库。强度越高不一定越适合素材；HDR 会经过 SDR 兼容映射与量化，请检查高光和颜色。强度可实时切换；模型准备可能暂时增加开销。",
+      "summary": "常规、高码率、流媒体、降噪、去模糊，两级选择。",
+      "details": "分类内选择 Low／Medium／High／Ultra；流媒体仅 Medium／Ultra，要求 Ampere 及更新渲染 GPU。降噪与去模糊保持输入尺寸；每类记住自己的档位与缩放。旧 VSR、Denoise 与后缀档位配置继续迁移，档位不会被更名重置。分类改变重启应用，单独档位通过候选模型切换。HDR 通过 SDR 兼容映射处理。",
       "level": "situational",
       "recommendation": "特定场景推荐",
-      "search": "RTXVideo\\RTXVideo_VSR RTXVideo_VSR 放大与超分 通用 AI 视频放大，四档处理强度。 适合视频与串流内容的放大，输出尺寸由效果组设置。Low／Medium／High／Ultra 是处理档位，先从默认 Medium 比较纹理与噪声。  需要受支持的 NVIDIA RTX 显卡、驱动与随附 Video Effects 运行库。强度越高不一定越适合素材；HDR 会经过 SDR 兼容映射与量化，请检查高光和颜色。强度可实时切换；模型准备可能暂时增加开销。 RTXVideo\\RTXVideo_VSR RTXVideo\\RTXVideo_VSR_High RTXVideo\\RTXVideo_VSR_Low RTXVideo\\RTXVideo_VSR_Medium RTXVideo\\RTXVideo_VSR_Ultra Strength",
+      "search": "RTXVideo\\RTXVideo_VSR Nvidia VFX VSR 常规、高码率、流媒体、降噪、去模糊，两级选择。 分类内选择 Low／Medium／High／Ultra；流媒体仅 Medium／Ultra，要求 Ampere 及更新渲染 GPU。降噪与去模糊保持输入尺寸；每类记住自己的档位与缩放。旧 VSR、Denoise 与后缀档位配置继续迁移，档位不会被更名重置。分类改变重启应用，单独档位通过候选模型切换。HDR 通过 SDR 兼容映射处理。 RTXVideo\\RTXVideo_VSR RTXVideo_VSR 放大与超分 通用 AI 视频放大，四档处理强度。 适合视频与串流内容的放大，输出尺寸由效果组设置。Low／Medium／High／Ultra 是处理档位，先从默认 Medium 比较纹理与噪声。  需要受支持的 NVIDIA RTX 显卡、驱动与随附 Video Effects 运行库。强度越高不一定越适合素材；HDR 会经过 SDR 兼容映射与量化，请检查高光和颜色。强度可实时切换；模型准备可能暂时增加开销。 RTXVideo\\RTXVideo_VSR RTXVideo\\RTXVideo_VSR_High RTXVideo\\RTXVideo_VSR_Low RTXVideo\\RTXVideo_VSR_Medium RTXVideo\\RTXVideo_VSR_Ultra Strength",
       "family": null,
       "subfamily": null
     },
@@ -3319,17 +3320,49 @@
     },
     {
       "id": "RTXVideo\\RTXVideo_HDR",
-      "name": "RTX Video HDR",
+      "name": "Nvidia VFX TrueHDR",
       "category": "hdr-components",
       "subcategory": "",
       "purposes": [
         "hdr-components"
       ],
-      "summary": "通过 NVIDIA AI 将 SDR 扩展为 HDR。",
-      "details": "保持输入尺寸，放在 SDR 效果段之后；HDR 输入先用 HDR → SDR。AI 会重新塑造亮度与颜色，不代表恢复原始 HDR。\n\n需要受支持的 NVIDIA RTX 显卡、驱动与随附 RTX Video HDR 运行库，输出屏幕需开启 Windows HDR。按显示器设置峰值亮度，再比较对比度、饱和度和中间灰。四项参数可实时调整；开销随分辨率和显卡变化。",
+      "summary": "将 SDR 扩展为 HDR，包含去色带。",
+      "details": "保留旧 RTX Video HDR 的效果 ID、参数、精确输入和普通／Shift 刻度。对比度、饱和度 0–200（默认 100）；中灰 10–100（50）；峰值 400–2000 nits（1000）。去色带默认开启。配合 VFG 时每张真实／生成帧都处理；HDR 源先转 SDR。输出屏幕开启 Windows HDR。AI 重塑亮度和颜色，不代表恢复原始 HDR。",
       "level": "situational",
       "recommendation": "特定场景推荐",
-      "search": "RTXVideo\\RTXVideo_HDR RTX Video HDR HDR 组件  通过 NVIDIA AI 将 SDR 扩展为 HDR。 保持输入尺寸，放在 SDR 效果段之后；HDR 输入先用 HDR → SDR。AI 会重新塑造亮度与颜色，不代表恢复原始 HDR。  需要受支持的 NVIDIA RTX 显卡、驱动与随附 RTX Video HDR 运行库，输出屏幕需开启 Windows HDR。按显示器设置峰值亮度，再比较对比度、饱和度和中间灰。四项参数可实时调整；开销随分辨率和显卡变化。 RTXVideo\\RTXVideo_HDR Contrast Saturation Middle gray Peak brightness (nits)",
+      "search": "RTXVideo\\RTXVideo_HDR Nvidia VFX TrueHDR 将 SDR 扩展为 HDR，包含去色带。 保留旧 RTX Video HDR 的效果 ID、参数、精确输入和普通／Shift 刻度。对比度、饱和度 0–200（默认 100）；中灰 10–100（50）；峰值 400–2000 nits（1000）。去色带默认开启。配合 VFG 时每张真实／生成帧都处理；HDR 源先转 SDR。输出屏幕开启 Windows HDR。AI 重塑亮度和颜色，不代表恢复原始 HDR。 RTXVideo\\RTXVideo_HDR RTX Video HDR HDR 组件  通过 NVIDIA AI 将 SDR 扩展为 HDR。 保持输入尺寸，放在 SDR 效果段之后；HDR 输入先用 HDR → SDR。AI 会重新塑造亮度与颜色，不代表恢复原始 HDR。  需要受支持的 NVIDIA RTX 显卡、驱动与随附 RTX Video HDR 运行库，输出屏幕需开启 Windows HDR。按显示器设置峰值亮度，再比较对比度、饱和度和中间灰。四项参数可实时调整；开销随分辨率和显卡变化。 RTXVideo\\RTXVideo_HDR Contrast Saturation Middle gray Peak brightness (nits)",
+      "family": null,
+      "subfamily": null
+    },
+    {
+      "id": "NvidiaVFX\\Upscale",
+      "name": "Nvidia VFX Upscale",
+      "category": "upscale",
+      "subcategory": "",
+      "purposes": [
+        "upscale"
+      ],
+      "summary": "五档固定倍率，或自动适配目标尺寸。",
+      "details": "4/3×、1.5×、2×、3×、4×。自动从低档选择合法倍率，原生输出后用 Bicubic 等比适配目标；4× 不足时继续放大。锐化 0–1，默认 0.4。运行面板显示原生尺寸与后续适配。",
+      "level": "advanced",
+      "recommendation": "进阶／实验",
+      "search": "NvidiaVFX\\Upscale Nvidia VFX Upscale 五档固定倍率，或自动适配目标尺寸。 4/3×、1.5×、2×、3×、4×。自动从低档选择合法倍率，原生输出后用 Bicubic 等比适配目标；4× 不足时继续放大。锐化 0–1，默认 0.4。运行面板显示原生尺寸与后续适配。 ",
+      "family": null,
+      "subfamily": null
+    },
+    {
+      "id": "NvidiaVFX\\VFG",
+      "name": "Nvidia VFX VFG",
+      "category": "frame",
+      "subcategory": "",
+      "purposes": [
+        "frame"
+      ],
+      "summary": "SDR 2–8× 补帧，可逐帧接入 TrueHDR。",
+      "details": "Windows x64 需要 Ada／Blackwell 渲染 GPU。默认 2×、Medium、自动场切和重复帧过滤开启。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。",
+      "level": "advanced",
+      "recommendation": "进阶／实验",
+      "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR 2–8× 补帧，可逐帧接入 TrueHDR。 Windows x64 需要 Ada／Blackwell 渲染 GPU。默认 2×、Medium、自动场切和重复帧过滤开启。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。 ",
       "family": null,
       "subfamily": null
     }

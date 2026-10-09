@@ -1526,9 +1526,7 @@
   <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Option_3" xml:space="preserve">
     <value>极高</value>
   </data>
-  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Label" xml:space="preserve">
-    <value>强度</value>
-  </data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Label" xml:space="preserve"><value>档位</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Option_0" xml:space="preserve">
     <value>低</value>
   </data>
@@ -1542,13 +1540,13 @@
     <value>极高</value>
   </data>
   <data name="Message_HdrComponentExpectedHdr" xml:space="preserve"><value>HDR → SDR 前面的画面已经是 SDR。请移除重复的 HDR → SDR，或把它移到产生 HDR 的组件之后。</value></data>
-  <data name="Message_HdrComponentExpectedSdr" xml:space="preserve"><value>SDR → HDR 或 RTX Video HDR 需要 SDR 输入。请移除前一个 HDR 扩展组件，或在本项之前添加 HDR → SDR。</value></data>
+  <data name="Message_HdrComponentExpectedSdr" xml:space="preserve"><value>SDR → HDR 或 Nvidia VFX TrueHDR 需要 SDR 输入。请移除前一个 HDR 扩展组件，或在本项之前添加 HDR → SDR。</value></data>
   <data name="Message_HdrComponentMissingPair" xml:space="preserve"><value>当前没有可恢复的兼容映射。请在前面添加 HDR → SDR 并选择兼容配对，或将 SDR → HDR 改为自动／原生 SDR 映射。</value></data>
   <data name="Message_HdrComponentInvalidParameters" xml:space="preserve"><value>HDR 组件参数超出可用范围。请打开效果组参数，恢复该组件的默认值后重试；仍有问题时复制详情。</value></data>
   <data name="Message_HdrCaptureRequired" xml:space="preserve"><value>HDR → SDR 需要保留 HDR 源画面。请在 Windows 显示设置中开启源应用所在屏幕的 HDR；处理原生 SDR 时可直接使用 SDR 效果，再按需添加 SDR → HDR。</value></data>
   <data name="Message_HdrDisplayRequired" xml:space="preserve"><value>效果组输出 HDR。请在 Windows 显示设置中开启目标屏幕的 HDR，或在效果组末尾使用 HDR → SDR 的显示映射。跨屏输出时，各目标屏幕都需要开启 HDR。</value></data>
   <data name="Message_HdrCaptureMethodRequired" xml:space="preserve"><value>请在当前配置中将捕获方式改为 Graphics Capture，再尝试 HDR → SDR。该路径可以保留 HDR 捕获的亮度范围。</value></data>
-  <data name="Message_RtxHdrUnavailable" xml:space="preserve"><value>RTX Video HDR 未能完成处理。请更新 NVIDIA 驱动，确认使用 RTX 20 系或更新显卡，并检查本程序目录中的 Magpie.RtxVideo.dll 与 nvngx_truehdr.dll 是否完整。可先将本项替换为 SDR → HDR 的原生 SDR 映射；仍失败时完全退出 Magpie，重新打开并复制详情。</value></data>
+  <data name="Message_RtxHdrUnavailable" xml:space="preserve"><value>Nvidia VFX TrueHDR 未能完成处理。请检查实际渲染显卡、NVIDIA 驱动及配套 VFX Core／TrueHDR 组件；仍失败时完全退出 Magpie，重新打开并复制详情。</value></data>
   <data name="EffectParam_Color_HDR_to_SDR_mode_Label" xml:space="preserve"><value>转换模式</value></data>
   <data name="EffectParam_Color_HDR_to_SDR_mode_Option_0" xml:space="preserve"><value>兼容配对</value></data>
   <data name="EffectParam_Color_HDR_to_SDR_mode_Option_1" xml:space="preserve"><value>SDR 显示映射</value></data>
@@ -1958,4 +1956,24 @@
   <data name="Message_ScreenshotBusy" xml:space="preserve"><value>正在保存截图，请完成后重试。</value></data>
   <data name="Message_ScreenshotPairSaved" xml:space="preserve"><value>已保存截图：{0}、{1}</value></data>
   <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>已保存 {0}；{1} 保存失败，请查看错误详情。</value></data>
+  <data name="EffectParam_NvidiaVFX_Upscale_sharpness_Label" xml:space="preserve"><value>锐化强度</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_automaticShotDetection_Label" xml:space="preserve"><value>自动场景切换检测</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_duplicateFrameFiltering_Label" xml:space="preserve"><value>重复帧过滤</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_model_Label" xml:space="preserve"><value>模型档位</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_multiplier_Label" xml:space="preserve"><value>帧数倍率</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_debanding_Label" xml:space="preserve"><value>去色带</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Label" xml:space="preserve"><value>分类</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_0" xml:space="preserve"><value>常规</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_1" xml:space="preserve"><value>高码率</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_2" xml:space="preserve"><value>流媒体</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_3" xml:space="preserve"><value>降噪</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_4" xml:space="preserve"><value>去模糊</value></data>
+  <data name="NvidiaVfx_Upscale_Auto" xml:space="preserve"><value>自动适配目标</value></data>
+  <data name="NvidiaVfx_Upscale_AutoHelp" xml:space="preserve"><value>从低档选择合法倍率，再用 Bicubic 等比适配目标。</value></data>
+  <data name="NvidiaVfx_Upscale_Down" xml:space="preserve"><value> → Bicubic 降采样：{}×{}</value></data>
+  <data name="NvidiaVfx_Upscale_FixedHelp" xml:space="preserve"><value>精确原生倍率；输出宽高必须为整数。</value></data>
+  <data name="NvidiaVfx_Upscale_Process" xml:space="preserve"><value>{}×{} → Nvidia VFX {}/{}×：{}×{}</value></data>
+  <data name="NvidiaVfx_Upscale_Up" xml:space="preserve"><value> → Bicubic 上采样：{}×{}</value></data>
+  <data name="NvidiaVfx_Vfg_Process" xml:space="preserve"><value>SDR 前置效果 → VFG → 每张真实／生成帧 → TrueHDR（若选择）→ 呈现</value></data>
+  <data name="NvidiaVfx_Vsr_SameSize" xml:space="preserve"><value>保持输入尺寸</value></data>
 </root>

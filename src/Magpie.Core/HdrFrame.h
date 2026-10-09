@@ -97,6 +97,9 @@ struct HdrFrameMetadata {
     std::string routeId;
     bool generated = false;
     bool valid = false;
+	uint64_t parameterRevision = 0;
+	uint64_t previousFrameId = 0;
+	uint32_t frameIndex = 0, frameMultiplier = 1;
     bool IsValid() const noexcept;
 };
 

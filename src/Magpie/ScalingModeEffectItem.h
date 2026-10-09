@@ -83,6 +83,7 @@ struct ScalingModeEffectItem : ScalingModeEffectItemT<ScalingModeEffectItem>,
 
 private:
 	bool _IsRemoved() const noexcept;
+	bool _IsNvidiaVfxSameSize() const noexcept;
 	void _SaveScaleChange();
 
 	::Magpie::EffectItem& _Data() noexcept;
@@ -94,6 +95,7 @@ private:
 	const ::Magpie::EffectInfo* _effectInfo = nullptr;
 
 	com_ptr<EffectParametersViewModel> _parametersViewModel;
+	::Magpie::Event<uint32_t, uint32_t>::EventRevoker _parameterChangedRevoker;
 };
 
 }

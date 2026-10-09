@@ -18,6 +18,7 @@
 #include "EffectParameterValue.h"
 #include "EffectParameterRules.h"
 #include "HdrParameterPolicy.h"
+#include "NvidiaVfxParameterPolicy.h"
 #include "ScalingService.h"
 #include "EffectParameterLocalization.h"
 #include "EffectParameterPopupLayout.h"
@@ -108,7 +109,10 @@ EffectParametersViewModel::EffectParametersViewModel(uint32_t scalingModeIdx, ui
 	auto displayParams = _effectInfo->params;
 	EffectParameterLocalization::Localize(StrHelper::UTF16ToUTF8(_effectInfo->name), displayParams);
 	for (uint32_t i = 0, size = (uint32_t)displayParams.size(); i < size; ++i) {
-		const EffectParameterDesc& param = displayParams[i];
+		EffectParameterDesc param = displayParams[i];
+		const auto category = params.find(L"category");
+		FilterNvidiaVfxVsrChoices(StrHelper::UTF16ToUTF8(_effectInfo->name), param,
+			NvidiaVfxCategory(category == params.end() ? 0.f : category->second));
 
 		std::optional<float> paramValue;
 		if (_effectInfo->name == L"Color\\SDR_to_HDR" && param.name == "nativeWhiteNits")
@@ -268,11 +272,17 @@ void EffectParametersViewModel::_ScalingModeParameter_PropertyChanged(
 		sender.try_as<Magpie::ScalingModeParameter>());
 	if (paramImpl->Index() >= _effectInfo->params.size()) return;
 	const std::string& effectName = _effectInfo->params[paramImpl->Index()].name;
+	if (_effectInfo->name == L"RTXVideo\\RTXVideo_VSR" && effectName == "category") {
+		auto& item = ScalingModesService::Get().GetScalingMode(_scalingModeIdx).effects[_effectIdx];
+		ChangeNvidiaVfxVsrCategory(item, paramImpl->ChoiceValue());
+		_SynchronizeParameters();
+	} else {
 	_Data()[StrHelper::UTF8ToUTF16(effectName)] = paramImpl->IsBoolean()
 		? static_cast<float>(paramImpl->BooleanValue())
 		: paramImpl->IsChoice()
 			? static_cast<float>(paramImpl->ChoiceValue())
 			: static_cast<float>(paramImpl->Value());
+	}
 	_RefreshConditionalVisibility();
 	_RefreshLayoutWidth();
 	ScalingService::Get().EffectParameterEdited(_scalingModeIdx, _effectIdx, effectName,
@@ -303,6 +313,17 @@ void EffectParametersViewModel::_RefreshConditionalVisibility() {
 	auto reset = wil::scope_exit([this, wasSynchronizing] { _synchronizing = wasSynchronizing; });
 	for (const auto& parameter : _parameterImpls) {
 		const auto& name = _effectInfo->params[parameter->Index()].name;
+		if (effect == NVIDIA_VFX_VSR_ID && name == "strength") {
+			auto descriptor = _effectInfo->params[parameter->Index()];
+			std::vector<EffectParameterDesc> localized{ std::move(descriptor) };
+			EffectParameterLocalization::Localize(effect, localized);
+			FilterNvidiaVfxVsrChoices(effect, localized.front(), NvidiaVfxCategory(getValue("category", 0.f)));
+			std::vector<std::pair<int, hstring>> choices;
+			for (const auto& choice : localized.front().choices)
+				choices.emplace_back(choice.value, to_hstring(choice.label));
+			parameter->_RebuildChoices(choices);
+			parameter->SynchronizeValue(float(NvidiaVfxTier(NvidiaVfxCategory(getValue("category", 0.f)), getValue("strength", 1.f))));
+		}
 		if (IsFrameRateFilterEffect(effect) && name == "frameRateMode") {
 			parameter->SynchronizeValue(UsesFrontEdgeSyncFrameRate(frontEdgeSyncEnabled,
 				getValue(name, 0.0f)) ? 0.0f : 1.0f);

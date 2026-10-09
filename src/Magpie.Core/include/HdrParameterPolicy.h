@@ -8,7 +8,7 @@ namespace Magpie {
 inline void ApplyHdrParameterPolicy(std::string_view effect, std::vector<EffectParameterDesc>& parameters) {
 	if (effect != "Color\\HDR_to_SDR" && effect != "Color\\SDR_to_HDR" && effect != "RTXVideo\\RTXVideo_HDR") return;
 	for (auto& parameter : parameters) {
-		if (!parameter.choices.empty()) continue;
+		if (!parameter.choices.empty() || parameter.name == "debanding") continue;
 		parameter.inputStep = 1;
 		parameter.sliderStep = 5;
 		parameter.coarseStep = 50;

@@ -12,6 +12,7 @@
 #include "FSR3Upscaler.h"
 #include "RTXVideoDenoiser.h"
 #include "RTXVideoParameters.h"
+#include "NvidiaVfxImageBackend.h"
 #include "XeSSZeroMVUpscaler.h"
 #include "XeSSUpscaler.h"
 #include "FrameGuidanceDiagnostics.h"
@@ -75,11 +76,21 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 ) noexcept {
 	const bool hdrEnabled = hdrDomain.value_or(ScalingWindow::Get().Options().IsHdrCompatibilityEnabled());
 	if (effectName == "RTXVideo\\RTXVideo_HDR") {
+#ifdef MP_ENABLE_NVIDIA_VFX
+		auto result = CreateBackend<NvidiaVfxImageBackend>(effectName, resources, input, output, option, NvidiaVfxImageKind::TrueHdr);
+#else
 		auto result = CreateBackend<RTXVideoHdr>(effectName, resources, input, output, option);
+#endif
 		if (!result.backend) result.error = NgxRuntimeGuard::IsFaulted()
 			? ScalingError::NgxRestartRequired : ScalingError::RtxHdrUnavailable;
 		return result;
 	}
+	if (effectName == NVIDIA_VFX_UPSCALE_ID)
+		return CreateBackend<NvidiaVfxImageBackend>(effectName, resources, input, output, option, NvidiaVfxImageKind::Upscale);
+#ifdef MP_ENABLE_NVIDIA_VFX
+	if (effectName == NVIDIA_VFX_VSR_ID)
+		return CreateBackend<NvidiaVfxImageBackend>(effectName, resources, input, output, option, NvidiaVfxImageKind::Vsr);
+#endif
 	if (effectName == "Diagnostics\\FrameGuidance_Motion" ||
 		effectName == "Diagnostics\\FrameGuidance_Confidence") {
 		auto getParameter = [&](std::string_view name, float defaultValue) {
