@@ -59,3 +59,17 @@ if ($LASTEXITCODE) { throw 'Native resource test compilation failed.' }
 Push-Location $rtssOutput
 try { & $rtssExe; if ($LASTEXITCODE) { throw 'Native resource text test failed.' } }
 finally { Pop-Location }
+
+# No product PRI/App.xbf beside this host: it uses fixture text but the exact
+# production getter, so real XAML can verify collection binding independently.
+$rtssXamlOutput = Join-Path $rtssOutput 'xaml'
+New-Item -ItemType Directory -Path $rtssXamlOutput -Force | Out-Null
+$rtssXamlExe = Join-Path $rtssXamlOutput 'RtssStatusItemsSourceTests.exe'
+& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX /DNOMINMAX /DWIN32_LEAN_AND_MEAN /DWINRT_NO_MODULE_LOCK /DFMT_HEADER_ONLY `
+    "/I$GeneratedDirectory" "/I$rtssOutput" "/I$rtssRepo/src/Magpie" "/I$rtssRepo/src/Shared" "/I$($rtssFmt.FullName)/p/include" `
+    (Join-Path $PSScriptRoot 'RtssStatusItemsSourceTests.cpp') "/Fe:$rtssXamlExe" "/Fo:$rtssOutput/RtssStatusItemsSourceTests.obj" `
+    /link WindowsApp.lib /MANIFEST:EMBED "/MANIFESTINPUT:$PSScriptRoot/EffectChoiceItemsTests.manifest"
+if ($LASTEXITCODE) { throw 'Native status ItemsSource test compilation failed.' }
+Push-Location $rtssXamlOutput
+try { & $rtssXamlExe; if ($LASTEXITCODE) { throw 'Native status ItemsSource test failed.' } }
+finally { Pop-Location }
