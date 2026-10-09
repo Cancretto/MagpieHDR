@@ -91,6 +91,9 @@ struct Renderer {
     unsigned _configuredFrameGenerationMultiplier=1;
     bool _frameSyncEnabled=true, _frameSyncUsesSharedSlot=true;
     std::unique_ptr<FG> _dlssFrameGenerator;
+    std::unique_ptr<FG> _nvidiaVfxFrameGenerator;
+    bool _HasSoftwareFrameGenerator() const noexcept { return _dlssFrameGenerator || _nvidiaVfxFrameGenerator; }
+    uint32_t _SoftwareFrameMultiplier() const noexcept;
     std::vector<int> _effectDrawers{1};
     FrameSyncBackend _frameSyncBackend=FrameSyncBackend::FrontEdge;
     FrameSyncBackend _appliedFrameSyncBackend=FrameSyncBackend::None;
@@ -263,7 +266,7 @@ start = header.index('FrameSyncBackend ActiveFrameSyncBackend()')
 end = header.index('\n\t}', start) + len('\n\t}')
 prefix = prefix.replace('// ACTIVE_RESOLVER_FROM_PRODUCTION', header[start:end])
 suffix = suffix.replace('._reflex.interval', '._reflex.driver->interval')
-runtime = prefix + function('double Renderer::_FrameSyncFrameRate()') + '\n' + function('void Renderer::_UpdateFrameRateLimits()') + suffix
+runtime = prefix + function('uint32_t Renderer::_SoftwareFrameMultiplier()') + '\n' + function('double Renderer::_FrameSyncFrameRate()') + '\n' + function('void Renderer::_UpdateFrameRateLimits()') + suffix
 (output/'frame_sync_runtime.cpp').write_text(runtime, encoding='utf-8')
 # Controlled regressions of production code must compile and fail at runtime.
 policy_dir = output/'negative_policy'

@@ -168,6 +168,8 @@ struct Renderer {
     std::atomic<uint32_t> _latestSharedTextureSlot{0};
     std::array<std::pair<uint64_t, uint64_t>, 1> _sharedReflexIds{{{40, 90}}};
     std::pair<uint64_t, uint64_t> _frontendReflexIds{};
+    std::array<std::shared_ptr<int>, 1> _sharedScreenshotFrames{};
+    std::shared_ptr<int> _frontendScreenshotFrame;
     std::array<Metadata, 1> _sharedFrameMetadata{};
     Metadata _frontendFrameMetadata, _frontendPresentedFrameMetadata;
     uint64_t _frontendCaptureFrameId = 0, _frontendMotionFrameId = 0;

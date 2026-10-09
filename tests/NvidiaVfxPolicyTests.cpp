@@ -1,9 +1,13 @@
-#include "NvidiaVfxParameterPolicy.h"
-#include "NvidiaVfxExecutionPlan.h"
+#include <d3d11.h>
+#include <winrt/base.h>
+#include <array>
+#include <string>
 #include <cassert>
 #include <limits>
 #include <map>
 #include <vector>
+#include "NvidiaVfxParameterPolicy.h"
+#include "NvidiaVfxExecutionPlan.h"
 
 struct StoredEffect {
 	std::string name;

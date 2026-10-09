@@ -87,6 +87,8 @@ struct OwnedWindow {
 namespace wil { using unique_hwnd=OwnedWindow; }
 struct Mutex { explicit operator bool() const { return false; } void ReleaseMutex() {} void reset() {} };
 struct ParameterSession { std::vector<int> Applied() { ++snapshots; return {42}; } };
+enum class SceneScreenshotState { Pending, Failed };
+struct SceneScreenshotRequest { std::atomic<SceneScreenshotState> state{SceneScreenshotState::Pending}; };
 struct Options {
     bool windowed=false;
     bool IsWindowedMode() const { return windowed; }
@@ -114,6 +116,11 @@ public:
     int CaptureOverlayState() { return 7; }
     void _ReleaseNgxConsumers() { Pause(3); ++resourceReleases; CloseHandle(_frameSyncConsumedEvent.value); }
     std::shared_ptr<ScalingSessionLifetime> _sessionLifetime;
+    std::shared_ptr<SceneScreenshotRequest> _sceneScreenshotRequest;
+    void _FailScreenshotRequest(const std::shared_ptr<SceneScreenshotRequest>& request, const char*, uint32_t code) {
+        assert(code == ERROR_CANCELLED);
+        request->state = SceneScreenshotState::Failed;
+    }
     ReflexController _reflex;
     std::atomic<bool> _synchronousFramePresentationEnabled=true;
     Handle _frameSyncConsumedEvent;

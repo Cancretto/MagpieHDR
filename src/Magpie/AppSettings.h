@@ -65,7 +65,7 @@ struct _AppSettingsData {
 	ToolbarState _windowedInitialToolbarState = ToolbarState::AutoHide;
 	// 为空表示 FOLDERID_Screenshots，支持绝对路径和相对路径
 	std::filesystem::path _screenshotsDir;
-	Magpie::ScreenshotContent _screenshotContent = Magpie::ScreenshotContent::OutputOnly;
+	::Magpie::ScreenshotContent _screenshotContent = ::Magpie::ScreenshotContent::OutputOnly;
 
 	OverlayOptions _overlayOptions;
 	
@@ -374,8 +374,8 @@ public:
 	}
 
 	std::filesystem::path ScreenshotsDir() const noexcept;
-	Magpie::ScreenshotContent ScreenshotContent() const noexcept { return _screenshotContent; }
-	void ScreenshotContent(Magpie::ScreenshotContent value) noexcept {
+	::Magpie::ScreenshotContent ScreenshotContent() const noexcept { return _screenshotContent; }
+	void ScreenshotContent(::Magpie::ScreenshotContent value) noexcept {
 		_screenshotContent = NormalizeScreenshotContent(static_cast<uint32_t>(value));
 		SaveAsync();
 	}

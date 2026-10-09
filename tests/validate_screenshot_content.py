@@ -23,7 +23,11 @@ for path in locales:
     assert all('{0}' in values[k] and '{1}' in values[k] for k in ['Message_ScreenshotPairSaved','Message_ScreenshotPartialSaved']), path
 renderer = read('src/Magpie.Core/Renderer.cpp')
 new = read('src/Magpie.Core/RendererScreenshot.cpp')
-assert renderer.index('_SnapshotScreenshotInput();') < renderer.index('for (uint32_t i = 0; i < _effectDrawers.size(); ++i)', renderer.index('_SnapshotScreenshotInput();'))
+snapshot = renderer.index('_SnapshotScreenshotInput();')
+effect_loops = [renderer.find(marker, snapshot) for marker in (
+    'for (uint32_t i = 0; i < _effectDrawers.size(); ++i)',
+    'for (uint32_t i = 0; i < preEnd; ++i)')]
+assert snapshot < min(index for index in effect_loops if index >= 0)
 assert '_isPassThroughActive' not in new
 assert 'frame->input.get(), source' in new and 'GetPipelineTexture()' in new
 assert 'frame->metadata.width = desc.Width' in new

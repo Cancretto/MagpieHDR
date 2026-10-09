@@ -38,7 +38,8 @@ int main() {
 		advancedEntries.push_back(entry);
 	}
 	const auto advancedTree = BuildEffectPickerTree(advancedEntries, L"advanced", L"", L"", {}, {});
-	assert(advancedTree.effectCount == 5 && advancedTree.rows.size() == 5);
+	assert(advancedTree.effectCount == std::size(ADVANCED_PICKER_EFFECTS) &&
+		advancedTree.rows.size() == std::size(ADVANCED_PICKER_EFFECTS));
 	for (int family = 0; family < 2; ++family) {
 		const auto canonical = RTXVideoCanonicalId<wchar_t>(family);
 		assert(RTXVideoFamily(canonical) == family);
