@@ -86,7 +86,7 @@ struct WindowHelper { static bool IsForbiddenSystemWindow(HWND) { return false; 
 struct NvidiaForegroundCompatibility {
     static bool ReferenceOwnsForeground() { return false; }
     static void FrontendSuspended(bool) {}
-	static void FrontendWindows(HWND) {}
+	static void FrontendWindows(HWND, HWND) {}
 };
 struct Options { SessionWindowIdentity mainUI; bool windowed=false, game3d=false; bool IsWindowedMode() const { return windowed; } bool Is3DGameMode() const { return game3d; } bool IsTouchSupportEnabled() const { return false; } };
 struct Cursor { void Update() {} void OnSrcStartMove() {} void OnSrcEndMove() {} void OnSrcRectChanged() {} };

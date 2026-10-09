@@ -20,6 +20,6 @@ This local Beta4 retains Beta3 (`3c071cc6`) and integrates the committed HDR, RT
 
 ## 来源与验收 / Source and acceptance
 
-功能头：HDR `fac29926`、RTSS `500c0ff2`、VRR `9e5f89f7`。合并保留原 UWP／参数焦点、显卡选择及 VRR 开关样式；原前台回归夹具的全局窗口和会话代次变量保持独立名称，使扩展回归继续满足严格警告检查。
+功能头：HDR `fac29926`、RTSS `500c0ff2`、VRR `9e5f89f7`。合并保留原 UWP／参数焦点、显卡选择及 VRR 开关样式；原前台回归夹具的全局窗口和会话代次变量保持独立名称，使扩展回归继续满足严格警告检查。窗口切换回归夹具同步适配当前双窗口前台接口。
 
 包内 `build-manifest.json` 记录准确源码、构建选项与逐文件哈希；工作区 `reports/0610-beta4-20261009/` 记录分支快照、软件回归、完整构建及本地部署。原生整页／DPI、实际迁移交互、RTSS 事务、HDR／RTX／FG 画质与性能、物理 VRR 另行验收。Beta3 保留供回退。
