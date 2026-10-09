@@ -20,6 +20,8 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [RTSS 配置保存失败 TODO](todos/20261009-rtss-save-failure-TODO.md)：已定位本机 RTSS 拒绝 `FrametimeLimit=0`，导致 Apply 在保存前退出；Restore 存在相同调用。原生同值检查与配置哈希核对完成，按当前值跳过无效设置、失败阶段拆分、事务回归及非零帧时间兼容方案列为后续修复。
+
 - [RTSS 界面文案精简与控件样式 TODO](todos/20261009-rtss-ui-text-and-style-TODO.md)：固定帧率行、只读同步 FPS、停止策略直接排列和精简文案已在原分支完成，工具按钮局部对齐沿用原生样式。297 项合同、176 项设置、54 项生产代码显示回归、334 项当前资源原生检查通过；产品构建、主题/DPI 与真实交互交给独立会话。[实施与交接](reviews/20261009-rtss-ui-text-and-style.md)。
 
 - [069 RTSS 目标应用限帧开发](todos/20261005-v0.6.9-rtss-target-frame-rate-TODO.md)：`feature/069-rtss-target-frame-rate` 已接入配置、工具入口、公开配置接口、会话同步与一次恢复，并修复配置页动态文字读取错误资源表的问题。原始源码及资源检查见[闪退修复记录](reviews/20261005-rtss-profile-page-crash-fix.md)和[实施记录](reviews/20261005-v0.6.9-rtss-target-frame-rate-implementation.md)；当前界面要求以[功能文档](design/20261005-v0.6.9-rtss-target-frame-rate-plan.md)和上方界面 TODO 为准，真实写入与游戏验收仍保留在交接清单。
