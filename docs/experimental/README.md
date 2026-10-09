@@ -20,7 +20,7 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
-- [RTSS 界面文案精简与控件样式 TODO](todos/20261009-rtss-ui-text-and-style-TODO.md)：同步选项改为“与内容帧率同步”，移除防御性描述；下拉框和整数输入已复用刷新区域样式，工具按钮组合、菜单和嵌套高级选项列为重点对齐项。
+- [RTSS 界面文案精简与控件样式 TODO](todos/20261009-rtss-ui-text-and-style-TODO.md)：同步选项改为“与内容帧率同步”，移除防御性描述并保留简短事实提示；取消 RTSS 内层高级选项，停止处理直接放在限制帧率下方。限制帧率行采用固定布局，同步时禁用编辑并显示同步 FPS；工具按钮组合、菜单和同级停止处理行列为重点对齐项。
 
 - [069 RTSS 目标应用限帧开发](todos/20261005-v0.6.9-rtss-target-frame-rate-TODO.md)：`feature/069-rtss-target-frame-rate` 已接入配置/四部分界面、工具入口、公开配置接口及会话同步与一次恢复；Beta3 动态文字读取错误资源表导致的配置页闪退已修复，209 项源码合同、325 项独立原生资源检查及原有刷新/GPU 位置合同通过。修复尚未编译部署到产品或进行真实写入与游戏验收，详见[闪退修复记录](reviews/20261005-rtss-profile-page-crash-fix.md)、[实施与编译交接](reviews/20261005-v0.6.9-rtss-target-frame-rate-implementation.md)和[功能文档](design/20261005-v0.6.9-rtss-target-frame-rate-plan.md)。
 
