@@ -49,6 +49,8 @@ public:
 	void Preview(RtssSettings settings, std::wstring executable,
 		std::function<void(RtssStatus)> completed);
 	RtssStatus Status() const;
+	// UI thread only; the current session's resolved sync target, or 0 if unknown.
+	uint32_t ContentSyncRate(std::weak_ptr<const uint8_t> identity) const noexcept;
 	Event<> StatusChanged;
 
 private:

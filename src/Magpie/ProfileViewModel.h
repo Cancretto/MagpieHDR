@@ -119,10 +119,12 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 	void RtssRateModeIndex(int32_t value);
 	double RtssCustomRate() const noexcept;
 	void RtssCustomRate(double value);
+	double RtssSyncedRate() const noexcept;
 	int32_t RtssExitPolicyIndex() const noexcept;
 	void RtssExitPolicyIndex(int32_t value);
 	bool IsRtssManaged() const noexcept;
 	bool ShowRtssCustomRate() const noexcept;
+	bool ShowRtssSyncedRate() const noexcept;
 	bool IsRtssSyncAvailable() const noexcept;
 	bool ShowRtssGlobalNotice() const noexcept;
 	hstring RtssStatusText() const;

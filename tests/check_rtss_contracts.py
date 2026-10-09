@@ -30,23 +30,61 @@ check([n.get(x + "Uid") for n in scope] == ["Rtss_Scope_None", "Rtss_Scope_Globa
 check(uids["Rtss_Rate_Sync"].get("IsEnabled") == "{x:Bind ViewModel.IsRtssSyncAvailable, Mode=OneWay}", "follow-source disables sync")
 check(uids["Rtss_CustomRate_Input"].get("Minimum") == "15" and uids["Rtss_CustomRate_Input"].get("Maximum") == "360", "integer editor range")
 check("IntegerFormatter" in uids["Rtss_CustomRate_Input"].get("NumberFormatter"), "integer formatter")
-check(uids["Rtss_Advanced"].get("IsExpanded") == "False", "advanced collapsed")
-for uid in ("Rtss_RateMode", "Rtss_CustomRate", "Rtss_Advanced"):
+check("Rtss_Advanced" not in uids, "no RTSS inner advanced expander")
+check("FrameRefresh_Advanced" in uids, "existing refresh advanced expander preserved")
+items = next(n for n in rtss if n.tag.endswith("SettingsExpander.Items"))
+check([n.get(x + "Uid") for n in items] ==
+      ["Rtss_Status", "Rtss_GlobalNotice", "Rtss_RateMode", "Rtss_CustomRate", "Rtss_ExitPolicy"],
+      "direct item order and stop policy after rate")
+check(rtss.get("IsExpanded") == "True", "RTSS expanded by default")
+for uid in ("Rtss_RateMode", "Rtss_CustomRate", "Rtss_ExitPolicy"):
     check(uids[uid].get("IsEnabled") == "{x:Bind ViewModel.IsRtssManaged, Mode=OneWay}", uid + " unmanaged state")
+    check("Visibility" not in uids[uid].attrib and x + "Load" not in uids[uid].attrib, uid + " fixed row")
+check("Description" not in uids["Rtss_ExitPolicy"].attrib, "no empty stop explanation")
+check([n.get(x + "Uid") for n in uids["Rtss_ExitPolicy_Input"]] ==
+      ["Rtss_Exit_Keep", "Rtss_Exit_Restore"], "stop policies unchanged")
+for uid in ("Rtss_Scope_Input", "Rtss_RateMode_Input", "Rtss_ExitPolicy_Input"):
+    check(uids[uid].get("Style") == "{StaticResource FrameRefreshComboBoxStyle}", uid + " shared column style")
+manual, synced = uids["Rtss_CustomRate_Input"], uids["Rtss_SyncedRate_Input"]
+for node in (manual, synced):
+    check(node.get("Style") == "{StaticResource FrameRefreshNumberBoxStyle}", "same numeric input style")
+    check(node.get("Loaded") == "NumberBox_Loaded", "existing input helper")
+    check("IntegerFormatter" in node.get("NumberFormatter"), "integer presentation")
+check(manual.get("Visibility") == "{x:Bind ViewModel.ShowRtssCustomRate, Mode=OneWay}", "manual editor only")
+check(synced.get("Visibility") == "{x:Bind ViewModel.ShowRtssSyncedRate, Mode=OneWay}", "sync display only")
+check(synced.get("Value") == "{x:Bind ViewModel.RtssSyncedRate, Mode=OneWay}", "sync has no editing callback")
+check(synced.get("IsEnabled") == "False" and synced.get("PlaceholderText") == "—", "disabled unknown sync display")
+check("Minimum" not in synced.attrib and "Maximum" not in synced.attrib, "no manual range clipping sync")
+rate_grid = next(n for n in uids["Rtss_CustomRate"] if n.tag.endswith("Grid"))
+check(manual in list(rate_grid) and synced in list(rate_grid), "numeric presentations share the same grid cell")
 status = uids["Rtss_Status"]
 check("IsEnabled" not in status.attrib, "status/launcher remain available")
 check(uids["Rtss_Tools"] in list(status.iter()), "launcher in status row")
 check(len([n for n in status.iter() if n.tag.endswith("MenuFlyoutItem")]) == 2, "two distinct launch actions")
+check(uids["Rtss_Tools"].get("VerticalAlignment") == "Center" and
+      uids["Rtss_Recheck"].get("VerticalAlignment") == "Center", "tool buttons vertically aligned")
+check(uids["Rtss_Recheck"].get("Style") == "{StaticResource DefaultButtonStyle}", "native neutral action style")
 check(all(n.get("IsWrapEnabled") == "True" for n in rtss.iter() if n.tag.endswith("SettingsCard") or n.tag.endswith("SettingsExpander")), "wrap all settings rows")
 
 idl = read("src/Magpie/ProfileViewModel.idl")
 header = read("src/Magpie/ProfileViewModel.h")
 vm = read("src/Magpie/ProfileViewModel.cpp")
+sync_getter = vm.split("double ProfileViewModel::RtssSyncedRate() const noexcept {", 1)[1].split("\n}", 1)[0]
+check("ContentSyncRate(_data->runtimeIdentity)" in sync_getter, "profile-isolated current session display")
+check("quiet_NaN()" in sync_getter and "IsRtssSyncAvailable()" in sync_getter, "unknown or source-follow sync has no number")
+check("_SaveRtss" not in sync_getter and "currentRate" not in sync_getter, "display neither saves nor uses readback rate")
+manual_setter = vm.split("void ProfileViewModel::RtssCustomRate(double value) {", 1)[1].split("\n}", 1)[0]
+check("if (!IsRtssManaged() || !ShowRtssCustomRate()) return;" in manual_setter, "ignore hidden or disabled editor callbacks")
+check('Double RtssSyncedRate { get; };' in idl, "sync property is read only")
+notify = vm.split("void ProfileViewModel::_NotifyRtssChanged() {", 1)[1].split("\n}", 1)[0]
+check('L"RtssSyncedRate"' in notify and 'L"ShowRtssSyncedRate"' in notify, "display changes notify bindings")
 for name in ("RtssStatusText", "RtssSyncText", "RtssLaunchText", "AfterburnerLaunchText"):
     getter = vm.split(f"hstring ProfileViewModel::{name}() const {{", 1)[1].split("\n}", 1)[0]
     check("ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID)" in getter,
           "native profile resource map: " + name)
     check("ResourceLoader::GetForCurrentView()" not in getter, "no missing default resource map: " + name)
+sync_text = vm.split("hstring ProfileViewModel::RtssSyncText() const {", 1)[1].split("\n}", 1)[0]
+check("desiredRate" not in sync_text and "FPS" not in sync_text, "sync description does not duplicate rate")
 members = set(re.findall(r"ViewModel\.(\w+)", ET.tostring(rtss, encoding="unicode")))
 for member in members:
     check(re.search(r"\b" + member + r"\b", idl) is not None, "IDL: " + member)
@@ -60,8 +98,25 @@ for path in sorted((repo / "src/Magpie").glob("Resources.language-*.resw")):
     check(len(resources) == len(data), "duplicate resources in " + path.name)
     rtss_resources = {key: value for key, value in resources.items() if key.startswith("Rtss_")}
     check(len(rtss_resources) >= 59 and all(rtss_resources.values()), "RTSS resources in " + path.name)
+    check(not any(k in resources for k in ("Rtss_Advanced.Header", "Rtss_ExitPolicy.Description", "Rtss_ContentConstrained")),
+          "obsolete RTSS resources removed: " + path.name)
     resource_maps.append(rtss_resources)
 check(all(set(r) == set(resource_maps[0]) for r in resource_maps), "same resource keys in all languages")
+for language, expected in {
+    "zh-Hans": {"Rtss_Rate_Sync.Content": "与内容帧率同步", "Rtss_Status_Written": "配置已更新。",
+                "Rtss_GlobalNotice.Text": "使用全局配置的应用共用此上限。",
+                "Rtss_TargetOverridesGlobal": "目标使用独立配置。"},
+    "en-US": {"Rtss_Rate_Sync.Content": "Sync with content frame rate", "Rtss_Status_Written": "Profile updated."}
+}.items():
+    resources = {n.get("name"): n.findtext("value") for n in
+                 ET.parse(repo / f"src/Magpie/Resources.language-{language}.resw").getroot().findall("data")}
+    for key, value in expected.items():
+        check(resources[key] == value, "concise wording: " + language + " " + key)
+for resources in resource_maps:
+    check(not any(phrase in value for value in resources.values() for phrase in
+                  ("效果未确认", "缩放可以继续", "修改可能保留", "清理已结束", "本次不再调用",
+                   "unconfirmed", "Scaling can continue", "changes may remain", "Cleanup has ended", "no longer called")),
+          "no defensive RTSS UI wording")
 for uid in (n.get(x + "Uid") for n in rtss.iter() if n.get(x + "Uid")):
     check(any(key.startswith(uid + ".") for key in resource_maps[0]), "resource for " + uid)
 for key in set(re.findall(r'L"(Rtss_[A-Za-z0-9_]+)"', vm + read("src/Magpie/RtssService.cpp"))):
@@ -90,6 +145,14 @@ check("before.exists && (!NonRateEqual" in access, "existing non-rate preservati
 check("std::chrono::milliseconds(750)" in service and "_thread.detach()" in service, "bounded final shutdown")
 check("Recheck(false)" in service and "retry && Status().state != RtssState::Conflict" in service, "launch readiness does not retry failures")
 check("session->cancelled = true" in service and "session->finished = true" in service, "stop cancellation and one cleanup")
+sync_rate = service.split("uint32_t RtssService::ContentSyncRate(", 1)[1].split("\n}", 1)[0]
+check("_uiSession" in sync_rate and "identity.lock()" in sync_rate and "session->cancelled" in sync_rate,
+      "sync display uses live matching session")
+check("session->settings.rateMode != RtssRateMode::ContentSync" in sync_rate, "custom session is not a sync target")
+check("session->desiredRate.load()" in sync_rate and "_access" not in sync_rate, "display reads resolved rate without RTSS I/O")
+end = service.split("void RtssService::End() {", 1)[1].split("\n}", 1)[0]
+check("StatusChanged.Invoke()" in end, "stopping refreshes display even without a write")
+check("session->desiredRate.exchange(rate)" in service, "resolved target change refreshes display")
 check("WritePrivateProfile" not in access, "no silent file write fallback")
 check('GetProcAddress(_module, "EnumProfiles")' not in access and "GetFileAttributesW(path.c_str())" in access, "reliable existence check without unsafe enumeration")
 check("GuardProfile" in access and "GuardProperty" in access and "GuardReload" in access and "_faulted" in access, "native faults quarantined")

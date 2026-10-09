@@ -52,9 +52,11 @@ namespace Magpie {
 		Int32 RtssScopeIndex;
 		Int32 RtssRateModeIndex;
 		Double RtssCustomRate;
+		Double RtssSyncedRate { get; };
 		Int32 RtssExitPolicyIndex;
 		Boolean IsRtssManaged { get; };
 		Boolean ShowRtssCustomRate { get; };
+		Boolean ShowRtssSyncedRate { get; };
 		Boolean IsRtssSyncAvailable { get; };
 		Boolean ShowRtssGlobalNotice { get; };
 		String RtssStatusText { get; };
