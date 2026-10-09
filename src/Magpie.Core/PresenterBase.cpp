@@ -5,6 +5,7 @@
 #include "ScalingWindow.h"
 #include "NvidiaForegroundCompatibility.h"
 #include "Win32Helper.h"
+#include "VRRPerformance.h"
 
 namespace Magpie {
 
@@ -13,6 +14,8 @@ bool PresenterBase::Initialize(HWND hwndAttach, const DeviceResources& deviceRes
 	_vrrWindow = hwndAttach;
 	_vrrMonitor = MonitorFromWindow(hwndAttach, MONITOR_DEFAULTTONULL);
 	_vrr.Configure(ScalingWindow::Get().Options().isVRREnabled, deviceResources.IsTearingSupported());
+	_vrrAdapterFlags.reset();
+	_vrrOutputProbe = {};
 	_RefreshVRREnvironment(true);
 
 	HRESULT hr = deviceResources.GetD3DDevice()->CreateFence(
@@ -37,23 +40,25 @@ bool PresenterBase::Initialize(HWND hwndAttach, const DeviceResources& deviceRes
 	return initialized;
 }
 
-VRRUnavailableReason PresenterBase::_QualifyVRROutput() const noexcept {
-	if (GetSystemMetrics(SM_REMOTESESSION)) return VRRUnavailableReason::RemoteSession;
-	if (!_deviceResources->GetDXGIFactory()->IsCurrent()) return VRRUnavailableReason::StaleDisplayTopology;
-	DXGI_ADAPTER_DESC1 adapterDesc{};
+VRRUnavailableReason PresenterBase::_QualifyVRROutput(const VRROutputProbeKey& key, bool force) noexcept {
+	if (key.remote) return VRRUnavailableReason::RemoteSession;
+	if (!key.topologyCurrent) return VRRUnavailableReason::StaleDisplayTopology;
 	IDXGIAdapter4* adapter = _deviceResources->GetGraphicsAdapter();
-	if (!adapter || FAILED(adapter->GetDesc1(&adapterDesc))) return VRRUnavailableReason::OutputUnknown;
-	if (adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) return VRRUnavailableReason::SoftwareAdapter;
-	RECT windowRect{};
-	if (!GetWindowRect(_vrrWindow, &windowRect) || IsRectEmpty(&windowRect))
-		return VRRUnavailableReason::OutputUnknown;
-	const HMONITOR monitor = MonitorFromRect(&windowRect, MONITOR_DEFAULTTONULL);
-	MONITORINFO monitorInfo{};
-	monitorInfo.cbSize = sizeof(monitorInfo);
-	if (!monitor || !GetMonitorInfo(monitor, &monitorInfo)) return VRRUnavailableReason::OutputUnknown;
+	if (!adapter) return VRRUnavailableReason::OutputUnknown;
+	if (!_vrrAdapterFlags) {
+		DXGI_ADAPTER_DESC1 desc{};
+		if (FAILED(adapter->GetDesc1(&desc))) return VRRUnavailableReason::OutputUnknown;
+		_vrrAdapterFlags = desc.Flags;
+	}
+	if (*_vrrAdapterFlags & DXGI_ADAPTER_FLAG_SOFTWARE) return VRRUnavailableReason::SoftwareAdapter;
+	if (!key.geometryValid) return VRRUnavailableReason::OutputUnknown;
+	const RECT windowRect{ key.windowRect[0], key.windowRect[1], key.windowRect[2], key.windowRect[3] };
+	const RECT monitorRect{ key.monitorRect[0], key.monitorRect[1], key.monitorRect[2], key.monitorRect[3] };
 	RECT intersection{};
-	if (!IntersectRect(&intersection, &windowRect, &monitorInfo.rcMonitor) ||
+	if (!IntersectRect(&intersection, &windowRect, &monitorRect) ||
 		!EqualRect(&intersection, &windowRect)) return VRRUnavailableReason::SpanningOutputs;
+	if (!_vrrOutputProbe.NeedsEnumeration(key, GetTickCount64(), force)) return _vrrEnumeratedOutput;
+	_vrrEnumeratedOutput = VRRUnavailableReason::OutputUnknown;
 	for (UINT index = 0; ; ++index) {
 		winrt::com_ptr<IDXGIOutput> output;
 		const HRESULT hr = adapter->EnumOutputs(index, output.put());
@@ -61,9 +66,10 @@ VRRUnavailableReason PresenterBase::_QualifyVRROutput() const noexcept {
 		if (FAILED(hr)) return VRRUnavailableReason::OutputUnknown;
 		DXGI_OUTPUT_DESC desc{};
 		if (FAILED(output->GetDesc(&desc))) return VRRUnavailableReason::OutputUnknown;
-		if (desc.AttachedToDesktop && desc.Monitor == monitor) return VRRUnavailableReason::None;
+		if (desc.AttachedToDesktop && uintptr_t(desc.Monitor) == key.monitor)
+			return _vrrEnumeratedOutput = VRRUnavailableReason::None;
 	}
-	return VRRUnavailableReason::CrossAdapter;
+	return _vrrEnumeratedOutput = VRRUnavailableReason::CrossAdapter;
 }
 
 void PresenterBase::_RefreshVRREnvironment(bool force) noexcept {
@@ -71,8 +77,25 @@ void PresenterBase::_RefreshVRREnvironment(bool force) noexcept {
 	const auto now = std::chrono::steady_clock::now();
 	if (!force && now < _vrrNextProbe) return;
 	_vrrNextProbe = now + std::chrono::milliseconds(500);
-	_vrrMonitor = MonitorFromWindow(_vrrWindow, MONITOR_DEFAULTTONULL);
-	_vrr.Environment(_QualifyVRROutput());
+	VRROutputProbeKey key;
+	key.remote = GetSystemMetrics(SM_REMOTESESSION) != 0;
+	key.topologyCurrent = _deviceResources->GetDXGIFactory()->IsCurrent() != FALSE;
+	RECT windowRect{};
+	MONITORINFO monitorInfo{};
+	monitorInfo.cbSize = sizeof(monitorInfo);
+	if (GetWindowRect(_vrrWindow, &windowRect) && !IsRectEmpty(&windowRect)) {
+		key.windowRect = { windowRect.left, windowRect.top, windowRect.right, windowRect.bottom };
+		_vrrMonitor = MonitorFromRect(&windowRect, MONITOR_DEFAULTTONULL);
+		key.monitor = uintptr_t(_vrrMonitor);
+		if (_vrrMonitor && GetMonitorInfo(_vrrMonitor, &monitorInfo)) {
+			key.geometryValid = true;
+			const auto& rect = monitorInfo.rcMonitor;
+			key.monitorRect = { rect.left, rect.top, rect.right, rect.bottom };
+		}
+	} else {
+		_vrrMonitor = nullptr;
+	}
+	_vrr.Environment(_QualifyVRROutput(key, force));
 	_UpdateForegroundCompatibility();
 	_LogVRRState("output-probe");
 }
@@ -160,7 +183,11 @@ HRESULT PresenterBase::_PresentWithVRR(IDXGISwapChain4* swapChain, bool retryWit
 	const UINT flags = _vrr.PresentFlags();
 	_UpdateForegroundCompatibility();
 	NvidiaForegroundCompatibility::Phase(_firstPresentComplete ? ForegroundQueryPhase::Present : ForegroundQueryPhase::FirstPresent);
-	HRESULT hr = swapChain->Present(0, flags);
+	HRESULT hr;
+	{
+		VRRPerformance::PresentScope performance(flags != 0);
+		hr = swapChain->Present(0, flags);
+	}
 	if (flags && hr == DXGI_ERROR_INVALID_CALL) {
 		// Device loss is deliberately excluded. Latch for this swap-chain session;
 		// ResizeBuffers must still retain its original immutable creation flags.
@@ -170,7 +197,10 @@ HRESULT PresenterBase::_PresentWithVRR(IDXGISwapChain4* swapChain, bool retryWit
 		_LogVRRState("present-rejected");
 		// An SDK proxy may already have consumed its tagged FG input. Only the
 		// ordinary DXGI endpoint can safely retry the same image once here.
-		if (retryWithoutTearing) hr = swapChain->Present(0, 0);
+		if (retryWithoutTearing) {
+			VRRPerformance::PresentScope performance(false);
+			hr = swapChain->Present(0, 0);
+		}
 	}
 	if (FAILED(hr)) NvidiaForegroundCompatibility::Reject("present-failed");
 	if (!_firstPresentComplete && SUCCEEDED(hr)) {

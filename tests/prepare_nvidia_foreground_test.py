@@ -9,8 +9,8 @@ repo = Path(__file__).resolve().parents[1]
 out = Path(sys.argv[1]).resolve()
 out.mkdir(parents=True, exist_ok=True)
 source = (repo / "src/Magpie.Core/NvidiaForegroundCompatibility.cpp").read_text(encoding="utf-8-sig")
-markers = ("ForegroundWindowIdentity Identity(", "bool Matches(", "bool SourceForeground(", "bool OutputUsable(",
-           "const char* ForegroundRole(", "unsigned CallerIndex(", "QuerySlot* Record(", "void Publish(",
+markers = ("ForegroundWindowIdentity Identity(", "bool Matches(", "bool MatchesPair(", "bool SourceForeground(", "bool OutputUsable(",
+           "const char* ForegroundRole(", "QuerySlot* Record(", "bool RefreshModules(", "void Publish(",
            "HWND WINAPI DetourForegroundWindow(", "bool InstallHook(",
            "HWND NvidiaForegroundCompatibility::RealForegroundWindow(", "void NvidiaForegroundCompatibility::Prepare(",
            "void NvidiaForegroundCompatibility::DeviceInitialized(", "bool NvidiaForegroundCompatibility::BindPresentationWindow(",

@@ -22,7 +22,7 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
-- [0.6.10 VRR GPU 占用与性能 TODO](todos/20261009-v0.6.10-vrr-performance-TODO.md)：用户反馈开启后 GPU 占用升高。源码审计优先定位呈现吞吐、驱动后台限帧关联与辅助重绘；同时列出前台查询、诊断原子操作和周期扫描的 CPU 成本。尚无本次等帧率 GPU 对照；只完成定位与待办，未修改功能源码或编译部署。
+- [0.6.10 VRR GPU 占用与性能 TODO](todos/20261009-v0.6.10-vrr-performance-TODO.md)：已在原 VRR 分支精简前台查询、默认诊断与发布快照，缓存模块／输出资格，移除完整复制前的冗余 GPU 清空，并接入显式工作量统计。源码合同检查与夹具生成通过；C++ 回归／构建／部署和等帧率 GPU 对照交给独立会话，GPU 增量根因仍待确认。[源码实施与诊断交接](reviews/20261009-v0.6.10-vrr-performance-source-development.md)。
 
 - [0.6.10 VRR 统一入口、FG 与前台关联修正 TODO](todos/20261004-v0.6.10-vrr-unified-fg-foreground-TODO.md)：用户已反馈双开关、无 FG 时输出指示器正常，DLSS／XeSS FG 都使其消失；部署日志确认共同 FG 资格排除。已在原功能分支合入 Beta2 基线，收敛为高级选项中的“VRR 可变刷新率”，解除 FG／窗口模式排除，接入实际交换链绑定与主界面身份更新。四项静态合同及资源检查通过；C++ 编译／执行、部署和实测交给独立会话。[源码交接](reviews/20261005-v0.6.10-vrr-unified-fg-source-development.md)。
 

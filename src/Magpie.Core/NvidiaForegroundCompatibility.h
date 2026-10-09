@@ -16,7 +16,7 @@ public:
 	static void DeviceInitialized(uint32_t vendor, uint32_t luidLow, int32_t luidHigh,
 		ForegroundPresentationPath path, uint32_t multiplier) noexcept;
 	static bool BindPresentationWindow(HWND window) noexcept;
-	static void FrontendWindows(HWND parameterHost) noexcept;
+	static void FrontendWindows(HWND parameterHost, HWND realForeground) noexcept;
 	static void MainUIChanged(const SessionWindowIdentity& identity) noexcept;
 	static void PresentationState(bool canCreateTearing, bool canPresentTearing) noexcept;
 	static void Reject(const char* reason) noexcept;

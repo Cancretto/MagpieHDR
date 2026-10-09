@@ -1,6 +1,7 @@
 #pragma once
 #include "FrameGuidanceTypes.h"
 #include "VRRPresentationPolicy.h"
+#include "VRROutputProbe.h"
 
 namespace Magpie {
 
@@ -12,6 +13,10 @@ public:
 	virtual ~PresenterBase() noexcept {}
 
 	bool Initialize(HWND hwndAttach, const DeviceResources& deviceResources) noexcept;
+	void OutputEnvironmentChanged(bool topologyChanged = false) noexcept {
+		_vrrNextProbe = {};
+		if (topologyChanged) _vrrOutputProbe.Invalidate();
+	}
 	// Reserve DXGI capacity before shared-texture GPU work. Other presenters
 	// keep their existing BeginFrame admission path.
 	virtual bool PrepareFrame() noexcept { return true; }
@@ -93,7 +98,10 @@ protected:
 	std::chrono::steady_clock::time_point _lastSubmissionTime{};
 
 private:
-	VRRUnavailableReason _QualifyVRROutput() const noexcept;
+	VRRUnavailableReason _QualifyVRROutput(const VRROutputProbeKey& key, bool force) noexcept;
+	VRROutputProbe _vrrOutputProbe;
+	VRRUnavailableReason _vrrEnumeratedOutput = VRRUnavailableReason::OutputUnknown;
+	std::optional<UINT> _vrrAdapterFlags;
 	HWND _vrrWindow = NULL;
 	HMONITOR _vrrMonitor = NULL;
 	HMONITOR _lastLoggedVRRMonitor = NULL;

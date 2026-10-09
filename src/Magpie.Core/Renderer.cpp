@@ -4,6 +4,7 @@
 #include "DLSSNRParameters.h"
 #include "RTXVideoParameters.h"
 #include "FrameTrace.h"
+#include "VRRPerformance.h"
 #include "FramePacingOptions.h"
 #include "FramePacingWait.h"
 #include "CommonSharedConstants.h"
@@ -606,7 +607,9 @@ void Renderer::OnSourceFocusChanged() noexcept {
 }
 
 bool Renderer::MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) noexcept {
-	// WndProc only records ImGui input and marks the Overlay dirty. A true return
+	if (msg == WM_DISPLAYCHANGE && _presenter) _presenter->OutputEnvironmentChanged(true);
+	// WndProc records ImGui input, marks the overlay dirty and invalidates cached
+	// display qualification; it does not enumerate outputs here. A true return
 	// value tells the outer message pump to end this batch after a queued
 	// button/wheel edge so down and up cannot be consumed by the same UI frame.
 	return _overlayDrawer.MessageHandler(msg, wParam, lParam);
@@ -921,17 +924,22 @@ void Renderer::_CopySceneToTarget(ID3D11Texture2D* scene, ID3D11Texture2D* targe
 	auto context = _frontendResources.GetD3DDC();
 	const RECT& rendererRect = ScalingWindow::Get().RendererRect();
 	static constexpr FLOAT BLACK[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	context->ClearRenderTargetView(rtv, BLACK);
 	D3D11_TEXTURE2D_DESC targetDesc{}, sceneDesc{};
 	target->GetDesc(&targetDesc);
 	scene->GetDesc(&sceneDesc);
 	if (targetDesc.Width == sceneDesc.Width && targetDesc.Height == sceneDesc.Height &&
 		drawOffset.x == 0 && drawOffset.y == 0) {
+		// CopyResource overwrites the entire target, including its alpha. Clearing
+		// it first only adds GPU work; partial copies still need the black border.
 		context->CopyResource(target, scene);
+		VRRPerformance::Record(VRRPerformance::Event::FullSceneCopy);
 	} else {
+		context->ClearRenderTargetView(rtv, BLACK);
+		VRRPerformance::Record(VRRPerformance::Event::TargetClear);
 		context->CopySubresourceRegion(target, 0,
 			drawOffset.x + _destRect.left - rendererRect.left,
 			drawOffset.y + _destRect.top - rendererRect.top, 0, scene, 0, nullptr);
+		VRRPerformance::Record(VRRPerformance::Event::RegionSceneCopy);
 	}
 }
 
@@ -1030,6 +1038,7 @@ bool Renderer::_FrontendRender(
 		guidanceDestination);
 	FrameTrace::Scope traceBegin(FrameTrace::Event::BeginFrame);
 	const bool reflexContent = !stableBaseOnly && _frontendBaseNeedsPresent;
+	const uint32_t diagnosticReasons = reflexContent ? 0 : _FrontendDiagnosticReasons();
 	_presenter->SetReflexFrame(reflexContent ? _frontendReflexIds.first : 0,
 		reflexContent ? _frontendReflexIds.second : 0, _frontendFrameMetadata.generated);
 	const bool traceBegan = _presenter->BeginFrame(frameTex, frameRtv, drawOffset);
@@ -1069,11 +1078,13 @@ bool Renderer::_FrontendRender(
 		// Drain samples only when drawing the overlay. Front Edge Sync retries
 		// above must leave them available for the frame that actually draws it.
 		_overlayDrawer.Draw(_stepTimer.FPS(), _effectsProfiler.GetTimings(), drawOffset);
+		VRRPerformance::Record(VRRPerformance::Event::OverlayDraw);
 		if (!stableBaseOnly && _frontendBaseNeedsPresent) {
 			_cursorDrawer.ObserveContent({ sourceMetadata.frameId, sourceMetadata.captureSequence,
 				sourceMetadata.resourceGeneration }, sourceMetadata.generated);
 		}
 		_cursorDrawer.Draw(frameTex.get(), drawOffset);
+		VRRPerformance::Record(VRRPerformance::Event::CursorDraw);
 	}
 
 	traceDraw.End();
@@ -1089,7 +1100,7 @@ bool Renderer::_FrontendRender(
 		.generatedFrame = generatedFrame, .independentOverlay = uiInIndependentLayer,
 		.waitForGpu = waitForGpu, .paced = paced,
 		.overlayRevision = overlayActionRevision,
-		.contentKey = _lastAccessMutexKeys[sharedTextureSlot]
+		.contentKey = _lastAccessMutexKeys[sharedTextureSlot], .diagnosticReasons = diagnosticReasons
 	};
 	if (paced) _frontendResources.GetD3DDC()->Flush();
 	const bool submitted = _SubmitFrontendFrame();
@@ -1111,9 +1122,20 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 	}
 	_frontendPacingDeadline.reset();
 	const auto [stableBaseOnly, contentFrame, generatedFrame, uiInIndependentLayer,
-		waitForGpu, paced, overlayActionRevision, contentKey] = frame;
+		waitForGpu, paced, overlayActionRevision, contentKey, diagnosticReasons] = frame;
 	const bool submitted = _presenter->EndFrame(waitForGpu);
 	_pendingFrontendFrame.reset();
+	if (submitted) {
+		VRRPerformance::Record(contentFrame ? (generatedFrame ? VRRPerformance::Event::GeneratedSubmit :
+			VRRPerformance::Event::RealSubmit) : VRRPerformance::Event::AuxiliarySubmit);
+		if (!contentFrame) VRRPerformance::AuxiliaryReasons(diagnosticReasons);
+		if (const auto count = _presenter->LastPresentedFrameCount(); count) {
+			VRRPerformance::Record(VRRPerformance::Event::ReportedFrames, *count);
+			VRRPerformance::Record(VRRPerformance::Event::ReportedFrameSamples);
+		}
+	} else {
+		VRRPerformance::Record(VRRPerformance::Event::FailedSubmit);
+	}
 	if (submitted && contentFrame && ActiveFrameSyncBackend() == FrameSyncBackend::FrontEdge && !_hasFrameGeneration &&
 		_presenter->SupportsDeferredPresent() && !ScalingWindow::Get().IsResizingOrMoving()) {
 		_frontEdgeClock.SetInterval(std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -1134,6 +1156,7 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 		if (!stableBaseOnly && _frontendPresentedBaseTexture) {
 			d3dDC->CopyResource(
 				_frontendPresentedBaseTexture.get(), _frontendBaseTexture.get());
+			VRRPerformance::Record(VRRPerformance::Event::StableCopy);
 			_frontendPresentedBaseValid = true;
 			_frontendPresentedFrameMetadata = _frontendFrameMetadata;
 			_frontendPresentedFrameMetadata = _frontendFrameMetadata;
@@ -1188,7 +1211,9 @@ bool Renderer::_FrontendOverlayRender(bool contentChanged) noexcept {
 	d3dDC->ClearState();
 	static constexpr FLOAT CLEAR_TRANSPARENT[4]{};
 	const uint64_t overlayActionRevision = _overlayActionRevision;
+	const uint32_t diagnosticReasons = _FrontendDiagnosticReasons();
 	d3dDC->ClearRenderTargetView(frameRtv.get(), CLEAR_TRANSPARENT);
+	VRRPerformance::Record(VRRPerformance::Event::TargetClear);
 	ID3D11Texture2D* cursorBackground =
 		_frontendPresentedBaseValid ? _frontendPresentedBaseTexture.get() : nullptr;
 	if (_isPassThroughActive) {
@@ -1201,9 +1226,13 @@ bool Renderer::_FrontendOverlayRender(bool contentChanged) noexcept {
 	d3dDC->OMSetRenderTargets(1, &target, nullptr);
 	// XeSS draws its UI in this independent layer, not in _FrontendRender.
 	_overlayDrawer.Draw(_stepTimer.FPS(), _effectsProfiler.GetTimings(), drawOffset);
+	VRRPerformance::Record(VRRPerformance::Event::OverlayDraw);
 	_cursorDrawer.Draw(frameTex.get(), drawOffset,
 		cursorBackground);
+	VRRPerformance::Record(VRRPerformance::Event::CursorDraw);
 	const bool submitted = _presenter->EndOverlayFrame();
+	VRRPerformance::Record(submitted ? VRRPerformance::Event::IndependentOverlaySubmit : VRRPerformance::Event::FailedSubmit);
+	if (submitted) VRRPerformance::AuxiliaryReasons(diagnosticReasons);
 	_cursorDrawer.OnPresent(submitted, true);
 	if (submitted) {
 		_overlayDrawer.OnPresentSucceeded();
@@ -1213,6 +1242,15 @@ bool Renderer::_FrontendOverlayRender(bool contentChanged) noexcept {
 		_overlayDrawer.OnPresentFailed();
 	}
 	return submitted;
+}
+
+uint32_t Renderer::_FrontendDiagnosticReasons() noexcept {
+	if (!VRRPerformance::Enabled()) return 0;
+	// Non-exclusive causes, sampled before drawing drains the input queues.
+	return (_cursorDrawer.NeedRedraw() ? 1u : 0u) |
+		(_overlayDrawer.NeedRedraw(_stepTimer.FPS()) ? 2u : 0u) |
+		((_HasPendingOverlayAction() || _overlayDrawer.HasCriticalInput()) ? 4u : 0u) |
+		((_isPassThroughActive || _cursorDrawer.IsBackgroundDependent()) ? 8u : 0u);
 }
 
 bool Renderer::Render(bool force, bool waitForGpu) noexcept {
@@ -1612,6 +1650,7 @@ void Renderer::OnEndResize() noexcept {
 }
 
 void Renderer::OnMove() noexcept {
+	_presenter->OutputEnvironmentChanged();
 	_cursorDrawer.ResetVisual();
 	_UpdateOverlayRefreshRate();
 	_UpdateDestRect();
@@ -3418,6 +3457,7 @@ void Renderer::_BackendRender(
 		_acceptedCaptureTimestamp100ns = _frameSource->CaptureTimestamp100ns();
 		FrameTrace::SetFrame(_capturedFrameId);
 		FrameTrace::Mark(FrameTrace::Event::CaptureAccepted, _frameSource->CaptureTimestamp100ns(), sequence);
+		VRRPerformance::Record(VRRPerformance::Event::CaptureAccepted);
 		const FrameGuidanceRequirements guidanceRequirements =
 			CollectFrameGuidanceRequirements(
 				_nativeEffectBackends, _dlssFrameGenerator.get(), _xessMotionRequest);
@@ -3485,6 +3525,7 @@ void Renderer::_BackendRender(
 		const bool renderClock = !native && (desc.flags & EffectFlags::UseDynamic) && !captureClock;
 		if (!frameState.NeedsDraw(key, renderClock)) {
 			FrameTrace::Mark(FrameTrace::Event::EffectReuse, i, inputRevision);
+			VRRPerformance::Record(VRRPerformance::Event::EffectReuse);
 			// Keep the profiler's pass slots aligned without executing image work.
 			for (size_t p = 0; p < desc.passes.size(); ++p) _effectsProfiler.OnEndPass(d3dDC);
 			inputRevision = frameState.OutputRevision();
@@ -3499,6 +3540,7 @@ void Renderer::_BackendRender(
 			inputHistoryRevision = frameState.OutputHistoryRevision();
 		});
 		FrameTrace::Mark(FrameTrace::Event::EffectExecute, i, historyReset);
+		VRRPerformance::Record(VRRPerformance::Event::EffectExecute);
 		if (captureClock && (historyReset || frameState.ParametersDiffer(key)) &&
 			!effectDrawer.ResetCaptureHistory(desc)) {
 			_FailColorPipeline(desc.name, ScalingError::EffectResourceFailed);
@@ -4083,6 +4125,7 @@ bool Renderer::_PublishBackendTexture(
 		}
 	}
 
+	VRRPerformance::Record(generatedFrame ? VRRPerformance::Event::GeneratedPublication : VRRPerformance::Event::RealPublication);
 	return true;
 }
 
