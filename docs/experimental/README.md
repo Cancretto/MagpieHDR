@@ -20,6 +20,8 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [RTSS 能力判断与固定门槛整改 TODO](todos/20261009-rtss-capability-checks-TODO.md)：按实际接口、字段和操作条件判断可用性。已审查版本白名单、整项接口判断、未运行时阻断读取、固定自身名称和安装发现；另列架构、格式、参数边界验证，共 14 项待执行。本轮只更新规划，当前源码仍为 `369db4e2`。
+
 - [RTSS 状态分段与 Magpie 初始化及管理员启动 TODO](todos/20261009-rtss-status-magpie-init-and-admin-TODO.md)：已确认优先同行、按内容类型整段换行，三按钮统一普通操作样式，初始化 Magpie 独立不限帧配置且保留其他设置，主程序启动默认请求管理员权限。源码及隔离回归已完成，真实 UI、UAC/自启动与产品 FPS 待独立会话验收，见[实施与交接](reviews/20261009-rtss-status-magpie-init-and-admin.md)。
 
 - [RTSS 配置保存失败 TODO](todos/20261009-rtss-save-failure-TODO.md)：普通 FPS 的 Apply/Restore 已按当前值跳过无效 setter，失败阶段与日志已拆分。216 项配置事务、64 项会话事务、55 项本机隔离原生事务及 358 项当前资源检查通过；非零帧时间兼容方案已设计，本次已完成 Magpie 初始化的清零文件路径和默认管理员启动；Global/目标转正 FPS、缺失字段恢复与其他版本验证仍待完成；本机普通权限无法写安装目录，已加入明确权限检测。产品构建、部署及目标应用 FPS 由独立会话验收。[修复与交接](reviews/20261009-rtss-save-failure-fix.md)。
