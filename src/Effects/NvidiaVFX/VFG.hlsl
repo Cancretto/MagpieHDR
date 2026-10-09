@@ -28,7 +28,7 @@ int automaticShotDetection;
 
 //!PARAMETER
 //!LABEL Duplicate frame filtering
-//!DEFAULT 1
+//!DEFAULT 0
 //!MIN 0
 //!MAX 1
 //!STEP 1

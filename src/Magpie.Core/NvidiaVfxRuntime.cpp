@@ -4,11 +4,105 @@
 #include "Logger.h"
 #include "StrHelper.h"
 #include "Win32Helper.h"
+#include "ScalingWindow.h"
+#include <condition_variable>
+#include <thread>
+#include <mutex>
 
 #if defined(MP_ENABLE_RTX_VIDEO_DENOISE) || defined(MP_ENABLE_NVIDIA_VFX)
 // Used by the SDK's proxy loader; the application path is selected explicitly.
 char* g_nvVFXSDKPath = nullptr;
 namespace Magpie {
+
+struct NvidiaVfxDiagnosticState {
+	std::mutex mutex;
+	uint64_t session = 0, call = 0, revision = 0, frame = 0;
+	uint32_t run = 0, thread = 0;
+	std::string feature;
+	const char* operation = nullptr;
+	ULONGLONG started = 0, lastWarning = 0;
+	bool lifecycle = false;
+};
+
+// Observe SDK calls from a separate thread. The observer only records a slow
+// stage; it never interrupts the SDK or frees resources still in use.
+class NvidiaVfxDiagnosticMonitor {
+public:
+	static NvidiaVfxDiagnosticMonitor& Get() noexcept {
+		static NvidiaVfxDiagnosticMonitor value;
+		return value;
+	}
+	std::shared_ptr<NvidiaVfxDiagnosticState> Create() noexcept {
+		auto state = std::make_shared<NvidiaVfxDiagnosticState>();
+		std::scoped_lock lock(_mutex);
+		state->session = ++_nextSession;
+		_states.push_back(state);
+		return state;
+	}
+private:
+	NvidiaVfxDiagnosticMonitor() : _thread([this](std::stop_token stop) {
+		while (!stop.stop_requested()) {
+			std::vector<std::shared_ptr<NvidiaVfxDiagnosticState>> states;
+			{
+				std::unique_lock lock(_mutex);
+				_wake.wait_for(lock, std::chrono::milliseconds(500), [&] { return stop.stop_requested(); });
+				if (stop.stop_requested()) break;
+				std::erase_if(_states, [](const auto& state) { return state.expired(); });
+				for (const auto& weak : _states) if (auto state = weak.lock()) states.push_back(std::move(state));
+			}
+			for (const auto& state : states) {
+				std::scoped_lock lock(state->mutex);
+				const auto now = GetTickCount64();
+				if (!state->operation || now - state->started < 2000 ||
+					(state->lastWarning && now - state->lastWarning < 5000)) continue;
+				state->lastWarning = now;
+				Logger::Get().Warn(fmt::format(
+					"Nvidia VFX stage still active: run={} session={} feature={} call={} revision={} frame={} thread={} stage={} elapsedMs={}",
+					state->run, state->session, state->feature, state->call, state->revision, state->frame,
+					state->thread, state->operation, now - state->started));
+				Logger::Get().Flush();
+			}
+		}
+	}) {}
+	~NvidiaVfxDiagnosticMonitor() {
+		_thread.request_stop(); _wake.notify_all(); _thread.join();
+	}
+	std::mutex _mutex;
+	std::condition_variable _wake;
+	std::vector<std::weak_ptr<NvidiaVfxDiagnosticState>> _states;
+	uint64_t _nextSession = 0;
+	std::jthread _thread;
+};
+
+static void BeginVfxCall(const std::shared_ptr<NvidiaVfxDiagnosticState>& state,
+	const char* operation, bool lifecycle) noexcept {
+	if (!state) return;
+	std::scoped_lock lock(state->mutex);
+	state->operation = operation; state->started = GetTickCount64(); state->lastWarning = 0;
+	state->lifecycle = lifecycle; state->thread = GetCurrentThreadId(); ++state->call;
+	if (lifecycle) {
+		Logger::Get().Info(fmt::format("Nvidia VFX enter: run={} session={} feature={} call={} revision={} frame={} thread={} stage={}",
+			state->run, state->session, state->feature, state->call, state->revision, state->frame, state->thread, operation));
+		Logger::Get().Flush();
+	}
+}
+static void EndVfxCall(const std::shared_ptr<NvidiaVfxDiagnosticState>& state, int status) noexcept {
+	if (!state) return;
+	std::scoped_lock lock(state->mutex);
+	const auto elapsed = GetTickCount64() - state->started;
+	if (state->lifecycle || status != 0 || elapsed >= 500) {
+		Logger::Get().Info(fmt::format("Nvidia VFX exit: run={} session={} feature={} call={} revision={} frame={} stage={} status={} elapsedMs={}",
+			state->run, state->session, state->feature, state->call, state->revision, state->frame, state->operation, status, elapsed));
+	}
+	state->operation = nullptr;
+}
+template<class Fn> static auto TraceVfxContext(const std::shared_ptr<NvidiaVfxDiagnosticState>& state,
+	const char* operation, Fn&& fn) noexcept {
+	BeginVfxCall(state, operation, true);
+	const auto status = fn();
+	EndVfxCall(state, int(status));
+	return status;
+}
 
 bool NvidiaVfxSucceeded(NvCV_Status status, std::string_view operation) noexcept {
 	if (status == NVCV_SUCCESS) return true;
@@ -126,7 +220,15 @@ private:
 	CudaEventQueryFn _query = CudaFunction<CudaEventQueryFn>("cuEventQuery");
 	CudaEventElapsedFn _elapsed = CudaFunction<CudaEventElapsedFn>("cuEventElapsedTime");
 };
-NvidiaVfxSession::NvidiaVfxSession() = default;
+NvidiaVfxSession::NvidiaVfxSession() : _diagnostics(NvidiaVfxDiagnosticMonitor::Get().Create()) {
+	_context.Diagnostics(_diagnostics);
+}
+void NvidiaVfxSession::_BeginCall(const char* operation, bool lifecycle) noexcept { BeginVfxCall(_diagnostics, operation, lifecycle); }
+void NvidiaVfxSession::_EndCall(int status) noexcept { EndVfxCall(_diagnostics, status); }
+void NvidiaVfxSession::ParameterRevision(uint64_t revision) noexcept {
+	std::scoped_lock lock(_diagnostics->mutex);
+	_diagnostics->revision = revision;
+}
 
 bool NvidiaVfxCudaContext::Initialize(DeviceResources& resources) noexcept {
 	if (_context) return false;
@@ -134,9 +236,11 @@ bool NvidiaVfxCudaContext::Initialize(DeviceResources& resources) noexcept {
 	const auto device = CudaFunction<CudaD3DDeviceFn>("cuD3D11GetDevice");
 	const auto retain = CudaFunction<CudaRetainFn>("cuDevicePrimaryCtxRetain");
 	const auto attribute = CudaFunction<CudaAttributeFn>("cuDeviceGetAttribute");
-	if (!init || !device || !retain || !attribute || init(0) ||
-		device(&_device, resources.GetGraphicsAdapter()) ||
-		attribute(&_major, 75, _device) || attribute(&_minor, 76, _device) || retain(&_context, _device)) {
+	if (!init || !device || !retain || !attribute ||
+		TraceVfxContext(_diagnostics, "cuInit", [&] { return init(0); }) ||
+		TraceVfxContext(_diagnostics, "cuD3D11GetDevice", [&] { return device(&_device, resources.GetGraphicsAdapter()); }) ||
+		attribute(&_major, 75, _device) || attribute(&_minor, 76, _device) ||
+		TraceVfxContext(_diagnostics, "cuDevicePrimaryCtxRetain", [&] { return retain(&_context, _device); })) {
 		Logger::Get().Error("Nvidia VFX cannot select the CUDA device matching the D3D11 renderer");
 		return false;
 	}
@@ -146,7 +250,8 @@ bool NvidiaVfxCudaContext::Initialize(DeviceResources& resources) noexcept {
 NvidiaVfxCudaContext::~NvidiaVfxCudaContext() {
 	if (_context) {
 		const auto release = CudaFunction<CudaReleaseFn>("cuDevicePrimaryCtxRelease_v2");
-		if (!release || release(_device)) Logger::Get().Error("Nvidia VFX CUDA primary context release failed");
+		if (!release || TraceVfxContext(_diagnostics, "cuDevicePrimaryCtxRelease", [&] { return release(_device); }))
+			Logger::Get().Error("Nvidia VFX CUDA primary context release failed");
 	}
 }
 bool NvidiaVfxCudaContext::Push() const noexcept {
@@ -159,30 +264,38 @@ void NvidiaVfxCudaContext::Pop() noexcept {
 	if (!pop || pop(&context)) Logger::Get().Error("Nvidia VFX CUDA context pop failed");
 }
 bool NvidiaVfxSession::Initialize(DeviceResources& resources, const wchar_t* library) noexcept {
+	{
+		std::scoped_lock lock(_diagnostics->mutex);
+		_diagnostics->run = ScalingWindow::RunId();
+		_diagnostics->feature = StrHelper::UTF16ToUTF8(library);
+	}
 	if (!LoadNvidiaVfxRuntime(library, true) || !_context.Initialize(resources)) return false;
 	NvidiaVfxContextScope scope(_context);
 	_synchronize = reinterpret_cast<SynchronizeFn>(GetProcAddress(GetModuleHandleW(L"NVVideoEffects.dll"), "NvVFX_CudaStreamSynchronize"));
 	if constexpr (NativeBackendTiming::Enabled) _timings = std::make_unique<NvidiaVfxCudaTimings>();
-	return scope && _synchronize && NvidiaVfxSucceeded(NvVFX_CudaStreamCreate(&stream), "CudaStreamCreate");
+	return scope && _synchronize && NvidiaVfxSucceeded(Call("CudaStreamCreate", [&] { return NvVFX_CudaStreamCreate(&stream); }, true), "CudaStreamCreate");
 }
 NvidiaVfxSession::~NvidiaVfxSession() {
 	NvidiaVfxContextScope scope(_context);
 	if (!scope) return;
-	if (stream) Synchronize();
+	if (stream && !Synchronize()) Logger::Get().Warn("Nvidia VFX teardown synchronization failed; releasing failed session on its owner thread");
 	_timings.reset();
 	if (_readyEvent) {
 		if (auto destroy = CudaFunction<CudaEventDestroyFn>("cuEventDestroy_v2")) destroy(_readyEvent);
 		_readyEvent = nullptr;
 	}
-	if (effect) { NvVFX_DestroyEffect(effect); effect = nullptr; }
-	NvCVImage_Dealloc(&input); NvCVImage_Dealloc(&previous); NvCVImage_Dealloc(&output);
-	NvCVImage_Dealloc(&_inputD3D); NvCVImage_Dealloc(&_outputD3D); NvCVImage_Dealloc(&_temporary);
-	NvCVImage_Dealloc(&_inputBridge); NvCVImage_Dealloc(&_outputBridge);
-	if (stream) { NvVFX_CudaStreamDestroy(stream); stream = nullptr; }
+	if (effect) { Call("DestroyEffect", [&] { NvVFX_DestroyEffect(effect); }, true); effect = nullptr; }
+	const std::pair<const char*, NvCVImage*> images[] = {
+		{"DeallocInput", &input}, {"DeallocPrevious", &previous}, {"DeallocOutput", &output},
+		{"UnregisterInputD3D", &_inputD3D}, {"UnregisterOutputD3D", &_outputD3D}, {"DeallocTemporary", &_temporary},
+		{"DeallocInputBridge", &_inputBridge}, {"DeallocOutputBridge", &_outputBridge}
+	};
+	for (const auto& [name, image] : images) Call(name, [&] { NvCVImage_Dealloc(image); }, true);
+	if (stream) { Call("CudaStreamDestroy", [&] { NvVFX_CudaStreamDestroy(stream); }, true); stream = nullptr; }
 }
 bool NvidiaVfxSession::Synchronize() noexcept {
 	const auto started = NativeBackendTiming::Now();
-	const bool success = _synchronize && NvidiaVfxSucceeded(_synchronize(stream), "CudaStreamSynchronize");
+	const bool success = _synchronize && NvidiaVfxSucceeded(Call("CudaStreamSynchronize", [&] { return _synchronize(stream); }), "CudaStreamSynchronize");
 	if constexpr (NativeBackendTiming::Enabled) {
 		++_measurements.synchronizeCalls;
 		_measurements.synchronizeCpuMs += NativeBackendTiming::ElapsedMilliseconds(started);
@@ -202,7 +315,12 @@ bool NvidiaVfxSession::Run(std::string_view operation) noexcept {
 	}
 	const auto started = NativeBackendTiming::Now();
 	const int ticket = _timings ? _timings->Begin(_measurements.inference, stream) : -1;
-	bool success = NvidiaVfxSucceeded(NvVFX_Run(effect, VfxAsyncEnabled ? 1 : 0), operation);
+	bool first = false;
+	{
+		std::scoped_lock lock(_diagnostics->mutex);
+		first = ++_diagnostics->frame == 1;
+	}
+	bool success = NvidiaVfxSucceeded(Call("Run", [&] { return NvVFX_Run(effect, VfxAsyncEnabled ? 1 : 0); }, first), operation);
 	if constexpr (VfxAsyncEnabled) {
 		const auto create = CudaFunction<CudaEventCreateFn>("cuEventCreate");
 		const auto record = CudaFunction<CudaEventRecordFn>("cuEventRecord");
@@ -270,9 +388,11 @@ bool NvidiaVfxSession::_Transfer(ID3D11Texture2D* texture, NvCVImage& image, boo
 	auto& retained = importing ? _inputTexture : _outputTexture;
 	if (retained.get() != texture) {
 		if (!Synchronize()) return false;
-		NvCVImage_Dealloc(&wrapper);
+		Call("UnregisterReboundD3D", [&] { NvCVImage_Dealloc(&wrapper); }, true);
 		retained = nullptr;
-		if (!NvidiaVfxSucceeded(NvCVImage_InitFromD3D11Texture(&wrapper, texture), "InitFromD3D11Texture")) return false;
+		Logger::Get().Info(fmt::format("Nvidia VFX interop binding: {} DXGI={} {}x{} texture={:#x}",
+			importing ? "input" : "output", uint32_t(desc.Format), desc.Width, desc.Height, uintptr_t(texture)));
+		if (!NvidiaVfxSucceeded(Call("InitFromD3D11Texture", [&] { return NvCVImage_InitFromD3D11Texture(&wrapper, texture); }, true), "InitFromD3D11Texture")) return false;
 		retained.copy_from(texture);
 	}
 	const auto wrapperValid = [&] {
@@ -293,17 +413,17 @@ bool NvidiaVfxSession::_Transfer(ID3D11Texture2D* texture, NvCVImage& image, boo
 	// Cross-encoding conversion is confined to linear GPU images. Mapped D3D
 	// arrays only copy to/from a matching encoding, in either direction.
 	if (convert && !importing && !NvidiaVfxSucceeded(
-		NvCVImage_Transfer(&image, &bridge, 1.f, stream, &_temporary), "Convert export encoding")) return false;
-	if (!NvidiaVfxSucceeded(NvCVImage_MapResource(&wrapper, stream), "MapResource")) return false;
+		Call("ConvertExportEncoding", [&] { return NvCVImage_Transfer(&image, &bridge, 1.f, stream, &_temporary); }), "Convert export encoding")) return false;
+	if (!NvidiaVfxSucceeded(Call(importing ? "MapInput" : "MapOutput", [&] { return NvCVImage_MapResource(&wrapper, stream); }), "MapResource")) return false;
 	auto& transferImage = convert ? bridge : image;
 	const bool mappedValid = wrapperValid();
 	if (!mappedValid) Logger::Get().Error("Nvidia VFX mapped wrapper encoding changed unexpectedly");
-	const bool transferred = mappedValid && NvidiaVfxSucceeded(importing
+	const bool transferred = mappedValid && NvidiaVfxSucceeded(Call(importing ? "TransferInput" : "TransferOutput", [&] { return importing
 		? NvCVImage_Transfer(&wrapper, &transferImage, 1.f, stream, &_temporary)
-		: NvCVImage_Transfer(&transferImage, &wrapper, 1.f, stream, &_temporary), "Transfer");
-	const bool unmapped = NvidiaVfxSucceeded(NvCVImage_UnmapResource(&wrapper, stream), "UnmapResource");
+		: NvCVImage_Transfer(&transferImage, &wrapper, 1.f, stream, &_temporary); }), "Transfer");
+	const bool unmapped = NvidiaVfxSucceeded(Call(importing ? "UnmapInput" : "UnmapOutput", [&] { return NvCVImage_UnmapResource(&wrapper, stream); }), "UnmapResource");
 	const bool converted = transferred && unmapped && (!convert || !importing || NvidiaVfxSucceeded(
-		NvCVImage_Transfer(&bridge, &image, 1.f, stream, &_temporary), "Convert import encoding"));
+		Call("ConvertImportEncoding", [&] { return NvCVImage_Transfer(&bridge, &image, 1.f, stream, &_temporary); }), "Convert import encoding"));
 	if (_timings) { _timings->End(ticket, stream); timingEnded = true; }
 	// Experimental async builds rely on same-stream map/transfer/unmap ordering.
 	// Rebinding and destruction still drain. Default builds retain the CPU wait.

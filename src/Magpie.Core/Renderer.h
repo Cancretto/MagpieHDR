@@ -300,7 +300,7 @@ private:
 	void _HandleDLSSFrameGenerationFailure(ID3D11Texture2D* input) noexcept;
 	void _DisableDLSSFrameGenerationForSession() noexcept;
 	bool _DrainNgxConsumers() noexcept;
-	void _ReleaseNgxConsumers() noexcept;
+	bool _ReleaseNgxConsumers() noexcept;
 
 	bool _UpdateDynamicConstants(uint32_t frameCount) const noexcept;
 

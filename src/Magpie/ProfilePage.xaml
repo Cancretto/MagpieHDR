@@ -15,6 +15,50 @@
 			<Setter Property="BorderThickness" Value="0" />
 			<Setter Property="VerticalAlignment" Value="Center" />
 		</Style>
+		<Style x:Key="RtssToolsButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+			<Setter Property="MinWidth" Value="0" />
+			<Setter Property="MinHeight" Value="{ThemeResource ComboBoxMinHeight}" />
+			<Setter Property="Padding" Value="{ThemeResource ComboBoxPadding}" />
+			<Setter Property="BorderThickness" Value="{ThemeResource ComboBoxBorderThemeThickness}" />
+			<Setter Property="Background" Value="{ThemeResource ComboBoxBackground}" />
+			<Setter Property="BorderBrush" Value="{ThemeResource ComboBoxBorderBrush}" />
+			<Setter Property="Foreground" Value="{ThemeResource ComboBoxForeground}" />
+			<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+			<Setter Property="UseSystemFocusVisuals" Value="True" />
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="Button">
+						<Grid>
+							<VisualStateManager.VisualStateGroups>
+								<VisualStateGroup x:Name="CommonStates">
+									<VisualState x:Name="Normal" />
+									<VisualState x:Name="PointerOver"><VisualState.Setters>
+										<Setter Target="BackgroundBorder.Background" Value="{ThemeResource ComboBoxBackgroundPointerOver}" />
+										<Setter Target="BackgroundBorder.BorderBrush" Value="{ThemeResource ComboBoxBorderBrushPointerOver}" />
+									</VisualState.Setters></VisualState>
+									<VisualState x:Name="Pressed"><VisualState.Setters>
+										<Setter Target="BackgroundBorder.Background" Value="{ThemeResource ComboBoxBackgroundPressed}" />
+										<Setter Target="BackgroundBorder.BorderBrush" Value="{ThemeResource ComboBoxBorderBrushPressed}" />
+									</VisualState.Setters></VisualState>
+									<VisualState x:Name="Disabled"><VisualState.Setters>
+										<Setter Target="BackgroundBorder.Background" Value="{ThemeResource ComboBoxBackgroundDisabled}" />
+										<Setter Target="BackgroundBorder.BorderBrush" Value="{ThemeResource ComboBoxBorderBrushDisabled}" />
+										<Setter Target="ContentPresenter.Foreground" Value="{ThemeResource ComboBoxForegroundDisabled}" />
+										<Setter Target="DropDownGlyph.Foreground" Value="{ThemeResource ComboBoxDropDownGlyphForegroundDisabled}" />
+									</VisualState.Setters></VisualState>
+								</VisualStateGroup>
+							</VisualStateManager.VisualStateGroups>
+							<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="38" /></Grid.ColumnDefinitions>
+							<Border x:Name="BackgroundBorder" Grid.ColumnSpan="2" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Control.IsTemplateFocusTarget="True" />
+							<ContentPresenter x:Name="ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}" FontFamily="{TemplateBinding FontFamily}" />
+							<FontIcon x:Name="DropDownGlyph" Grid.Column="1" Glyph="&#xE70D;" FontFamily="{ThemeResource SymbolThemeFontFamily}" FontSize="12" Width="12" Height="12" Margin="0,0,14,0" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{ThemeResource ComboBoxDropDownGlyphForeground}" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
+						</Grid>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
 		<Style x:Key="FrameRefreshComboBoxStyle" TargetType="ComboBox"
 		       BasedOn="{StaticResource DefaultComboBoxStyle}">
 			<Setter Property="Width" Value="{StaticResource FrameRefreshControlColumnWidth}" />
@@ -215,12 +259,9 @@
 										<DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" VerticalAlignment="Center" /></DataTemplate>
 									</Button.ContentTemplate>
 								</Button>
-								<Button Grid.Column="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,0,8,0" x:Name="RtssToolsButton" x:Uid="Rtss_Tools" Style="{StaticResource RtssActionButtonStyle}">
+								<Button Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,8,0" x:Name="RtssToolsButton" x:Uid="Rtss_Tools" Style="{StaticResource RtssToolsButtonStyle}">
 									<Button.ContentTemplate>
-										<DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-											<TextBlock Text="{Binding}" TextWrapping="Wrap" VerticalAlignment="Center" />
-											<FontIcon Grid.Column="1" Glyph="&#xE70D;" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center" />
-										</Grid></DataTemplate>
+										<DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" VerticalAlignment="Center" /></DataTemplate>
 									</Button.ContentTemplate>
 									<Button.Flyout>
 										<MenuFlyout>

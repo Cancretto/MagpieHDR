@@ -140,6 +140,7 @@
     <ClInclude Include="DLSSFrameGenerator.h" />
     <ClInclude Include="NvidiaVfxRuntime.h" />
     <ClInclude Include="NvidiaVfxImageBackend.h" />
+    <ClInclude Include="include\NvidiaVfxTrueHdrParameters.h" />
     <ClInclude Include="NvidiaVfxFrameGenerator.h" />
     <ClInclude Include="include\NvidiaVfxExecutionPlan.h" />
     <ClInclude Include="include\NvidiaVfxParameters.h" />

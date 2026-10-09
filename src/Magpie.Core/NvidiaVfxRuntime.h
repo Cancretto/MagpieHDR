@@ -1,6 +1,7 @@
 #pragma once
 #include <string_view>
 #include <memory>
+#include <type_traits>
 #include "NvidiaVfxMeasurements.h"
 
 #if defined(MP_ENABLE_RTX_VIDEO_DENOISE) || defined(MP_ENABLE_NVIDIA_VFX)
@@ -11,6 +12,7 @@
 namespace Magpie {
 class DeviceResources;
 class NvidiaVfxCudaTimings;
+struct NvidiaVfxDiagnosticState;
 
 bool NvidiaVfxSucceeded(NvCV_Status status, std::string_view operation) noexcept;
 bool LoadNvidiaVfxRuntime(const wchar_t* featureLibrary, bool requireVersion13) noexcept;
@@ -29,7 +31,9 @@ public:
 	int ComputeMajor() const noexcept { return _major; }
 	int ComputeMinor() const noexcept { return _minor; }
 	void* Handle() const noexcept { return _context; }
+	void Diagnostics(std::shared_ptr<NvidiaVfxDiagnosticState> state) noexcept { _diagnostics = std::move(state); }
 private:
+	std::shared_ptr<NvidiaVfxDiagnosticState> _diagnostics;
 	void* _context = nullptr;
 	int _device = -1, _major = 0, _minor = 0;
 };
@@ -55,6 +59,18 @@ public:
 	bool Initialize(DeviceResources& resources, const wchar_t* featureLibrary) noexcept;
 	bool Synchronize() noexcept;
 	bool Run(std::string_view operation) noexcept;
+	void ParameterRevision(uint64_t revision) noexcept;
+	template<class CallFn> auto Call(const char* operation, CallFn&& fn, bool lifecycle = false) noexcept {
+		_BeginCall(operation, lifecycle);
+		if constexpr (std::is_void_v<std::invoke_result_t<CallFn>>) {
+			fn();
+			_EndCall(0);
+		} else {
+			const auto status = fn();
+			_EndCall(int(status));
+			return status;
+		}
+	}
 	// Establish a GPU dependency without waiting on the CPU. Both sessions must
 	// retain the same selected primary context. A borrowed input must also enqueue
 	// the reverse dependency before the producer reuses its allocation.
@@ -71,6 +87,9 @@ public:
 	CUstream stream = nullptr;
 	NvCVImage input, previous, output;
 private:
+	void _BeginCall(const char* operation, bool lifecycle) noexcept;
+	void _EndCall(int status) noexcept;
+	std::shared_ptr<NvidiaVfxDiagnosticState> _diagnostics;
 	bool _Transfer(ID3D11Texture2D* texture, NvCVImage& gpuImage, bool importing) noexcept;
 	NvidiaVfxCudaContext _context;
 	std::unique_ptr<NvidiaVfxCudaTimings> _timings;

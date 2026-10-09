@@ -3,6 +3,7 @@
 #include "NvidiaVfxRuntime.h"
 #include "NvidiaVfxFrameGenerator.h"
 #include "NvidiaVfxParameters.h"
+#include "NvidiaVfxTrueHdrParameters.h"
 #include "DeviceResources.h"
 #include "DirectXHelper.h"
 #include "BackendDescriptorStore.h"
@@ -31,13 +32,19 @@ struct NvidiaVfxImageBackend::Impl {
 	EffectsProfiler adaptationProfiler;
 	NvidiaVfxImageKind kind = NvidiaVfxImageKind::Vsr;
 	EffectOption settings;
+	bool usable = true;
+	uint64_t parameterRevision = 0;
+	static constexpr const char* hdrSelectors[] = {
+		NVVFXTRUEHDR_CONTRAST, NVVFXTRUEHDR_SATURATION, NVVFXTRUEHDR_MIDDLE_GRAY,
+		NVVFXTRUEHDR_LUMINANCE, NVVFXTRUEHDR_DEBANDING_OFF
+	};
 	NvVFX_Handle CreateCandidate(const EffectOption& option) noexcept {
 		const auto value = [&](const char* key, float fallback) { const auto it = option.parameters.find(key); return it == option.parameters.end() ? fallback : it->second; };
 		NvVFX_Handle effect = nullptr;
 		const char* selector = kind == NvidiaVfxImageKind::Vsr ? "VideoSuperRes" :
 			kind == NvidiaVfxImageKind::Upscale ? NVVFX_FX_SR_UPSCALE : NVVFX_FX_TRUE_HDR;
-		if (!NvidiaVfxSucceeded(NvVFX_CreateEffect(selector, &effect), "CreateEffect")) return nullptr;
-		auto cleanup = wil::scope_exit([&] { if (effect) NvVFX_DestroyEffect(effect); });
+		if (!NvidiaVfxSucceeded(session.Call("CreateEffect", [&] { return NvVFX_CreateEffect(selector, &effect); }, true), "CreateEffect")) return nullptr;
+		auto cleanup = wil::scope_exit([&] { if (effect) session.Call("DestroyCandidate", [&] { NvVFX_DestroyEffect(effect); }, true); });
 		// Select RGB8 before binding I/O, including transactional tier changes.
 		if (kind == NvidiaVfxImageKind::Vsr && !NvidiaVfxSucceeded(
 			NvVFX_SetU32(effect, NVVFX_IMAGE_ENCODING_MODE, NVVFX_IMAGE_ENCODING_RGB8), "SetVsrImageEncoding")) return nullptr;
@@ -65,17 +72,14 @@ struct NvidiaVfxImageBackend::Impl {
 				!NvidiaVfxSucceeded(NvVFX_SetF32(effect, NVVFX_STRENGTH, strength), "SetStrength")) return nullptr;
 		} else {
 			if (BuildHdrComponentPlan(std::span(&option, 1)).error != HdrComponentError::None) return nullptr;
-			const std::pair<const char*, uint32_t> tunables[] = {
-				{ NVVFXTRUEHDR_CONTRAST, uint32_t(value("contrast", 100)) },
-				{ NVVFXTRUEHDR_SATURATION, uint32_t(value("saturation", 100)) },
-				{ NVVFXTRUEHDR_MIDDLE_GRAY, uint32_t(value("middleGray", 50)) },
-				{ NVVFXTRUEHDR_LUMINANCE, uint32_t(value("peakNits", 1000)) },
-				{ NVVFXTRUEHDR_DEBANDING_OFF, value("debanding", 1) == 0 ? 1u : 0u }
-			};
-			for (const auto& [key, val] : tunables)
-				if (!NvidiaVfxSucceeded(NvVFX_SetU32(effect, key, val), "SetTrueHdrTunable")) return nullptr;
+			const auto tunables = ReadNvidiaVfxTrueHdrTunables(option);
+			if (!tunables) return nullptr;
+			for (size_t i = 0; i < tunables->values.size(); ++i)
+				if (!NvidiaVfxSucceeded(session.Call(hdrSelectors[i], [&] {
+					return NvVFX_SetU32(effect, hdrSelectors[i], tunables->values[i]);
+				}), "SetTrueHdrTunable")) return nullptr;
 		}
-		if (!NvidiaVfxSucceeded(NvVFX_Load(effect), "Load candidate")) return nullptr;
+		if (!NvidiaVfxSucceeded(session.Call("Load", [&] { return NvVFX_Load(effect); }, true), "Load candidate")) return nullptr;
 		return std::exchange(effect, nullptr);
 	}
 };
@@ -176,7 +180,7 @@ bool NvidiaVfxImageBackend::Drain() noexcept {
 }
 bool NvidiaVfxImageBackend::Draw(const NativeEffectDrawContext& context) noexcept {
 #ifdef MP_ENABLE_NVIDIA_VFX
-	if (!_impl) return false;
+	if (!_impl || !_impl->usable) return false;
 	NvidiaVfxContextScope scope(_impl->session.Context());
 	if (!scope || !_impl->session.Import(context.input, _impl->session.input) ||
 		!_impl->session.Run("Run image effect")) return false;
@@ -257,15 +261,43 @@ EffectParameterApplyMode NvidiaVfxImageBackend::GetParameterApplyMode(std::strin
 }
 bool NvidiaVfxImageBackend::ApplyParameters(const EffectOption& option, std::span<const std::string> names) noexcept {
 #ifdef MP_ENABLE_NVIDIA_VFX
-	if (!_impl || std::ranges::any_of(names, [&](const auto& name) { return GetParameterApplyMode(name) != EffectParameterApplyMode::Live; })) return false;
+	if (!_impl || !_impl->usable || std::ranges::any_of(names, [&](const auto& name) { return GetParameterApplyMode(name) != EffectParameterApplyMode::Live; })) return false;
+	if (_kind == NvidiaVfxImageKind::TrueHdr) {
+		const auto previous = ReadNvidiaVfxTrueHdrTunables(_impl->settings);
+		const auto candidate = ReadNvidiaVfxTrueHdrTunables(option);
+		if (!previous || !candidate) return false;
+		// Slider values are normalized before reaching this boundary. A duplicate
+		// desired value does not wait on the GPU or call into the SDK again.
+		if (*previous == *candidate) return true;
+		NvidiaVfxContextScope scope(_impl->session.Context());
+		if (!scope || !_impl->session.Synchronize()) return false;
+		_impl->session.ParameterRevision(_impl->parameterRevision + 1);
+		const auto result = UpdateNvidiaVfxTrueHdrTunables(*previous, *candidate, [&](size_t i, uint32_t value) {
+			return NvidiaVfxSucceeded(_impl->session.Call(Impl::hdrSelectors[i], [&] {
+				return NvVFX_SetU32(_impl->session.effect, Impl::hdrSelectors[i], value);
+			}), "SetTrueHdrTunable");
+		});
+		if (result == NvidiaVfxTrueHdrUpdate::Invalidated) {
+			_impl->usable = false;
+			Logger::Get().Error("Nvidia VFX TrueHDR parameter rollback failed; session cannot render further outputs");
+			return false;
+		}
+		if (result != NvidiaVfxTrueHdrUpdate::Applied) {
+			_impl->session.ParameterRevision(_impl->parameterRevision);
+			return false;
+		}
+		++_impl->parameterRevision;
+		_impl->settings = option; _option = option;
+		return true;
+	}
 	NvidiaVfxContextScope scope(_impl->session.Context());
 	if (!scope || !_impl->session.Synchronize()) return false;
-	// Load the complete candidate transactionally: a rejected SDK setting must
-	// not leave a partially applied HDR tuple or replace a working VSR model.
+	// VSR/Upscale still load a private candidate, preserving the working model
+	// when its quality/strength configuration is rejected.
 	NvVFX_Handle candidate = _impl->CreateCandidate(option);
 	if (!candidate) return false;
 	std::swap(candidate, _impl->session.effect);
-	NvVFX_DestroyEffect(candidate);
+	_impl->session.Call("DestroyReplacedEffect", [&] { NvVFX_DestroyEffect(candidate); }, true);
 	_impl->settings = option; _option = option;
 	return true;
 #else

@@ -276,6 +276,10 @@ Renderer::Renderer() noexcept :
 
 void Renderer::BeginShutdown() noexcept {
 	_sessionLifetime->RequestStop();
+	{
+		std::scoped_lock lock(_effectParameterMailboxMutex);
+		_effectParameterMailbox.clear();
+	}
 	if (_sceneScreenshotRequest && _sceneScreenshotRequest->state.load() == SceneScreenshotState::Pending)
 		_FailScreenshotRequest(_sceneScreenshotRequest, "Scaling session stopped before screenshot presentation", ERROR_CANCELLED);
 	// The backend can be waiting for a synchronous DLSSFG presentation while
@@ -308,9 +312,14 @@ Renderer::~Renderer() noexcept {
 			}
 		}
 
+		Logger::Get().Info(fmt::format("Backend join enter: run={} thread={}", ScalingWindow::RunId(), GetThreadId(hThread)));
+		const auto joinStarted = GetTickCount64();
 		_backendThread.join();
+		Logger::Get().Info(fmt::format("Backend join exit: run={} elapsedMs={}", ScalingWindow::RunId(), GetTickCount64() - joinStarted));
 	}
-	_ReleaseNgxConsumers();
+	// An initialization failure before a worker exists can still own consumers.
+	// Normally the backend scope already released them on their creating thread.
+	if (!_ReleaseNgxConsumers()) Logger::Get().Warn("Renderer fallback consumer cleanup completed after a failed drain");
 	if (_frameTraceStarted) FrameTrace::Stop();
 }
 
@@ -1813,9 +1822,9 @@ bool Renderer::_InitFrameSource() noexcept {
 
 	for (const EffectOption& effect : ScalingWindow::Get().Options().effects) {
 		if (!IsFrameGenerationEffect(effect.name)) continue;
-		// Preserve the previous FG behavior for configurations without this option.
+		// Missing fields follow the effect's default, independently of global detection.
 		const bool enabled = ReadIntegralEffectParameter(
-			effect, "duplicateFrameFiltering", 0, 1, 1) != 0;
+			effect, "duplicateFrameFiltering", 0, 1, 0) != 0;
 		_frameSource->DuplicateFrameDetectionOverride(enabled);
 		Logger::Get().Info(fmt::format(
 			"Frame Generation: exact duplicate-frame filtering {} for captured input",
@@ -1973,7 +1982,10 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 		Logger::Get().Info(fmt::format("编译着色器总计用时 {} 毫秒", duration / 1000.0f));
 	}
 
-	_ReleaseNgxConsumers();
+	if (!_ReleaseNgxConsumers()) {
+		_backendInitError = ScalingError::EffectResourceFailed;
+		return nullptr;
+	}
 	_effectDrawers.resize(effectCount);
 	_nativeEffectBackends.resize(effectCount);
 	_dlssFgConsecutiveFailures = 0;
@@ -2228,7 +2240,7 @@ bool Renderer::QueueEffectParameterUpdate(
 	bool waitForOverlaySave
 ) noexcept {
 	(void)waitForOverlaySave;
-	if (!std::isfinite(value) || !_backendThreadDispatcher ||
+	if (_sessionLifetime->IsStopping() || !std::isfinite(value) || !_backendThreadDispatcher ||
 		effectIdx >= _effectParameterRuntimeInfos.size() ||
 		parameterIdx >= _effectParameterRuntimeInfos[effectIdx].size()) {
 		return false;
@@ -2242,6 +2254,7 @@ bool Renderer::QueueEffectParameterUpdate(
 	bool enqueueWake = false;
 	{
 		std::scoped_lock lock(_effectParameterMailboxMutex);
+		if (_sessionLifetime->IsStopping()) return false;
 		_effectParameterMailbox[key] = PendingEffectParameterUpdate{
 			.effectIdx = effectIdx,
 			.parameterIdx = parameterIdx,
@@ -2258,6 +2271,7 @@ bool Renderer::QueueEffectParameterUpdate(
 	}
 
 	if (_backendThreadDispatcher.TryEnqueue([this]() {
+		if (_sessionLifetime->IsStopping()) return;
 		std::unordered_map<uint64_t, PendingEffectParameterUpdate> updates;
 		{
 			std::scoped_lock lock(_effectParameterMailboxMutex);
@@ -2288,7 +2302,7 @@ bool Renderer::QueueEffectParameterUpdate(
 void Renderer::_ApplyPendingEffectParameters() noexcept {
 	std::vector<PendingEffectParameterUpdate> updates;
 	updates.swap(_pendingEffectParameterUpdates);
-	if (updates.empty()) {
+	if (_sessionLifetime->IsStopping() || updates.empty()) {
 		return;
 	}
 
@@ -2302,6 +2316,7 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 
 	bool anySucceeded = false;
 	for (uint32_t effectIdx = 0; effectIdx < byEffect.size(); ++effectIdx) {
+		if (_sessionLifetime->IsStopping()) return;
 		std::vector<PendingEffectParameterUpdate>& effectUpdates = byEffect[effectIdx];
 		if (effectUpdates.empty()) {
 			continue;
@@ -2531,7 +2546,7 @@ bool Renderer::_AppendBicubic(ID3D11Texture2D** inOutTexture) noexcept {
 ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
 	if (_nvidiaVfxFrameGenerator || std::ranges::any_of(_runtimeEffectOptions, [](const auto& effect) { return effect.name == NVIDIA_VFX_UPSCALE_ID; })) {
 		if (!_DrainNgxConsumers()) return nullptr;
-		_ReleaseNgxConsumers();
+		if (!_ReleaseNgxConsumers()) return nullptr;
 		_effectDrawers.clear(); _effectFrameStates.clear();
 		ID3D11Texture2D* result = _BuildEffects();
 		if (result) {
@@ -2946,12 +2961,22 @@ bool Renderer::_DrainNgxConsumers() noexcept {
 	return succeeded;
 }
 
-void Renderer::_ReleaseNgxConsumers() noexcept {
-	_DrainNgxConsumers();
+bool Renderer::_ReleaseNgxConsumers() noexcept {
+	const bool hasConsumers = _dlssFrameGenerator || _nvidiaVfxFrameGenerator ||
+		std::ranges::any_of(_nativeEffectBackends, [](const auto& backend) { return bool(backend); });
+	if (!hasConsumers) { _nativeEffectBackends.clear(); return true; }
+	Logger::Get().Info(fmt::format("Native consumer drain enter: run={} thread={}", ScalingWindow::RunId(), GetCurrentThreadId()));
+	const auto started = GetTickCount64();
+	const bool drained = _DrainNgxConsumers();
+	Logger::Get().Info(fmt::format("Native consumer drain exit: run={} succeeded={} elapsedMs={}",
+		ScalingWindow::RunId(), drained, GetTickCount64() - started));
+	if (!drained) Logger::Get().Warn("Native consumer drain failed; retiring failed consumers instead of starting a replacement");
 	_dlssFrameGenerator.reset();
 	_nvidiaVfxFrameGenerator.reset();
 	_vfxSourceTexture = nullptr; _vfxPostInput = nullptr;
 	_nativeEffectBackends.clear();
+	Logger::Get().Info(fmt::format("Native consumer release complete: run={} thread={}", ScalingWindow::RunId(), GetCurrentThreadId()));
+	return drained;
 }
 
 void Renderer::_UpdateDestRect() noexcept {
@@ -3177,13 +3202,17 @@ void Renderer::_BackendThreadProc() noexcept {
 #endif
 
 	winrt::init_apartment(winrt::apartment_type::single_threaded);
+	const auto cleanupBackend = wil::scope_exit([this] {
+		_pendingEffectParameterUpdates.clear();
+		if (!_ReleaseNgxConsumers()) Logger::Get().Warn("Backend retired after a failed native consumer drain");
+		_frameSource.reset();
+	});
 
 	if (const HANDLE sharedHandle = _InitBackend()) {
 		_EnsureGpuPriority(true);
 		_sharedTextureHandle.store(sharedHandle, std::memory_order_release);
 		_sharedTextureHandle.notify_one();
 	} else {
-		_frameSource.reset();
 		// 通知前端初始化失败
 		_sharedTextureHandle.store(INVALID_HANDLE_VALUE, std::memory_order_release);
 		_sharedTextureHandle.notify_one();
@@ -3227,12 +3256,10 @@ void Renderer::_BackendThreadProc() noexcept {
 				}
 				window.Stop();
 			});
-			_frameSource.reset();
 			return;
 		}
 		if (_sessionLifetime->IsStopping()) {
 			if (GetMessage(&msg, NULL, 0, 0) <= 0) {
-				_frameSource.reset();
 				return;
 			}
 			DispatchMessage(&msg);
@@ -3295,7 +3322,6 @@ void Renderer::_BackendThreadProc() noexcept {
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
 			if (msg.message == WM_QUIT) {
 				// 不能在前端线程释放
-				_frameSource.reset();
 				return;
 			}
 
@@ -3426,7 +3452,6 @@ void Renderer::_BackendThreadProc() noexcept {
 				DispatchMessage(&msg);
 			}
 
-			_frameSource.reset();
 			return;
 		}
 	}
