@@ -1,4 +1,6 @@
 #include "pch.h"
+#include "HdrGroupPlan.h"
+#include "HdrParameterPolicy.h"
 #include "OverlayDrawer.h"
 #include "CursorManager.h"
 #include "DeviceResources.h"
@@ -1326,6 +1328,8 @@ void OverlayDrawer::_InitEffectParameterValues() noexcept {
 			float value = parameter.constant.index() == 0
 				? std::get<0>(parameter.constant).defaultValue
 				: static_cast<float>(std::get<1>(parameter.constant).defaultValue);
+			if (description.name == "Color\\SDR_to_HDR" && parameter.name == "nativeWhiteNits")
+				value = NativeHdrWhiteValue(options.effects[effectIdx].parameters, std::string("nativeWhiteNits"), std::string("whiteNits"), std::string("exposure"));
 			if (auto it = options.effects[effectIdx].parameters.find(parameter.name);
 				it != options.effects[effectIdx].parameters.end()) {
 				value = it->second;
@@ -1372,9 +1376,11 @@ void OverlayDrawer::_SyncEffectParameterValues() noexcept {
 		const auto& applied = _parameterSessionSnapshot.applied[i];
 		for (size_t j = 0; j < descriptions[i]->params.size(); ++j) {
 			const auto& parameter = descriptions[i]->params[j];
-			const float fallback = parameter.constant.index() == 0 ?
+			float fallback = parameter.constant.index() == 0 ?
 				std::get<0>(parameter.constant).defaultValue : float(std::get<1>(parameter.constant).defaultValue);
 			auto value = [&](const EffectOption& option) {
+				if (option.name == "Color\\SDR_to_HDR" && parameter.name == "nativeWhiteNits")
+					return NormalizeEffectParameterValue(parameter, NativeHdrWhiteValue(option.parameters, std::string("nativeWhiteNits"), std::string("whiteNits"), std::string("exposure")));
 				const auto it = option.parameters.find(parameter.name);
 				return NormalizeEffectParameterValue(parameter, it == option.parameters.end() ? fallback : it->second);
 			};
@@ -1408,6 +1414,7 @@ std::vector<EffectOption> OverlayDrawer::_BuildDraftEffectOptions() const noexce
 				_draftEffectParameterValues[effectIdx][parameterIdx];
 		}
 	}
+	SynchronizeHdrGroupParameterChanges(_submittedEffectOptions,effects);
 	return effects;
 }
 
@@ -1462,9 +1469,19 @@ static bool DrawEffectParameterSlider(const char* label, const EffectParameterDe
 		return ImGui::SliderFloat(label, &value, minimum, maximum, format.c_str(),
 			ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat);
 	}
-	const bool changed = ImGui::SliderInt(label, &currentTick, 0, maximumTick,
+	const float previous = value;
+	bool changed = ImGui::SliderInt(label, &currentTick, 0, maximumTick,
 		displayValue, ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoInput);
 	if (changed) value = GetEffectParameterValueFromTick(parameter, currentTick, maximumTick);
+	if (parameter.inputStep > 0) {
+		const bool up = ImGui::IsItemFocused() && (ImGui::IsKeyPressed(ImGuiKey_RightArrow) || ImGui::IsKeyPressed(ImGuiKey_UpArrow));
+		const bool down = ImGui::IsItemFocused() && (ImGui::IsKeyPressed(ImGuiKey_LeftArrow) || ImGui::IsKeyPressed(ImGuiKey_DownArrow));
+		const float wheel = ImGui::IsItemHovered() ? ImGui::GetIO().MouseWheel : 0;
+		if (up || down || wheel != 0) {
+			value = StepEffectParameter(parameter, previous, up || wheel > 0, ImGui::GetIO().KeyShift);
+			changed = value != previous;
+		}
+	}
 	return changed;
 }
 
@@ -1670,6 +1687,11 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	ImGui::PopID();
 	auto getDraftValue = [&](size_t effectIdx, const EffectDesc& description,
 		std::string_view name, float fallback) noexcept {
+		if (name == "__hdrHasPair") {
+			const auto plan = BuildHdrComponentPlan(_BuildDraftEffectOptions(), ScalingWindow::Get().Options().hdrCaptureIntent);
+			return plan.error == HdrComponentError::None && effectIdx < plan.stages.size() &&
+				plan.stages[effectIdx].pairIndex != size_t(-1) ? 1.f : 0.f;
+		}
 		for (size_t i = 0; i < description.params.size(); ++i) {
 			if (description.params[i].name == name &&
 				effectIdx < _draftEffectParameterValues.size() &&
@@ -1689,14 +1711,24 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		return true;
 	};
 
+	bool drewSharedHdrInput=false;
 	for (size_t effectIdx = 0; effectIdx < configuredEffectCount; ++effectIdx) {
 		const EffectDesc& description = *descriptions[effectIdx];
+		const auto role=ScalingWindow::Get().Options().effects[effectIdx].hdrManagedRole;
+		if (role==HdrManagedRole::PairRestore || role==HdrManagedRole::Identity) continue;
+		if (role==HdrManagedRole::InputMapping) {
+			if (drewSharedHdrInput) continue;
+			drewSharedHdrInput=true;
+		}
 		if (description.params.empty()) {
 			continue;
 		}
 		ImGui::PushID(itemId++);
-		ImGui::SeparatorText(
-			std::string(GetEffectDisplayName(description)).c_str());
+		const auto title=role==HdrManagedRole::InputMapping ? EffectParameterLocalization::Resource(L"HdrGroup_InputCard/Header","Input / HDR compatibility") :
+			role==HdrManagedRole::Output ? EffectParameterLocalization::Resource(L"HdrGroup_OutputCard/Header","HDR output") + " · " +
+				EffectParameterLocalization::Resource(ClassifyHdrComponent(ScalingWindow::Get().Options().effects[effectIdx].name)==HdrComponentKind::RtxVideoHdr ?
+					L"HdrGroup_OutputRtx" : L"HdrGroup_OutputNative","HDR mapping") : std::string(GetEffectDisplayName(description));
+		ImGui::SeparatorText(title.c_str());
 
 		std::string_view currentGroup;
 		// 仅在 _DEBUG 下读取（参数元数据一致性告警），release 下以 maybe_unused 抑制 ClangCL -Werror
@@ -1708,6 +1740,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 				_localizedEffectParameters[effectIdx][parameterIdx];
 			const std::string& effectName =
 				ScalingWindow::Get().Options().effects[effectIdx].name;
+			if (role!=HdrManagedRole::None && parameter.name=="mode") continue;
 			if (!IsEffectParameterVisible(effectName, parameter.name,
 				[&](std::string_view name, float fallback) { return getDraftValue(effectIdx, description, name, fallback); })) continue;
 			if (parameter.group != currentGroup) {
@@ -1876,7 +1909,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 
 			if (changed && parameterValid && parameterEnabled) {
 				parameterEdited = true;
-				value = NormalizeEffectParameterValue(parameter, value);
+				value = NormalizeEffectParameterInput(parameter, value);
 				if (isLive) liveUpdates.emplace_back(static_cast<uint32_t>(effectIdx),
 					static_cast<uint32_t>(parameterIdx), value);
 				needRedraw = true;

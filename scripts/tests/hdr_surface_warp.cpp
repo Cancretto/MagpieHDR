@@ -9,9 +9,11 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <map>
 #include <stdexcept>
 #include <vector>
 #include "HdrColorTransform.h"
+#include "HdrComponentRuntime.h"
 #include "HdrEffectBoundary.h"
 #include "EffectProtocolCatalogC.h"
 #include "hdr_surface_shader.h"
@@ -154,6 +156,44 @@ struct Harness {
 		Check(Read(output.Get()) == pixels, "Canonical pass-through changed pixels");
 	}
 
+	void TestNativeOutputBrightness(float white, float exposure = 1, bool legacy = false) {
+		struct Effect { std::string name; std::map<std::string, float> parameters; };
+		std::vector<Effect> effects{ {"Color\\SDR_to_HDR", legacy
+			? std::map<std::string,float>{{"whiteNits",white},{"exposure",exposure}}
+			: std::map<std::string,float>{{"nativeWhiteNits",white}}} };
+		const auto plan = BuildHdrComponentPlan(effects);
+		Check(plan.error == HdrComponentError::None, "Native output plan invalid");
+		const auto settings = HdrComponentTransform(plan, 0);
+		std::vector<Pixel> pixels(Width);
+		for (UINT i = 0; i < Width; ++i) pixels[i] = { float(i) / (Width - 1), .5f, 0, .375f };
+		auto source = Texture(DXGI_FORMAT_R32G32B32A32_FLOAT, pixels.data());
+		auto proxy = Texture(DXGI_FORMAT_R8G8B8A8_UNORM);
+		auto output = Texture(DXGI_FORMAT_R16G16B16A16_FLOAT);
+		AdapterConstants cb{1, 1, 1, 1000, 1, 80, 203, 2, 1, 4, 1, 1};
+		Dispatch(source.Get(), proxy.Get(), cb);
+		const auto sdr = Read(proxy.Get());
+		cb.mode = 7; cb.sdrWhiteNits = settings.sdrWhiteNits;
+		cb.exposure = settings.exposure; cb.hdrPeakNits = settings.hdrPeakNits;
+		Dispatch(proxy.Get(), output.Get(), cb);
+		const auto hdr = Read(output.Get());
+		for (UINT i = 0; i < Width; ++i) for (size_t c = 0; c < 3; ++c) {
+			const float expected = HdrColorTransform::DecodeTransfer(sdr[i][c], HdrTransferFunction::SRGB) * white * exposure / 80;
+			// The UAV's float32 -> float16 store can truncate rather than round
+			// to nearest. Check adjacent representable FP16 values explicitly;
+			// a constant absolute tolerance is invalid over the 8..4000-nit range.
+			const auto half = DirectX::PackedVector::XMConvertFloatToHalf(expected);
+			const float lower = DirectX::PackedVector::XMConvertHalfToFloat(half ? half - 1 : 0);
+			const float upper = DirectX::PackedVector::XMConvertHalfToFloat(half + 1);
+			if (hdr[i][c] < lower - 1e-6f || hdr[i][c] > upper + 1e-6f) {
+				std::cerr << "Native output: white=" << white << " exposure=" << exposure << " legacy=" << legacy
+					<< " pixel=" << i << " channel=" << c << " SDR=" << sdr[i][c] << " expected=" << expected << " actual=" << hdr[i][c] << '\n';
+				throw std::runtime_error("Native high/legacy brightness pixel mismatch");
+			}
+		}
+		Check(std::abs(hdr.back()[0] * 80 - white * exposure) < 1, "Native output white changed");
+		Check(std::abs(hdr.back()[3] - sdr.back()[3]) < .001f, "Native alpha changed");
+	}
+
 	void TestExplicitComponents(float white, float peak) {
 		std::vector<Pixel> pixels(Width);
 		for (UINT i = 0; i < Width; ++i) {
@@ -259,6 +299,9 @@ struct Harness {
 int main() {
 	try {
 		Harness harness;
+		for (float white : {8.f, 203.f, 1000.f, 1500.f, 4000.f}) harness.TestNativeOutputBrightness(white);
+		harness.TestNativeOutputBrightness(80, .1f, true);
+		harness.TestNativeOutputBrightness(400, 4, true);
 		for (float white : {80.0f, 203.0f, 360.0f})
 			for (float peak : {400.0f, 1000.0f, 4000.0f})
 				for (float exposure : {0.5f, 1.0f, 2.0f})
@@ -269,6 +312,7 @@ int main() {
 		for (float white : {80.0f, 203.0f, 360.0f}) harness.TestAutomaticDlssnrBoundary(white);
 		std::cout << "PASS: production HDR shader on D3D11 WARP; 9 explicit FP16/RGBA8 component pipelines, native white mapping and SDR display maps; 54 ramp/round-trip cases, "
 			"R8 quantization, CPU/HLSL parity, alpha, resized boundaries and three automatic DLSSNR white-point round trips\n";
+		std::cout << "PASS: production plan plus WARP native 203/1000/1500/4000, legacy low/high exposures, signal maximum and alpha\n";
 	} catch (const std::exception& error) {
 		std::cerr << "FAIL: " << error.what() << '\n';
 		return 1;

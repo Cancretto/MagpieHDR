@@ -13,10 +13,12 @@
 #include "AppSettings.h"
 #include "ScalingModesService.h"
 #include "ScalingMode.h"
+#include "HdrGroupPlan.h"
 #include "EffectsService.h"
 #include "EffectDesc.h"
 #include "EffectParameterValue.h"
 #include "EffectParameterRules.h"
+#include "HdrParameterPolicy.h"
 #include "ScalingService.h"
 #include "EffectParameterLocalization.h"
 #include "EffectParameterPopupLayout.h"
@@ -110,6 +112,8 @@ EffectParametersViewModel::EffectParametersViewModel(uint32_t scalingModeIdx, ui
 		const EffectParameterDesc& param = displayParams[i];
 
 		std::optional<float> paramValue;
+		if (_effectInfo->name == L"Color\\SDR_to_HDR" && param.name == "nativeWhiteNits")
+			paramValue = NativeHdrWhiteValue(params, std::wstring(L"nativeWhiteNits"), std::wstring(L"whiteNits"), std::wstring(L"exposure"));
 		{
 			auto it = params.find(StrHelper::UTF8ToUTF16(param.name));
 			if (it != params.end()) {
@@ -150,6 +154,7 @@ EffectParametersViewModel::EffectParametersViewModel(uint32_t scalingModeIdx, ui
 				constant.step,
 				defaultValue
 			);
+			paramItem->ConfigureDescriptor(param);
 			paramItem->PropertyChanged({
 				this, &EffectParametersViewModel::_ScalingModeParameter_PropertyChanged });
 
@@ -177,6 +182,7 @@ EffectParametersViewModel::EffectParametersViewModel(uint32_t scalingModeIdx, ui
 					(float)constant.step,
 					defaultValue
 				);
+				paramItem->ConfigureDescriptor(param);
 				paramItem->PropertyChanged({
 					this, &EffectParametersViewModel::_ScalingModeParameter_PropertyChanged });
 
@@ -261,6 +267,9 @@ void EffectParametersViewModel::_ScalingModeParameter_PropertyChanged(
 		sender.try_as<Magpie::ScalingModeParameter>());
 	if (paramImpl->Index() >= _effectInfo->params.size()) return;
 	const std::string& effectName = _effectInfo->params[paramImpl->Index()].name;
+	auto& mode=ScalingModesService::Get().GetScalingMode(_scalingModeIdx);
+	const auto before=mode.hdr.managed ? mode.effects : std::vector<EffectItem>{};
+	if (mode.effects[_effectIdx].hdrManagedRole!=HdrManagedRole::None && effectName=="mode") return;
 	_Data()[StrHelper::UTF8ToUTF16(effectName)] = paramImpl->IsBoolean()
 		? static_cast<float>(paramImpl->BooleanValue())
 		: paramImpl->IsChoice()
@@ -268,9 +277,17 @@ void EffectParametersViewModel::_ScalingModeParameter_PropertyChanged(
 			: static_cast<float>(paramImpl->Value());
 	_RefreshConditionalVisibility();
 	_RefreshLayoutWidth();
-	ScalingService::Get().EffectParameterEdited(_scalingModeIdx, _effectIdx, effectName,
-		_Data().at(StrHelper::UTF8ToUTF16(effectName)));
-	ScalingModesService::Get().EffectParametersChanged.Invoke(_scalingModeIdx, _effectIdx);
+	if (mode.hdr.managed) {
+		SynchronizeHdrGroupParameterChanges(before,mode.effects);
+		CaptureHdrGroupParameters(mode.effects,mode.hdr);
+	}
+	for (uint32_t i=0; i<mode.effects.size(); ++i) {
+		if (i!=_effectIdx && !(mode.hdr.managed && mode.effects[_effectIdx].hdrManagedRole==HdrManagedRole::InputMapping &&
+			mode.effects[i].hdrManagedRole==HdrManagedRole::InputMapping)) continue;
+		ScalingService::Get().EffectParameterEdited(_scalingModeIdx,i,effectName,
+			mode.effects[i].parameters.at(StrHelper::UTF8ToUTF16(effectName)));
+		ScalingModesService::Get().EffectParametersChanged.Invoke(_scalingModeIdx,i);
+	}
 
 	LazySaveAppSettings();
 }
@@ -278,7 +295,13 @@ void EffectParametersViewModel::_ScalingModeParameter_PropertyChanged(
 void EffectParametersViewModel::_RefreshConditionalVisibility() {
 	const std::string effect = StrHelper::UTF16ToUTF8(_effectInfo->name);
 	const auto& values = _Data();
+	std::vector<EffectOption> options;
+	for (const auto& item : ScalingModesService::Get().GetScalingMode(_scalingModeIdx).effects)
+		options.push_back(static_cast<EffectOption>(item));
+	const auto hdrPlan = BuildHdrComponentPlan(options, ScalingModesService::Get().GetScalingMode(_scalingModeIdx).hdr.CaptureIntent());
 	auto getValue = [&](std::string_view name, float fallback) {
+		if (name == "__hdrHasPair") return hdrPlan.error == HdrComponentError::None && _effectIdx < hdrPlan.stages.size() &&
+			hdrPlan.stages[_effectIdx].pairIndex != size_t(-1) ? 1.f : 0.f;
 		const auto it = values.find(StrHelper::UTF8ToUTF16(name));
 		if (it != values.end()) return it->second;
 		const auto descriptor = std::ranges::find(_effectInfo->params, name, &EffectParameterDesc::name);
@@ -294,7 +317,9 @@ void EffectParametersViewModel::_RefreshConditionalVisibility() {
 			parameter->SynchronizeValue(UsesFrontEdgeSyncFrameRate(frontEdgeSyncEnabled,
 				getValue(name, 0.0f)) ? 0.0f : 1.0f);
 		}
-		const bool visible = IsEffectParameterVisible(effect, name, getValue);
+		const auto role=ScalingModesService::Get().GetScalingMode(_scalingModeIdx).effects[_effectIdx].hdrManagedRole;
+		const bool visible = !(role!=HdrManagedRole::None && (name=="mode" || role==HdrManagedRole::PairRestore)) &&
+			IsEffectParameterVisible(effect, name, getValue);
 		parameter->IsVisible(visible);
 		parameter->IsEnabled(visible && IsEffectParameterEnabled(effect, name, frontEdgeSyncEnabled, getValue));
 		auto display = _effectInfo->params[parameter->Index()];
@@ -316,8 +341,10 @@ void EffectParametersViewModel::_SynchronizeParameters() {
 	for (const auto& parameter : _parameterImpls) {
 		const auto& descriptor = _effectInfo->params[parameter->Index()];
 		const auto it = values.find(StrHelper::UTF8ToUTF16(descriptor.name));
-		const float fallback = descriptor.constant.index() == 0 ?
+		float fallback = descriptor.constant.index() == 0 ?
 			std::get<0>(descriptor.constant).defaultValue : float(std::get<1>(descriptor.constant).defaultValue);
+		if (name == L"Color\\SDR_to_HDR" && descriptor.name == "nativeWhiteNits")
+			fallback = NativeHdrWhiteValue(values, std::wstring(L"nativeWhiteNits"), std::wstring(L"whiteNits"), std::wstring(L"exposure"));
 		parameter->SynchronizeValue(NormalizeEffectParameterValue(descriptor,
 			it == values.end() ? fallback : it->second));
 	}
@@ -332,6 +359,25 @@ phmap::flat_hash_map<std::wstring, float>& EffectParametersViewModel::_Data() co
 
 hstring ScalingModeParameter::ValueText() const noexcept {
 	return App::DoubleFormatter().FormatDouble(_value);
+}
+
+void ScalingModeParameter::EditableValue(hstring const& text) {
+	if (!IsPreciseInput() || text == ValueText()) return;
+	const auto parsed = App::DoubleFormatter().as<Windows::Globalization::NumberFormatting::INumberParser>().ParseDouble(text);
+	const double minimum = std::max(_minimum, double(_descriptor->editMinimum));
+	const float candidate = parsed ? float(parsed.Value()) : std::numeric_limits<float>::quiet_NaN();
+	// Compare in the stored float domain: a typed decimal 0.1 must match the
+	// float minimum, which is slightly greater than the parsed double 0.1.
+	if (!parsed || !std::isfinite(candidate) || candidate < float(minimum) || candidate > float(_maximum) ||
+		(_descriptor->constant.index() == 1 && parsed.Value() != std::floor(parsed.Value()))) {
+		_inputError = to_hstring(::Magpie::EffectParameterLocalization::Resource(L"HdrParameter_InvalidInput",
+			"Enter a number in the shown range; integer parameters require whole numbers."));
+	} else {
+		_inputError = {};
+		Value(parsed.Value());
+	}
+	RaisePropertyChanged(L"InputError");
+	RaisePropertyChanged(L"HasInputError");
 }
 
 }

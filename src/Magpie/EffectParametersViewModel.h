@@ -5,6 +5,8 @@
 #include <parallel_hashmap/phmap.h>
 #include "Event.h"
 #include "EffectChoiceItems.h"
+#include "EffectParameterValue.h"
+#include <optional>
 
 namespace Magpie {
 struct EffectInfo;
@@ -140,10 +142,41 @@ struct ScalingModeParameter : ScalingModeParameterT<ScalingModeParameter>,
 	}
 
 	void Value(double value) {
+		if (_descriptor && _descriptor->inputStep > 0)
+			value = ::Magpie::NormalizeEffectParameterInput(*_descriptor, float(value));
 		if (!_isEnabled || _value == value) return;
 		_value = value;
 		RaisePropertyChanged(L"Value");
 		RaisePropertyChanged(L"ValueText");
+		RaisePropertyChanged(L"EditableValue");
+		RaisePropertyChanged(L"SliderValue");
+	}
+	void ConfigureDescriptor(const ::Magpie::EffectParameterDesc& value) { _descriptor = value; }
+	bool IsPreciseInput() const noexcept { return _descriptor && _descriptor->inputStep > 0; }
+	bool IsLegacyNumeric() const noexcept { return !IsPreciseInput(); }
+	hstring EditableValue() const noexcept { return ValueText(); }
+	void EditableValue(hstring const& value);
+	hstring InputError() const noexcept { return _inputError; }
+	bool HasInputError() const noexcept { return !_inputError.empty(); }
+	double SliderMinimum() const noexcept { return IsPreciseInput() ? 0 : _minimum; }
+	double SliderMaximum() const noexcept {
+		return IsPreciseInput() ? double(::Magpie::GetEffectParameterInteractionTicks(*_descriptor).size() - 1) : _maximum;
+	}
+	double SliderStep() const noexcept { return IsPreciseInput() ? 1 : _step; }
+	double SliderValue() const noexcept {
+		if (!IsPreciseInput()) return _value;
+		int tick = 0, maximum = 0;
+		::Magpie::GetEffectParameterTicks(*_descriptor, float(_value), tick, maximum);
+		return tick;
+	}
+	void SliderValue(double value) {
+		if (!IsPreciseInput()) { Value(value); return; }
+		// Binding initialization must not quantize an existing non-grid value.
+		if (value == SliderValue()) return;
+		Value(::Magpie::GetEffectParameterValueFromTick(*_descriptor, int(std::lround(value)), int(SliderMaximum())));
+	}
+	void StepValue(bool up, bool coarse = false) {
+		if (IsPreciseInput()) Value(::Magpie::StepEffectParameter(*_descriptor, float(_value), up, coarse));
 	}
 
 	double DefaultValue() const noexcept { return _defaultValue; }
@@ -161,6 +194,8 @@ struct ScalingModeParameter : ScalingModeParameterT<ScalingModeParameter>,
 		} else {
 			RaisePropertyChanged(L"Value");
 			RaisePropertyChanged(L"ValueText");
+			RaisePropertyChanged(L"EditableValue");
+			RaisePropertyChanged(L"SliderValue");
 		}
 	}
 
@@ -225,6 +260,8 @@ private:
 	double _value;
 	IObservableVector<hstring> _choices{ nullptr };
 	std::vector<int> _choiceValues;
+	std::optional<::Magpie::EffectParameterDesc> _descriptor;
+	hstring _inputError;
 };
 
 struct EffectParameterGroupViewModel :

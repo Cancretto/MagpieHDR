@@ -2099,6 +2099,10 @@ void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 				info.restartReason = EffectParameterRestartReason::None;
 			}
 			// The running backend owns live support and history reset semantics.
+			if (option.hdrManagedRole!=HdrManagedRole::None && (parameter.name=="mode" || option.hdrManagedRole==HdrManagedRole::PairRestore)) {
+				info.applyMode=EffectParameterApplyMode::Unavailable;
+				info.restartReason=EffectParameterRestartReason::None;
+			}
 			// DLSSNR observes inputRevision without tearing down the effect group.
 			infos.push_back(std::move(info));
 		}
@@ -2286,7 +2290,7 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 
 	if (anySucceeded) {
 		if (_runtimeHdrComponents.enabled) {
-			_runtimeHdrComponents = BuildHdrComponentPlan(_runtimeEffectOptions);
+			_runtimeHdrComponents = BuildHdrComponentPlan(_runtimeEffectOptions, ScalingWindow::Get().Options().hdrCaptureIntent);
 			_UpdateHdrEffectBoundaryContexts();
 		}
 		ScalingWindow::Get().Options().parameterSession->Applied(_runtimeEffectOptions);
@@ -4148,7 +4152,16 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 	// 从倒数第三个通道开始需要检查输出是否被后面的通道覆盖。
 	bool isOverwritten = false;
 	ID3D11Texture2D* sourceTex;
-	EffectIntermediateTextureFormat format;
+	ColorDescription exportColor{};
+	bool exportHdr = false;
+	bool exportCanonicalOutput = false;
+	auto setOutputColor = [&] {
+		exportCanonicalOutput = true;
+		const auto resolved = ResolveHdrExportColor(_effectDrawers[effectIdx].GetHdrBoundary().inputFrame.metadata.color,
+			_runtimeHdrComponents, effectIdx, options.IsHdrCompatibilityEnabled());
+		exportHdr = resolved.hdr;
+		exportColor = resolved.color;
+	};
 	// 效果输出保存为 png，中间结果保存为 dds
 	const wchar_t* imgFormat;
 
@@ -4159,11 +4172,13 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 			fail(ScalingError::ScreenshotReadbackFailed, "No presented scene available");
 			co_return false;
 		}
-		format = EffectIntermediateTextureFormat::R8G8B8A8_UNORM;
+		exportColor = original ? _passThroughFrames.PresentedFrameMetadata().color
+			: _frontendPresentedFrameMetadata.color;
+		exportHdr = exportColor.transfer == HdrTransferFunction::Linear || exportColor.transfer == HdrTransferFunction::PQ;
 		imgFormat = L"png";
 	} else if (passIdx == std::numeric_limits<uint32_t>::max()) {
 		sourceTex = _effectDrawers[effectIdx].GetOutputTexture();
-		format = _activeEffectDescs[effectIdx]->textures[1].format;
+		setOutputColor();
 		imgFormat = L"png";
 	} else {
 		const std::vector<EffectPassDesc>& passes = _activeEffectDescs[effectIdx]->passes;
@@ -4175,8 +4190,11 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 		const uint32_t targetOutput =
 			outputIdx == std::numeric_limits<uint32_t>::max() ? outputs[0] : outputs[outputIdx];
 
-		sourceTex = _effectDrawers[effectIdx].GetTexture(targetOutput);
-		format = _activeEffectDescs[effectIdx]->textures[targetOutput].format;
+		// OUTPUT has a canonical scene counterpart; intermediate DDS surfaces
+		// retain the backend's raw format and values instead.
+		sourceTex = targetOutput == 1 ? _effectDrawers[effectIdx].GetOutputTexture()
+			: _effectDrawers[effectIdx].GetTexture(targetOutput);
+		if (targetOutput == 1) setOutputColor();
 		imgFormat = targetOutput == 1 ? L"png" : L"dds";
 
 		if (passIdx + 3 <= passCount) {
@@ -4211,6 +4229,11 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 		}
 
 		_effectDrawers[effectIdx].DrawForExport(*_activeEffectDescs[effectIdx], passIdx);
+		if (exportCanonicalOutput && exportHdr &&
+			!_effectDrawers[effectIdx].CompleteHdrOutput()) {
+			fail(ScalingError::ScreenshotReadbackFailed, "Complete canonical HDR export output");
+			co_return false;
+		}
 		for (size_t i = effectIdx; i < _effectFrameStates.size(); ++i) _effectFrameStates[i].Invalidate();
 		_forceNextRender = true;
 	}
@@ -4311,7 +4334,7 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 	const auto fullPath = screenshotsDir / fileName;
 	TextureSaveError saveError;
 	if (!TextureHelper::SaveTexture(fullPath.c_str(), desc.Width, desc.Height,
-		format, pixelData, mapped.RowPitch, &saveError)) {
+		desc.Format, pixelData, mapped.RowPitch, &saveError, exportHdr ? &exportColor : nullptr)) {
 		if (report) report(target, saveError.fileWriteFailed ? ScalingError::ScreenshotWriteFailed
 			: (std::wstring_view(imgFormat) == L"dds" ? ScalingError::ScreenshotIntermediateEncodeFailed
 				: ScalingError::ScreenshotEncodeFailed),

@@ -44,11 +44,15 @@ struct EffectParameterLocalization {
 				(choice == parameter.choices.end() ? std::to_string(value) : choice->label));
 		} else {
 			std::visit([&](const auto& constant) {
-				append(fmt::format("{} {:.7g}–{:.7g} · {} {:.7g} · {} {:.7g}",
-					Resource(L"EffectParameter_Help_Range", "Range"), double(constant.minValue), double(constant.maxValue),
+				const std::string step=parameter.segmentedSteps ? "5 / 10 / 50" : fmt::format("{:.7g}",
+					parameter.inputStep > 0 ? double(parameter.sliderStep) : double(constant.step));
+				append(fmt::format("{} {:.7g}–{:.7g} · {} {:.7g} · {} {}",
+					Resource(L"EffectParameter_Help_Range", "Range"), parameter.inputStep > 0 ? std::max(double(constant.minValue), double(parameter.editMinimum)) : double(constant.minValue), double(constant.maxValue),
 					Resource(L"EffectParameter_Help_Default", "Default"), double(constant.defaultValue),
-					Resource(L"EffectParameter_Help_Step", "Step"), double(constant.step)));
+					Resource(L"EffectParameter_Help_Step", "Step"), step));
 			}, parameter.constant);
+			if (parameter.inputStep > 0) append(Resource(L"HdrParameter_PreciseInputHelp",
+				"Type an exact value; Shift + arrow or wheel uses the coarse step."));
 		}
 		return text;
 	}

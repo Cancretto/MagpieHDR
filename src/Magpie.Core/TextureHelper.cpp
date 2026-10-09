@@ -4,6 +4,7 @@
 #include "DirectXHelper.h"
 #include "EffectHelper.h"
 #include "Logger.h"
+#include "TextureExportPixels.h"
 #include <wincodec.h>
 
 namespace Magpie {
@@ -326,19 +327,24 @@ bool TextureHelper::SaveTexture(
 	const wchar_t* fileName,
 	uint32_t width,
 	uint32_t height,
-	EffectIntermediateTextureFormat format,
+	DXGI_FORMAT format,
 	std::span<uint8_t> pixelData,
 	uint32_t rowPitch,
-	TextureSaveError* error
+	TextureSaveError* error,
+	const ColorDescription* hdrColor
 ) noexcept {
 	if (error) *error = {};
 	if (std::wstring_view(fileName).ends_with(L".dds")) {
-		DXGI_FORMAT dxgiFormat = EffectHelper::FORMAT_DESCS[(uint32_t)format].dxgiFormat;
-		return DDSHelper::Save(fileName, width, height, dxgiFormat, pixelData, rowPitch, error);
+		return DDSHelper::Save(fileName, width, height, format, pixelData, rowPitch, error);
 	} else {
 		assert(std::wstring_view(fileName).ends_with(L".png"));
-		assert(format == EffectIntermediateTextureFormat::R8G8B8A8_UNORM);
-		return SavePng(fileName, width, height, pixelData, rowPitch, error);
+		std::vector<uint8_t> rgba;
+		if (!PreparePngPixels(width, height, format, pixelData, rowPitch, hdrColor, rgba)) {
+			RecordTextureSaveError(error, E_INVALIDARG);
+			Logger::Get().Error("Unsupported PNG source format or color contract");
+			return false;
+		}
+		return SavePng(fileName, width, height, rgba, width * 4, error);
 	}
 }
 

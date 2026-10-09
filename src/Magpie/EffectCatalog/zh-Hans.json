@@ -3310,10 +3310,10 @@
         "hdr-components"
       ],
       "summary": "恢复兼容映射，或映射 SDR 白点。",
-      "details": "保持输入尺寸，放在 SDR 效果段之后。自动模式优先恢复上游 HDR → SDR 的兼容映射；没有配对时，将 SDR 白色映射到设定亮度。\n\n配对恢复使用上游参数，本项白点与曝光仅用于原生 SDR 映射。输出屏幕需开启 Windows HDR；普通白点映射不会生成原素材没有的高光细节。参数修改需重新缩放。",
+      "details": "保持输入尺寸，放在 SDR 效果段之后。自动模式优先恢复上游 HDR → SDR 的兼容映射；没有配对时，将 SDR 白色映射到设定亮度。\n\n配对恢复使用上游参数。原生 SDR 映射使用一个白色亮度参数，80–4000 尼特、默认 203；高值提高整体画面亮度。旧白点和曝光语义在主动编辑前保留。输出屏幕需开启 Windows HDR；普通白色映射不会生成原素材没有的高光细节。参数修改需重新缩放。",
       "level": "advanced",
       "recommendation": "进阶／实验",
-      "search": "Color\\SDR_to_HDR SDR → HDR HDR 组件  恢复兼容映射，或映射 SDR 白点。 保持输入尺寸，放在 SDR 效果段之后。自动模式优先恢复上游 HDR → SDR 的兼容映射；没有配对时，将 SDR 白色映射到设定亮度。  配对恢复使用上游参数，本项白点与曝光仅用于原生 SDR 映射。输出屏幕需开启 Windows HDR；普通白点映射不会生成原素材没有的高光细节。参数修改需重新缩放。 Color\\SDR_to_HDR Mapping Native SDR white (nits) Native SDR exposure",
+      "search": "Color\\SDR_to_HDR SDR → HDR 恢复兼容映射，或映射 SDR 白点。 保持输入尺寸，放在 SDR 效果段之后。自动模式优先恢复上游 HDR → SDR 的兼容映射；没有配对时，将 SDR 白色映射到设定亮度。  配对恢复使用上游参数。原生 SDR 映射使用一个白色亮度参数，80–4000 尼特、默认 203；高值提高整体画面亮度。旧白点和曝光语义在主动编辑前保留。输出屏幕需开启 Windows HDR；普通白色映射不会生成原素材没有的高光细节。参数修改需重新缩放。 nativeWhiteNits Native SDR white brightness Legacy exposure",
       "family": null,
       "subfamily": null
     },

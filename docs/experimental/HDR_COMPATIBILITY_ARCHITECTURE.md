@@ -2,6 +2,8 @@
 
 ## Status and Scope
 
+**2026-10-05 update:** The current user configuration is defined by [HDR compatibility update](design/20261005-hdr-compatibility-update-functional-spec.md), with implementation and validation in [the development handoff](todos/20261005-hdr-compatibility-update-development-TODO.md). The profile switch described below is a historical design: it is hidden/retired and cannot enable HDR. Current sessions use explicit components or an explicit group input intent, a materialized group plan, and per-node color domains. Group-managed output methods are Auto, pair restoration, native SDR white mapping, RTX HDR, and SDR output. The remaining sections preserve the earlier protocol research baseline; they are not instructions for the current settings UI.
+
 This document is the design and implementation baseline for a self-maintained HDR-compatible Magpie fork. It records decisions reached from capture experiments and protocol research, together with the currently implemented generic work surface. Existing SDR behavior remains the compatibility baseline and remains semantically unchanged while HDR compatibility is disabled.
 
 The evidence record is [HDR_PROTOCOL_EVIDENCE.md](HDR_PROTOCOL_EVIDENCE.md) and its machine-readable companion [HDR_PROTOCOL_EVIDENCE.json](HDR_PROTOCOL_EVIDENCE.json).

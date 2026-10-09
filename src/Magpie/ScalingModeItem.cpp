@@ -15,6 +15,10 @@
 #include "ScalingModeEffectItem.h"
 #include "ScalingOptions.h"
 #include "RootPage.h"
+#include "HdrGroupPlan.h"
+#include "EffectParameterLocalization.h"
+#include "ScalingService.h"
+#include "Win32Helper.h"
 
 using namespace ::Magpie;
 
@@ -66,6 +70,10 @@ ScalingModeItem::ScalingModeItem(
 	}
 	_effectsChangedRevoker = _effects.VectorChanged(
 		auto_revoke, { this, &ScalingModeItem::_Effects_VectorChanged });
+	_hdrStructureChangedRevoker=ScalingModesService::Get().HdrGroupStructureChanged(auto_revoke,
+		std::bind_front(&ScalingModeItem::_HdrStructureChanged,this));
+	_hdrParametersChangedRevoker=ScalingModesService::Get().EffectParametersChanged(auto_revoke,
+		[this](uint32_t mode,uint32_t) { if (!_IsRemoved() && mode==_index) _RefreshHdrProperties(); });
 }
 
 void ScalingModeItem::_Index(uint32_t value) noexcept {
@@ -142,9 +150,16 @@ void ScalingModeItem::_Effects_VectorChanged(IObservableVector<IInspectable> con
 		return;
 	}
 
+	const auto before=effects;
 	EffectItem removedEffect = std::move(effects[movingFromIdx]);
 	effects.erase(effects.begin() + movingFromIdx);
 	effects.emplace(effects.begin() + movingToIdx, std::move(removedEffect));
+	if (_Data().hdr.managed) {
+		const auto candidate=effects;
+		effects=before;
+		_ApplyHdrSettings(_Data().hdr,candidate);
+		return;
+	}
 
 	uint32_t minIdx, maxIdx;
 	if (movingFromIdx < movingToIdx) {
@@ -169,6 +184,11 @@ void ScalingModeItem::_ScalingModeEffectItem_Removed(uint32_t index) {
 	}
 
 	std::vector<EffectItem>& effects = _Data().effects;
+	if (index>=effects.size() || effects[index].hdrManagedRole!=HdrManagedRole::None) return;
+	if (_Data().hdr.managed) {
+		auto candidate=effects; candidate.erase(candidate.begin()+index);
+		_ApplyHdrSettings(_Data().hdr,std::move(candidate)); return;
+	}
 	effects.erase(effects.begin() + index);
 
 	_isMovingEffects = false;
@@ -207,6 +227,16 @@ void ScalingModeItem::AddEffect(const hstring& fullName) {
 
 	const EffectInfo* effectInfo = EffectsService::Get().GetEffect(fullName);
 	if (!effectInfo) return;
+	if (_Data().hdr.managed) {
+		auto candidate=_Data().effects;
+		EffectItem effect; effect.name=fullName;
+		if (effectInfo->CanScale()) effect.scalingType=::Magpie::ScalingType::Fit;
+		if (fullName==L"DLSSNR\\DLSSNR_AI_Filter") NormalizeDLSSNRDetailParameters(effect.parameters);
+		auto insertion=candidate.end();
+		if (!candidate.empty() && GetHdrEffectCapability(candidate.back().name).capability==HdrEffectCapability::FrameGeneration) --insertion;
+		candidate.insert(insertion,std::move(effect));
+		_ApplyHdrSettings(_Data().hdr,std::move(candidate)); return;
+	}
 	EffectItem& effect = _Data().effects.emplace_back();
 	effect.name = fullName;
 	if (fullName == L"DLSSNR\\DLSSNR_AI_Filter")
@@ -227,8 +257,17 @@ void ScalingModeItem::AddEffect(const hstring& fullName) {
 }
 
 bool ScalingModeItem::CanAddEffect(const hstring& fullName) const noexcept {
-	if (_IsRemoved() || !EffectsService::Get().GetEffect(fullName)) {
+	if (_IsRemoved() || _Data().hdrInvalid || !EffectsService::Get().GetEffect(fullName)) {
 		return false;
+	}
+	if (_Data().hdr.managed) {
+		auto candidate=_Data().effects;
+		EffectItem effect; effect.name=fullName;
+		if (EffectsService::Get().GetEffect(fullName)->CanScale()) effect.scalingType=::Magpie::ScalingType::Fit;
+		auto insertion=candidate.end();
+		if (!candidate.empty() && GetHdrEffectCapability(candidate.back().name).capability==HdrEffectCapability::FrameGeneration) --insertion;
+		candidate.insert(insertion,std::move(effect));
+		if (BuildHdrGroupPlan(candidate,_Data().hdr).error!=HdrGroupError::None) return false;
 	}
 
 	const FrameGenerationEffectKind candidate =
@@ -242,8 +281,12 @@ bool ScalingModeItem::CanAddEffect(const hstring& fullName) const noexcept {
 
 hstring ScalingModeItem::EffectAddProblem(const hstring& fullName) const {
 	if (_IsRemoved()) return L"请重新打开要编辑的效果组，再添加效果器。";
+	if (_Data().hdrInvalid) return HdrProblem();
 	if (!EffectsService::Get().GetEffect(fullName)) return L"请恢复对应效果器文件并重启 Magpie，再尝试添加。";
 	if (CanAddEffect(fullName)) return {};
+	if (_Data().hdr.managed && ClassifyFrameGenerationEffect(std::wstring_view(fullName))==FrameGenerationEffectKind::None)
+		return to_hstring(EffectParameterLocalization::Resource(L"HdrGroup_AddProblem",
+			"This effect cannot be added to the managed HDR plan. Use advanced manual editing for converters or unverified HDR effects."));
 	for (const auto& effect : _Data().effects) {
 		if (ClassifyFrameGenerationEffect(effect.name) != FrameGenerationEffectKind::None) {
 			return hstring(fmt::format(L"当前组已使用 {}；如需改用 {}，请先移除现有补帧项。",
@@ -276,6 +319,7 @@ hstring ScalingModeItem::Description() const noexcept {
 
 	std::wstring result;
 	for (const EffectItem& effect : _Data().effects) {
+		if (effect.hdrManagedRole!=HdrManagedRole::None) continue;
 		if (!result.empty()) {
 			result.append(L" > ");
 		}
@@ -395,7 +439,7 @@ bool ScalingModeItem::CanReorderEffects() const noexcept {
 		return false;
 	}
 
-	return _effects.Size() > 1;
+	return std::ranges::count_if(_Data().effects,[](const auto& effect) { return effect.hdrManagedRole==HdrManagedRole::None; })>1;
 }
 
 void ScalingModeItem::Remove() {
@@ -418,6 +462,163 @@ void ScalingModeItem::Detach() noexcept {
 	_scalingModeAddedRevoker.Revoke();
 	_scalingModeMovedRevoker.Revoke();
 	_scalingModeNamesChangedRevoker.Revoke();
+	_hdrStructureChangedRevoker.Revoke();
+	_hdrParametersChangedRevoker.Revoke();
+}
+
+static hstring HdrText(std::wstring_view key,std::string_view fallback) {
+	return to_hstring(EffectParameterLocalization::Resource(key,fallback));
+}
+
+IObservableVector<hstring> ScalingModeItem::HdrInputChoices() {
+	if (!_hdrInputChoices) _hdrInputChoices=MakeEffectChoiceItems({
+		HdrText(L"HdrGroup_InputManual","Keep existing chain / advanced manual"),
+		HdrText(L"HdrGroup_InputSdr","SDR input"), HdrText(L"HdrGroup_InputHdr","HDR input")});
+	return _hdrInputChoices;
+}
+
+IObservableVector<hstring> ScalingModeItem::HdrOutputChoices() {
+	if (!_hdrOutputChoices) _hdrOutputChoices=MakeEffectChoiceItems({
+		HdrText(L"HdrGroup_OutputAuto","Auto"), HdrText(L"HdrGroup_OutputRestore","Restore compatibility pair"),
+		HdrText(L"HdrGroup_OutputNative","Native SDR white mapping"), HdrText(L"HdrGroup_OutputRtx","RTX HDR"),
+		HdrText(L"HdrGroup_OutputSdr","SDR output")});
+	return _hdrOutputChoices;
+}
+
+IObservableVector<hstring> ScalingModeItem::HdrManualCaptureChoices() {
+	if (!_hdrManualCaptureChoices) _hdrManualCaptureChoices=MakeEffectChoiceItems({
+		HdrText(L"HdrGroup_CaptureFromChain","From existing converters"),
+		HdrText(L"HdrGroup_InputSdr","SDR input"),HdrText(L"HdrGroup_InputHdr","HDR input")});
+	return _hdrManualCaptureChoices;
+}
+int ScalingModeItem::HdrManualCaptureIndex() const noexcept { return _IsRemoved() ? 0 : int(_Data().hdr.input); }
+void ScalingModeItem::HdrManualCaptureIndex(int value) {
+	if (!CanEditHdr() || IsHdrManaged() || value<0 || value>2 || value==HdrManualCaptureIndex()) return;
+	auto settings=_Data().hdr; settings.input=HdrGroupInput(value);
+	_ApplyHdrSettings(settings,_Data().effects);
+}
+
+bool ScalingModeItem::IsHdrManaged() const noexcept { return !_IsRemoved() && _Data().hdr.managed; }
+bool ScalingModeItem::CanEditHdr() const noexcept { return !_IsRemoved() && !_Data().hdrInvalid; }
+int ScalingModeItem::HdrInputIndex() const noexcept { return IsHdrManaged() ? int(_Data().hdr.input) : 0; }
+int ScalingModeItem::HdrOutputIndex() const noexcept { return _IsRemoved() ? 0 : int(_Data().hdr.output); }
+
+void ScalingModeItem::HdrInputIndex(int value) {
+	if (!CanEditHdr() || value<0 || value>2 || value==HdrInputIndex()) return;
+	auto settings=_Data().hdr;
+	auto effects=_Data().effects;
+	if (!value) {
+		CaptureHdrGroupParameters(effects,settings);
+		settings.managed=false; // retain explicit capture intent when exposing a pure HDR chain
+		for (auto& effect:effects) effect.hdrManagedRole=HdrManagedRole::None;
+	} else {
+		if (!settings.managed && std::ranges::any_of(effects,[](const auto& effect) {
+			return ClassifyHdrComponent(HdrEffectAsciiName(effect.name))!=HdrComponentKind::None;
+		})) {
+			const auto adopted=TryAdoptHdrGroup(effects,settings.CaptureIntent());
+			if (!adopted) {
+				_hdrProblem=HdrText(L"HdrGroup_AdoptionProblem","This manual chain cannot be represented equivalently. Keep advanced manual editing; its order and values are preserved.");
+				_RefreshHdrProperties(); return;
+			}
+			settings=adopted->first; effects=adopted->second;
+		}
+		settings.managed=true; settings.input=HdrGroupInput(value);
+	}
+	_ApplyHdrSettings(settings,std::move(effects));
+}
+
+void ScalingModeItem::HdrOutputIndex(int value) {
+	if (!IsHdrManaged() || !CanEditHdr() || value<0 || value>4 || value==HdrOutputIndex()) return;
+	auto settings=_Data().hdr; settings.output=HdrGroupOutput(value);
+	_ApplyHdrSettings(settings,_Data().effects);
+}
+
+bool ScalingModeItem::_ApplyHdrSettings(HdrGroupSettings settings,std::vector<EffectItem> effects) {
+	if (!CanEditHdr()) return false;
+	CaptureHdrGroupParameters(effects,settings);
+	const auto plan=BuildHdrGroupPlan(effects,settings);
+	if (plan.error!=HdrGroupError::None) {
+		const wchar_t* key=L"HdrGroup_InvalidPlan";
+		if (plan.error==HdrGroupError::MissingPair) key=L"HdrGroup_MissingPair";
+		if (plan.error==HdrGroupError::UnknownEffect) key=L"HdrGroup_UnknownEffect";
+		if (plan.error==HdrGroupError::FrameGenerationPosition) key=L"HdrGroup_FrameGenerationPosition";
+		_hdrProblem=HdrText(key,"The requested HDR plan is unavailable. The existing chain has been retained.");
+		_RebuildEffectViews(); _RefreshHdrProperties(); return false;
+	}
+	_Data().hdr=settings; _Data().effects=plan.effects; ++_Data().hdrRevision;
+	_hdrProblem={};
+	_RebuildEffectViews(); _RefreshHdrProperties();
+	AppSettings::Get().SaveAsync(); ScalingService::Get().HdrGroupEdited(_index);
+	return true;
+}
+
+void ScalingModeItem::_HdrStructureChanged(uint32_t mode) {
+	if (!_IsRemoved() && mode==_index && IsHdrManaged()) _ApplyHdrSettings(_Data().hdr,_Data().effects);
+}
+
+void ScalingModeItem::_RebuildEffectViews() {
+	for (const auto& effect:_effects) GetEffectItemImpl(effect).EffectIdx(std::numeric_limits<uint32_t>::max());
+	std::vector<IInspectable> views;
+	for (uint32_t i=0; i<_Data().effects.size(); ++i) views.push_back(*_CreateScalingModeEffectItem(_index,i));
+	const bool moving=std::exchange(_isMovingEffects,false);
+	auto restore=wil::scope_exit([&] { _isMovingEffects=moving; });
+	_effects.ReplaceAll(views); _movingFromIdx=std::numeric_limits<uint32_t>::max();
+	RaisePropertyChanged(L"Description"); RaisePropertyChanged(L"HasUnkownEffects"); _RefreshEffectDragState();
+}
+
+void ScalingModeItem::_RefreshHdrProperties() {
+	for (const wchar_t* property:{L"HdrInputIndex",L"HdrOutputIndex",L"HdrManualCaptureIndex",L"IsHdrManual",L"IsHdrManaged",L"CanEditHdr",L"HdrSummary",L"HdrOutputDescription",L"HdrProblem",
+		L"HasHdrProblem",L"HasHdrInputParameters",L"HasHdrOutputParameters",L"HdrInputParameters",L"HdrOutputParameters",L"CanReorderEffects"}) RaisePropertyChanged(property);
+}
+
+winrt::Magpie::EffectParametersViewModel ScalingModeItem::_HdrParameters(HdrManagedRole role) const noexcept {
+	if (!IsHdrManaged()) return nullptr;
+	for (uint32_t i=0; i<_Data().effects.size() && i<_effects.Size(); ++i)
+		if (_Data().effects[i].hdrManagedRole==role) return GetEffectItemImpl(_effects.GetAt(i)).Parameters();
+	return nullptr;
+}
+winrt::Magpie::EffectParametersViewModel ScalingModeItem::HdrInputParameters() const noexcept { return _HdrParameters(HdrManagedRole::InputMapping); }
+winrt::Magpie::EffectParametersViewModel ScalingModeItem::HdrOutputParameters() const noexcept { return _HdrParameters(HdrManagedRole::Output); }
+bool ScalingModeItem::HasHdrInputParameters() const noexcept { return bool(HdrInputParameters()); }
+bool ScalingModeItem::HasHdrOutputParameters() const noexcept { return bool(HdrOutputParameters()); }
+bool ScalingModeItem::HasHdrProblem() const noexcept { return !_IsRemoved() && (_Data().hdrInvalid || !_hdrProblem.empty()); }
+hstring ScalingModeItem::HdrProblem() const {
+	if (_IsRemoved()) return {};
+	return _Data().hdrInvalid ? HdrText(L"HdrGroup_RecoveryProblem","Saved HDR settings are invalid and have been retained for recovery. Repair this group before starting.") : _hdrProblem;
+}
+
+hstring ScalingModeItem::HdrSummary() const {
+	if (_IsRemoved()) return {};
+	if (!IsHdrManaged()) {
+		const auto intent=_Data().hdr.CaptureIntent();
+		return HdrText(intent ? (*intent ? L"HdrGroup_ManualHdrSummary" : L"HdrGroup_ManualSdrSummary") : L"HdrGroup_ManualSummary",
+			"Advanced manual chain: existing converters and explicit input intent determine capture and output.");
+	}
+	const auto plan=BuildHdrGroupPlan(_Data().effects,_Data().hdr);
+	return to_hstring(fmt::format(fmt::runtime(EffectParameterLocalization::Resource(L"HdrGroup_Summary","{} input → {} SDR span(s) → {} output")),
+		_Data().hdr.input==HdrGroupInput::Hdr ? "HDR" : "SDR",plan.sdrSegments,_Data().hdr.output==HdrGroupOutput::Sdr ? "SDR" : "HDR"));
+}
+
+hstring ScalingModeItem::HdrOutputDescription() const {
+	if (!IsHdrManaged()) return HdrText(L"HdrGroup_ManualOutput","Edit the existing conversion components in advanced manual mode.");
+	const auto& settings=_Data().hdr;
+	if (settings.output==HdrGroupOutput::RtxHdr) {
+		const auto directory=Win32Helper::GetExePath().parent_path();
+		const bool ready=Win32Helper::FileExists((directory/L"Magpie.RtxVideo.dll").c_str()) && Win32Helper::FileExists((directory/L"nvngx_truehdr.dll").c_str());
+		return HdrText(ready ? L"HdrGroup_RtxLibrariesReady" : L"HdrGroup_RtxLibrariesMissing",
+			"RTX HDR requires its runtime libraries. GPU and driver support are verified when starting; HDR input is reinterpreted through SDR.");
+	}
+	if (settings.output==HdrGroupOutput::Sdr) return HdrText(L"HdrGroup_SdrDescription","HDR input uses display tone mapping; output stays SDR.");
+	if (settings.output==HdrGroupOutput::NativeWhite || (settings.output==HdrGroupOutput::Auto && settings.input==HdrGroupInput::Sdr)) {
+		auto description=fmt::format(fmt::runtime(EffectParameterLocalization::Resource(settings.input==HdrGroupInput::Hdr ? L"HdrGroup_NativeHdrDescription" : L"HdrGroup_NativeDescription",
+			"Actual method: native white mapping, {:.7g} nits. Increasing this value raises white, gray and highlights together.")),settings.nativeWhiteNits);
+		if (settings.nativeWhiteNits<80) description+="\n"+EffectParameterLocalization::Resource(L"HdrGroup_LegacyDimDescription",
+			"A legacy dim value is preserved. New edits use the 80–4000-nit range.");
+		return to_hstring(description);
+	}
+	const auto plan=BuildHdrGroupPlan(_Data().effects,settings);
+	return plan.restoresPair ? HdrText(L"HdrGroup_RestoreDescription","Actual method: restore the shared compatibility pair. Quantization, clipping and effect changes cannot be undone.") :
+		HdrText(L"HdrGroup_KeepHdrDescription","Actual method: keep HDR throughout effects with confirmed direct HDR support.");
 }
 
 ScalingMode& ScalingModeItem::_Data() noexcept {

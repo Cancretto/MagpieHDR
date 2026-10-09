@@ -20,6 +20,7 @@ private:
 	void* _instance = nullptr;
 	RtxHdrDrawFn _draw = nullptr;
 	RtxHdrDestroyFn _destroy = nullptr;
+	RtxHdrDestroyExFn _destroyEx = nullptr;
 	ID3D11DeviceContext* _context = nullptr;
 	MagpieRtxHdrSettings _settings;
 };

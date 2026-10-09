@@ -7,7 +7,12 @@ if ($review.effects.Count -ne 162 -or $review.families.Count -ne 13 -or $review.
 foreach ($entry in $review.effects) {
     if ($entry.review.status -ne 'source-reviewed') { throw "Unreviewed effect: $($entry.id)" }
     $sourcePath = Join-Path $repoRoot $entry.source.path
-    if ((Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash -ine $entry.source.sha256) { throw "Source changed since review: $($entry.id)" }
+    if ((Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash -ine $entry.source.sha256) {
+        # Git may check out reviewed LF sources as CRLF on Windows.
+        $canonical = [Text.Encoding]::UTF8.GetBytes([Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($sourcePath)).Replace("`r`n", "`n"))
+        $canonicalHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($canonical))
+        if ($canonicalHash -ine $entry.source.sha256) { throw "Source changed since review: $($entry.id)" }
+    }
     foreach ($path in $entry.review.runtimeEvidence) {
         if (!(Test-Path -LiteralPath (Join-Path $repoRoot $path) -PathType Leaf)) { throw "Missing review evidence: $path" }
     }

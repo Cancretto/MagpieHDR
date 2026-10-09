@@ -7,6 +7,7 @@
 #include "EffectHelper.h"
 #include "EffectsService.h"
 #include "JsonHelper.h"
+#include "HdrGroupJson.h"
 #include "Logger.h"
 #include "ScalingMode.h"
 #include "ScalingModeNames.h"
@@ -139,6 +140,13 @@ static void WriteScalingMode(rapidjson::PrettyWriter<rapidjson::StringBuffer>& w
 	writer.StartObject();
 	writer.Key("name");
 	writer.String(StrHelper::UTF16ToUTF8(scaleMode.name).c_str());
+	if (scaleMode.hdrInvalid) { writer.Key("hdrRecoveryInvalid"); writer.Bool(true); }
+	if (!scaleMode.hdrRecoveryOriginal.empty()) {
+		writer.Key("hdr");
+		writer.RawValue(scaleMode.hdrRecoveryOriginal.data(),scaleMode.hdrRecoveryOriginal.size(),rapidjson::kObjectType);
+	} else if (scaleMode.hdr != HdrGroupSettings{}) {
+		writer.Key("hdr"); WriteHdrGroupJson(writer,scaleMode.hdr);
+	}
 	if (!scaleMode.effects.empty()) {
 		writer.Key("effects");
 		writer.StartArray();
@@ -146,6 +154,9 @@ static void WriteScalingMode(rapidjson::PrettyWriter<rapidjson::StringBuffer>& w
 			writer.StartObject();
 			writer.Key("name");
 			writer.String(StrHelper::UTF16ToUTF8(effect.name).c_str());
+			if (effect.hdrManagedRole != HdrManagedRole::None) {
+				writer.Key("hdrManagedRole"); writer.Uint(uint8_t(effect.hdrManagedRole));
+			}
 			if (effect.isRecoveryInvalid) {
 				writer.Key("recoveryInvalid");
 				writer.Bool(true);
@@ -207,13 +218,32 @@ static bool LoadScalingMode(
 		return false;
 	}
 	if (!loadingSettings && ScalingModeNames::Trim(scalingMode.name).empty()) return false;
+	JsonHelper::ReadBool(scalingModeObj,"hdrRecoveryInvalid",scalingMode.hdrInvalid);
+	const bool hdrSchema=scalingModeObj.FindMember("hdr")!=scalingModeObj.MemberEnd();
+	auto retainInvalidHdrEffect=[&](EffectItem& effect,const rapidjson::Value& original) {
+		scalingMode.hdrInvalid=true; effect.isRecoveryInvalid=true;
+		rapidjson::StringBuffer raw;
+		rapidjson::Writer<rapidjson::StringBuffer> writer(raw); original.Accept(writer);
+		effect.recoveryOriginal.assign(raw.GetString(),raw.GetSize());
+	};
+	if (auto hdr=scalingModeObj.FindMember("hdr"); hdr!=scalingModeObj.MemberEnd()) {
+		if (!ReadHdrGroupJson(hdr->value,scalingMode.hdr)) {
+			if (!loadingSettings) return false;
+			scalingMode.hdrInvalid=true;
+			rapidjson::StringBuffer raw;
+			rapidjson::Writer<rapidjson::StringBuffer> writer(raw); hdr->value.Accept(writer);
+			scalingMode.hdrRecoveryOriginal.assign(raw.GetString(),raw.GetSize());
+		}
+	}
 
 	auto effectsNode = scalingModeObj.FindMember("effects");
 	if (effectsNode == scalingModeObj.MemberEnd()) {
+		scalingMode.hdrInvalid |= scalingMode.hdr.managed;
 		return true;
 	}
 
 	if (!effectsNode->value.IsArray()) {
+		if (loadingSettings && hdrSchema) retainInvalidHdrEffect(scalingMode.effects.emplace_back(),effectsNode->value);
 		return loadingSettings;
 	}
 
@@ -223,6 +253,7 @@ static bool LoadScalingMode(
 	for (const auto& elem : effectsArray) {
 		if (!elem.IsObject()) {
 			if (loadingSettings) {
+				if (hdrSchema) retainInvalidHdrEffect(scalingMode.effects.emplace_back(),elem);
 				continue;
 			} else {
 				return false;
@@ -234,14 +265,21 @@ static bool LoadScalingMode(
 
 		if (!JsonHelper::ReadString(elemObj, "name", effect.name)) {
 			if (loadingSettings) {
-				scalingMode.effects.pop_back();
+				if (hdrSchema) retainInvalidHdrEffect(effect,elem);
+				else scalingMode.effects.pop_back();
 				continue;
 			} else {
 				return false;
 			}
 		}
 		JsonHelper::ReadBool(elemObj, "recoveryInvalid", effect.isRecoveryInvalid);
-		if (auto raw = elemObj.FindMember("recoveryOriginal"); raw != elemObj.MemberEnd() && raw->value.IsString())
+		if (auto role=elemObj.FindMember("hdrManagedRole"); role!=elemObj.MemberEnd()) {
+			if (!role->value.IsUint() || role->value.GetUint()>uint8_t(HdrManagedRole::Identity)) {
+				if (!loadingSettings) return false;
+				retainInvalidHdrEffect(effect,elem);
+			} else effect.hdrManagedRole=HdrManagedRole(role->value.GetUint());
+		}
+		if (auto raw = elemObj.FindMember("recoveryOriginal"); raw != elemObj.MemberEnd() && raw->value.IsString() && effect.recoveryOriginal.empty())
 			effect.recoveryOriginal.assign(raw->value.GetString(), raw->value.GetStringLength());
 		// Frame Rate Filter used to live in the Utility folder. Keep existing
 		// user scaling modes working after moving it to the root effect list.
@@ -249,8 +287,10 @@ static bool LoadScalingMode(
 			effect.name = L"FrameRate_Filter";
 		}
 
-		if (!JsonHelper::ReadUInt(elemObj, "scalingType", (uint32_t&)effect.scalingType) && !loadingSettings) {
-			return false;
+		if (!JsonHelper::ReadUInt(elemObj, "scalingType", (uint32_t&)effect.scalingType) ||
+			(hdrSchema && uint32_t(effect.scalingType)>uint32_t(ScalingType::Fill))) {
+			if (!loadingSettings) return false;
+			if (hdrSchema) retainInvalidHdrEffect(effect,elem);
 		}
 
 		auto scaleNode = elemObj.FindMember("scale");
@@ -261,18 +301,20 @@ static bool LoadScalingMode(
 				float x, y;
 				if (JsonHelper::ReadFloat(scaleObj, "x", x, true)
 					&& JsonHelper::ReadFloat(scaleObj, "y", y, true)
-					&& x > 0 && y > 0)
+					&& x > 0 && y > 0 && (!hdrSchema || (std::isfinite(x) && std::isfinite(y))))
 				{
 					effect.scale = { x,y };
 				} else {
 					if (!loadingSettings) {
 						return false;
 					}
+					if (hdrSchema) retainInvalidHdrEffect(effect,elem);
 				}
 			} else {
 				if (!loadingSettings) {
 					return false;
 				}
+				if (hdrSchema) retainInvalidHdrEffect(effect,elem);
 			}
 		}
 
@@ -283,8 +325,9 @@ static bool LoadScalingMode(
 
 				effect.parameters.reserve(paramsObj.MemberCount());
 				for (const auto& param : paramsObj) {
-					if (!param.value.IsNumber()) {
+					if (!param.value.IsNumber() || (hdrSchema && !std::isfinite(param.value.GetFloat()))) {
 						if (loadingSettings) {
+							if (hdrSchema) retainInvalidHdrEffect(effect,elem);
 							continue;
 						} else {
 							return false;
@@ -298,10 +341,15 @@ static bool LoadScalingMode(
 				if (!loadingSettings) {
 					return false;
 				}
+				if (hdrSchema) retainInvalidHdrEffect(effect,elem);
 			}
 		}
 	}
 
+	if (!ValidateSavedHdrGroup(scalingMode.effects,scalingMode.hdr)) {
+		if (!loadingSettings) return false;
+		scalingMode.hdrInvalid=true;
+	}
 	return true;
 }
 

@@ -36,4 +36,20 @@ inline void ApplyHdrComponentOutputColor(HdrFrameMetadata& metadata,
 	color.metadata = {};
 }
 
+struct HdrExportColor {
+	bool hdr = false;
+	ColorDescription color{};
+};
+
+inline HdrExportColor ResolveHdrExportColor(const ColorDescription& source,
+	const HdrComponentPlan& plan, size_t index, bool legacyHdr) noexcept {
+	HdrFrameMetadata metadata{};
+	metadata.color = source;
+	ApplyHdrComponentOutputColor(metadata, plan, index);
+	// Renderer may append a Bicubic after the configured stages. It inherits
+	// the final domain, and must not index beyond the configured component plan.
+	return { plan.enabled ? (index < plan.stages.size() ? plan.stages[index].outputHdr : plan.outputHdr) : legacyHdr,
+		metadata.color };
+}
+
 }

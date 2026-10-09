@@ -23,6 +23,9 @@ struct ScalingModesPage : ScalingModesPageT<ScalingModesPage> {
 	void ParameterSlider_Loaded(IInspectable const& sender, RoutedEventArgs const&);
 	void ParameterSlider_Unloaded(IInspectable const& sender, RoutedEventArgs const&);
 	void ParameterSlider_LostFocus(IInspectable const& sender, RoutedEventArgs const&);
+	void ParameterSlider_KeyDown(IInspectable const& sender, Input::KeyRoutedEventArgs const&);
+	void ParameterSlider_WheelChanged(IInspectable const& sender, Input::PointerRoutedEventArgs const&);
+	void ParameterValue_KeyDown(IInspectable const& sender, Input::KeyRoutedEventArgs const&);
 	void ParameterSlider_DataContextChanged(FrameworkElement const& sender,
 		DataContextChangedEventArgs const&);
 	void ParameterSlider_ValueChanged(IInspectable const& sender,

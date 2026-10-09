@@ -66,5 +66,25 @@ int main() {
 		assert(BuildHdrComponentPlan(Effects{{"Color\\SDR_to_HDR",{{"mode",value}}}}).error == HdrComponentError::InvalidParameters);
 	for (float value : {399.0f, 2001.0f, 1000.5f})
 		assert(BuildHdrComponentPlan(Effects{{"RTXVideo\\RTXVideo_HDR",{{"peakNits",value}}}}).error == HdrComponentError::InvalidParameters);
+	for (float white : {8.f, 203.f, 1000.f, 1500.f, 4000.f}) {
+		const auto p = BuildHdrComponentPlan(Effects{{"Color\\SDR_to_HDR",{{"nativeWhiteNits",white}}}});
+		assert(p.error == HdrComponentError::None && p.stages[0].whiteNits == white && p.stages[0].exposure == 1);
+		HdrFrameMetadata frame;
+		ApplyHdrComponentOutputColor(frame, p, 0);
+		assert(frame.color.sdrWhiteNits == white && frame.color.referenceWhiteNits == 80 && frame.color.displayPeakNits == std::max(80.f, white));
+	}
+	for (const auto& values : {std::map<std::string,float>{{"whiteNits",80},{"exposure",.1f}},
+		std::map<std::string,float>{{"whiteNits",400},{"exposure",4}}}) {
+		const auto p = BuildHdrComponentPlan(Effects{{"Color\\SDR_to_HDR",values}});
+		assert(p.error == HdrComponentError::None && p.stages[0].whiteNits == values.at("whiteNits") && p.stages[0].exposure == values.at("exposure"));
+	}
+	const auto paired = BuildHdrComponentPlan(Effects{{"Color\\HDR_to_SDR"},{"Color\\SDR_to_HDR",{{"nativeWhiteNits",1500}}}});
+	assert(paired.stages[1].pairIndex == 0 && HdrComponentTransform(paired,1).sdrWhiteNits == 203);
+	const auto convertedExport = ResolveHdrExportColor({}, paired, 1, false);
+	assert(convertedExport.hdr && convertedExport.color.sdrWhiteNits == 203);
+	const auto appendedExport = ResolveHdrExportColor(convertedExport.color, paired, paired.stages.size(), false);
+	assert(appendedExport.hdr && appendedExport.color == convertedExport.color);
+	assert(!ResolveHdrExportColor({}, display, display.stages.size(), true).hdr);
+	assert(!ResolveHdrExportColor({}, {}, 0, false).hdr);
 	std::cout << "PASS: HDR component domains, pairing, independent mapping, frame identity, invalid values, RTX SDK parameter bounds and direct BGRA/RGBA capture endpoints\n";
 }

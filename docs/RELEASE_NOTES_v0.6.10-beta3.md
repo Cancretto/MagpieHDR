@@ -4,6 +4,14 @@
 
 ## 中文
 
+### HDR 兼容模式与效果组（实验）
+
+- 效果组新增输入意图及统一输出方式：自动、恢复兼容配对、原生 SDR 白色映射、RTX HDR 和 SDR 输出。已确认能力的连续 SDR 段由生成节点共享配对参数；复杂手动链、未知效果和补帧边界保留原有顺序与语义。
+- 原生白色采用单一亮度参数，新编辑范围 80–4000 尼特、默认 203；旧白点、曝光、低亮度和未激活方法值保留。参数合法精度、输入精度、普通步进和 Shift 粗调分别处理。
+- 输出方法或组拓扑变更采用完整会话重建，检查代次和组修订，等待输入释放并退休旧参数快照。
+- PNG 按实际纹理格式导出，HDR 转成 SDR sRGB；DDS 保留实际格式，不重复 RTX 推理。RTX HDR 清理错误与异常提供阶段诊断和故障保护。
+- 本轮同步效果说明源数据与生成目录，缓存版本更新为 18；原生界面、真实显示器、RTX 推理、补帧、画质和性能仍需实测。
+
 ### RTSS 目标应用限帧（实验）
 
 - “配置文件 → 帧率与刷新”在内容帧率之前新增目标窗口帧率限制。默认“不管理 RTSS 配置”；可选择管理 Global 或目标应用配置。同一可执行文件共享 RTSS 应用配置。
@@ -26,6 +34,7 @@
 
 This local test version retains the complete Beta2 (`6e50812a`) and integrates the committed RTSS target-application frame-rate feature (`f5f534c2`). The public update entry remains at 0.6.9.
 
+- **HDR groups and output:** add explicit input intent and unified Auto, pair-restore, native-white, RTX HDR and SDR output methods. Plan confirmed SDR spans with shared conversion settings while preserving manual chains, unknown effects and frame-generation boundaries. New native-white edits use 80–4000 nits (default 203); retain legacy low values and inactive-method preferences. Apply topology changes through a generation-checked full session rebuild and fresh parameter snapshots. Export PNG using the actual texture format with HDR-to-sRGB conversion, preserve DDS format, and report RTX cleanup failures. Cache version is 18. Native UI, display/RTX/FG quality and performance require separate testing.
 - **RTSS profile management:** add a section before Content Frame Rate under Frame Rate and Refresh. Leave management off by default; optionally manage Global or an executable-specific profile. Windows of the same executable share the RTSS application profile.
 - **Rate selection:** accept custom integers from 15 to 360 FPS or round the renderer's effective base content target. Preserve the unavailable synchronization preference while following the source. Frame-generation output FPS is not the source-process limit.
 - **Tools and status:** offer explicit RTSS/Afterburner launch and recheck commands without automatic installation or launch. RTSS failures do not prevent normal scaling.
@@ -39,6 +48,8 @@ This local test version retains the complete Beta2 (`6e50812a`) and integrates t
 Beta3 基于 `release/0.6.10-beta2`，合入 RTSS `f5f534c26fddd0168ef453dfa6c041eb6f6c5993`。合并同时保留 VRR 与 RTSS 通知、源窗口协作头文件和两组多语言资源；未带入日常主目录的未提交工作，历史暂停 VRR 分支继续排除。
 
 2026-10-05 增量更新合入 RTSS 资源表修复 `30995270`，基于原 Beta3 `87f399d2`。本次覆盖审计位于 `reports/0610-beta3-update-20261005-rtss-resources/`，保留此前整合记录。
+
+2026-10-09 增量合入 HDR 功能分支 `73badce9`，基于原 Beta3 `00eba94c`。本次构建、回归、备份和覆盖记录位于 `reports/0610-beta3-update-20261009-hdr/`。原语言资源和 VRR／RTSS 控件保留；目录生成与说明源数据同步，源校验允许 Windows CRLF 与已审核 LF 的等价内容。
 
 准确源码、构建选项和逐文件哈希以包内 `build-manifest.json` 为准。分支快照、C++ 回归、完整构建和打包检查记录位于工作区 `reports/0610-beta3-20261005/`。功能分支中的“未编译”说明保留原开发阶段记录。
 
