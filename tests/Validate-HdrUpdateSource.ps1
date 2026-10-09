@@ -60,7 +60,7 @@ foreach ($project in @('Magpie','Magpie.Core','RtxVideoBridge')) {
         $defines += "/D$define"
     }
     $files = switch ($project) {
-        'Magpie' { @('EffectParametersViewModel.cpp','ScalingModesPage.cpp','ScalingMode.cpp','ScalingModeItem.cpp','ScalingModeEffectItem.cpp','ScalingModesService.cpp','ScalingService.cpp') }
+        'Magpie' { @('AppSettings.cpp','EffectParametersViewModel.cpp','ScalingModesPage.cpp','ScalingMode.cpp','ScalingModeItem.cpp','ScalingModeEffectItem.cpp','ScalingModesService.cpp','ScalingService.cpp') }
         'Magpie.Core' { @('TextureHelper.cpp','RTXVideoHdr.cpp','EffectCompiler.cpp','EffectCacheManager.cpp','OverlayDrawer.cpp','Renderer.cpp','ScalingWindow.cpp','ScalingRuntime.cpp') }
         'RtxVideoBridge' { @('RtxVideoBridge.cpp') }
     }

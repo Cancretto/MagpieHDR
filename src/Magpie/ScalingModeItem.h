@@ -2,7 +2,6 @@
 #include "ScalingModeItem.g.h"
 #include "Event.h"
 #include "ScalingModesService.h"
-#include "ScalingMode.h"
 
 namespace Magpie {
 struct ScalingMode;
@@ -66,26 +65,6 @@ struct ScalingModeItem : ScalingModeItemT<ScalingModeItem>,
 	void Duplicate();
 
 	bool CanReorderEffects() const noexcept;
-	IObservableVector<hstring> HdrInputChoices();
-	IObservableVector<hstring> HdrOutputChoices();
-	IObservableVector<hstring> HdrManualCaptureChoices();
-	int HdrManualCaptureIndex() const noexcept;
-	void HdrManualCaptureIndex(int value);
-	bool IsHdrManual() const noexcept { return !_IsRemoved() && !IsHdrManaged(); }
-	int HdrInputIndex() const noexcept;
-	void HdrInputIndex(int value);
-	int HdrOutputIndex() const noexcept;
-	void HdrOutputIndex(int value);
-	bool IsHdrManaged() const noexcept;
-	bool CanEditHdr() const noexcept;
-	bool HasHdrInputParameters() const noexcept;
-	bool HasHdrOutputParameters() const noexcept;
-	winrt::Magpie::EffectParametersViewModel HdrInputParameters() const noexcept;
-	winrt::Magpie::EffectParametersViewModel HdrOutputParameters() const noexcept;
-	hstring HdrSummary() const;
-	hstring HdrOutputDescription() const;
-	hstring HdrProblem() const;
-	bool HasHdrProblem() const noexcept;
 
 	void Remove();
 	void Detach() noexcept;
@@ -101,11 +80,6 @@ struct ScalingModeItem : ScalingModeItemT<ScalingModeItem>,
 	}
 
 private:
-	bool _ApplyHdrSettings(::Magpie::HdrGroupSettings settings,std::vector<::Magpie::EffectItem> effects);
-	void _RebuildEffectViews();
-	void _RefreshHdrProperties();
-	winrt::Magpie::EffectParametersViewModel _HdrParameters(::Magpie::HdrManagedRole role) const noexcept;
-	void _HdrStructureChanged(uint32_t mode);
 	void _Index(uint32_t value) noexcept;
 
 	bool _IsRemoved() const noexcept;
@@ -136,12 +110,6 @@ private:
 	::Magpie::Event<uint32_t, uint32_t>::EventRevoker _scalingModeMovedRevoker;
 	::Magpie::Event<>::EventRevoker _scalingModeNamesChangedRevoker;
 	IObservableVector<IInspectable>::VectorChanged_revoker _effectsChangedRevoker;
-	::Magpie::Event<uint32_t>::EventRevoker _hdrStructureChangedRevoker;
-	::Magpie::Event<uint32_t,uint32_t>::EventRevoker _hdrParametersChangedRevoker;
-	IObservableVector<hstring> _hdrInputChoices{nullptr};
-	IObservableVector<hstring> _hdrOutputChoices{nullptr};
-	IObservableVector<hstring> _hdrManualCaptureChoices{nullptr};
-	hstring _hdrProblem;
 
 	hstring _renameText;
 	hstring _renameProblem;

@@ -15,7 +15,6 @@ enum class EffectAddedWay {
 
 class ScalingModesService {
 public:
-	Event<uint32_t> HdrGroupStructureChanged;
 	static ScalingModesService& Get() noexcept {
 		static ScalingModesService instance;
 		return instance;

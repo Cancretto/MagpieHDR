@@ -74,8 +74,6 @@ struct ScalingModeEffectItem : ScalingModeEffectItemT<ScalingModeEffectItem>,
 	}
 
 	void Remove();
-	bool CanRemove() const noexcept;
-	bool IsVisible() const noexcept;
 
 	bool CanDrag() const noexcept;
 
@@ -84,8 +82,8 @@ struct ScalingModeEffectItem : ScalingModeEffectItemT<ScalingModeEffectItem>,
 	::Magpie::Event<uint32_t> Removed;
 
 private:
-	void _SaveScaleChange();
 	bool _IsRemoved() const noexcept;
+	void _SaveScaleChange();
 
 	::Magpie::EffectItem& _Data() noexcept;
 	const ::Magpie::EffectItem& _Data() const noexcept;
