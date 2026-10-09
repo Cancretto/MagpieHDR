@@ -1909,4 +1909,6 @@
   <data name="Message_ScreenshotBusy" xml:space="preserve"><value>正在儲存截圖，請完成後重試。</value></data>
   <data name="Message_ScreenshotPairSaved" xml:space="preserve"><value>已儲存截圖：{0}、{1}</value></data>
   <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>已儲存 {0}；{1} 儲存失敗，請查看錯誤詳細資訊。</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_model_Option_0" xml:space="preserve"><value>效能</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_model_Option_1" xml:space="preserve"><value>均衡</value></data>
 </root>

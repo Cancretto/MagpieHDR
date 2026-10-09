@@ -2339,7 +2339,9 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 			_UpdateFrameRateLimits();
 			succeeded = true;
 		} else if (valid && candidate.name == NVIDIA_VFX_VFG_ID && _nvidiaVfxFrameGenerator && changedNames.size() == 1 && changedNames.front() == "model") {
-			succeeded = _nvidiaVfxFrameGenerator->ApplyModel(_backendResources, _vfxSourceTexture.get(), uint32_t(candidate.parameters.at("model")));
+			const float model = candidate.parameters.at("model");
+			succeeded = NvidiaVfxVfgModelValid(model) &&
+				_nvidiaVfxFrameGenerator->ApplyModel(_backendResources, _vfxSourceTexture.get(), uint32_t(model));
 			if (succeeded) {
 				_runtimeEffectOptions[effectIdx] = std::move(candidate);
 				_vfxExecutionPlan.settings = _nvidiaVfxFrameGenerator->Settings();

@@ -267,6 +267,39 @@ struct Harness {
 		}
 	}
 
+	void TestPackedHdr10Bytes() {
+		std::vector<uint32_t> words(Width);
+		for (UINT i = 0; i < Width; ++i)
+			words[i] = (i & 1023u) | (((i * 37u) & 1023u) << 10) |
+				(((1023u - i) & 1023u) << 20) | ((i & 3u) << 30);
+		const auto packedTexture = [&](DXGI_FORMAT format) {
+			D3D11_TEXTURE2D_DESC desc{};
+			desc.Width = Width; desc.Height = 1; desc.MipLevels = 1; desc.ArraySize = 1;
+			desc.Format = format; desc.SampleDesc.Count = 1; desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+			D3D11_SUBRESOURCE_DATA data{words.data(), Width * sizeof(uint32_t), 0};
+			ComPtr<ID3D11Texture2D> texture;
+			Hr(device->CreateTexture2D(&desc, &data, &texture)); return texture;
+		};
+		auto native = packedTexture(DXGI_FORMAT_R10G10B10A2_UNORM);
+		auto carrier = packedTexture(DXGI_FORMAT_R8G8B8A8_UNORM);
+		auto reference = Texture(DXGI_FORMAT_R32G32B32A32_FLOAT);
+		auto output = Texture(DXGI_FORMAT_R32G32B32A32_FLOAT);
+		auto halfOutput = Texture(DXGI_FORMAT_R16G16B16A16_FLOAT);
+		AdapterConstants cb{1, 1, 1, 1000, 1, 80, 80, 3, 1, 6, 1, 1};
+		Dispatch(native.Get(), reference.Get(), cb);
+		cb.mode = 9;
+		Dispatch(carrier.Get(), output.Get(), cb);
+		Dispatch(carrier.Get(), halfOutput.Get(), cb);
+		const auto expected = Read(reference.Get()), actual = Read(output.Get()), halves = Read(halfOutput.Get());
+		for (UINT i = 0; i < Width; ++i) for (int c = 0; c < 4; ++c) {
+			Check(std::isfinite(actual[i][c]) && std::isfinite(halves[i][c]), "Nonfinite packed HDR10 output");
+			Check(std::abs(actual[i][c] - expected[i][c]) <= std::abs(expected[i][c]) * 2e-4f + 1e-5f,
+				"Packed byte decode differs from native HDR10/PQ/Rec2020 decode");
+			Check(std::abs(halves[i][c] - expected[i][c]) <= std::abs(expected[i][c]) * .001f + 5e-5f,
+				"Packed HDR10 FP16 conversion lost precision or alpha");
+		}
+	}
+
 	void TestResizedBoundaries() {
 		for (const auto size : {std::array<UINT, 2>{640, 360}, {1280, 720}}) {
 			D3D11_TEXTURE2D_DESC desc{};
@@ -307,12 +340,14 @@ int main() {
 				for (float exposure : {0.5f, 1.0f, 2.0f})
 					for (bool quantized : {false, true}) harness.Test(white, peak, exposure, quantized);
 		harness.TestResizedBoundaries();
+		harness.TestPackedHdr10Bytes();
 		for (float white : {80.0f, 203.0f, 360.0f})
 			for (float peak : {400.0f, 1000.0f, 4000.0f}) harness.TestExplicitComponents(white, peak);
 		for (float white : {80.0f, 203.0f, 360.0f}) harness.TestAutomaticDlssnrBoundary(white);
 		std::cout << "PASS: production HDR shader on D3D11 WARP; 9 explicit FP16/RGBA8 component pipelines, native white mapping and SDR display maps; 54 ramp/round-trip cases, "
 			"R8 quantization, CPU/HLSL parity, alpha, resized boundaries and three automatic DLSSNR white-point round trips\n";
 		std::cout << "PASS: production plan plus WARP native 203/1000/1500/4000, legacy low/high exposures, signal maximum and alpha\n";
+		std::cout << "PASS: packed HDR10 RGBA8 byte carrier vs native R10 PQ/Rec2020 decode, FP32/FP16 and all two-bit alpha values\n";
 	} catch (const std::exception& error) {
 		std::cerr << "FAIL: " << error.what() << '\n';
 		return 1;

@@ -8,6 +8,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+# MSBuild may invoke Windows PowerShell with another host's module search path.
+# Load the matching built-in hash/signature commands without relying on discovery.
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1') -ErrorAction Stop
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
 $taskSdk = [IO.Path]::GetFullPath($SdkDirectory)
 $taskCore = if ($RuntimeDirectory) { [IO.Path]::GetFullPath($RuntimeDirectory) } else { Join-Path $taskSdk 'bin' }
 $taskManifest = Join-Path $PSScriptRoot '..\src\NvidiaVfxRuntime.props'

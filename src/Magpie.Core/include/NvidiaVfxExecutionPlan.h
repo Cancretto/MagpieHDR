@@ -34,7 +34,10 @@ template<class Effects> NvidiaVfxExecutionPlan PlanNvidiaVfxExecution(const Effe
 			return int(value);
 		};
 		plan.settings.multiplier = uint32_t(read("multiplier", 2, 2, 8));
-		plan.settings.model = uint32_t(read("model", 1, 0, 2));
+		plan.settings.model = uint32_t(read("model", 1, 0, 1));
+		if (!NvidiaVfxFrameGenerationSettingsValid(plan.settings)) {
+			plan.error = NvidiaVfxPlanError::InvalidSettings; plan.errorIndex = i;
+		}
 		plan.settings.automaticShotDetection = read("automaticShotDetection", 1, 0, 1) != 0;
 		plan.settings.duplicateFrameFiltering = read("duplicateFrameFiltering", 1, 0, 1) != 0;
 	}

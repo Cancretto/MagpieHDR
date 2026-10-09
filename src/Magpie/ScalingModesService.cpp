@@ -595,6 +595,20 @@ bool ScalingModesService::Import(const rapidjson::GenericObject<true, rapidjson:
 		if (loadingSettings) AppSettings::Get().MarkConfigMigrationNeeded();
 	}
 
+	// Independent compatibility migration also applies to valid recovered
+	// HDR chains. Their original JSON/backup strings are never rewritten.
+	bool migratedVfg = false;
+	for (auto& mode : scalingModes) {
+		if (mode.hdrMigrationInvalid) continue;
+		for (auto& effect : mode.effects) {
+			if (!effect.isRecoveryInvalid) migratedVfg |= MigrateNvidiaVfxVfgModel(effect);
+		}
+	}
+	if (migratedVfg) {
+		Logger::Get().Info("Nvidia VFX VFG: migrated retired High model to Balanced");
+		if (loadingSettings) AppSettings::Get().MarkConfigMigrationNeeded();
+	}
+
 	const V065NormalizationStats normalization =
 		NormalizeV065ScalingModes(scalingModes);
 	if (normalization.Changed()) {

@@ -3359,10 +3359,10 @@
         "frame"
       ],
       "summary": "SDR 2–8× 补帧，可逐帧接入 TrueHDR。",
-      "details": "Windows x64 需要 Ada／Blackwell 渲染 GPU。默认 2×、Medium、自动场切和重复帧过滤开启。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。",
+      "details": "Windows x64 需要 Ada／Blackwell 渲染 GPU。性能（Low）／均衡（Medium）两档，默认 2×、均衡、自动场切和重复帧过滤开启。旧 High 设置迁移为均衡。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。",
       "level": "advanced",
       "recommendation": "进阶／实验",
-      "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR 2–8× 补帧，可逐帧接入 TrueHDR。 Windows x64 需要 Ada／Blackwell 渲染 GPU。默认 2×、Medium、自动场切和重复帧过滤开启。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。 ",
+      "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR 2–8× 补帧，可逐帧接入 TrueHDR。 Windows x64 需要 Ada／Blackwell 渲染 GPU。性能（Low）／均衡（Medium）两档，默认 2×、均衡、自动场切和重复帧过滤开启。旧 High 设置迁移为均衡。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。 ",
       "family": null,
       "subfamily": null
     }

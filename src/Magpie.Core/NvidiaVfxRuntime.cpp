@@ -177,6 +177,7 @@ NvidiaVfxSession::~NvidiaVfxSession() {
 	if (effect) { NvVFX_DestroyEffect(effect); effect = nullptr; }
 	NvCVImage_Dealloc(&input); NvCVImage_Dealloc(&previous); NvCVImage_Dealloc(&output);
 	NvCVImage_Dealloc(&_inputD3D); NvCVImage_Dealloc(&_outputD3D); NvCVImage_Dealloc(&_temporary);
+	NvCVImage_Dealloc(&_inputBridge); NvCVImage_Dealloc(&_outputBridge);
 	if (stream) { NvVFX_CudaStreamDestroy(stream); stream = nullptr; }
 }
 bool NvidiaVfxSession::Synchronize() noexcept {
@@ -238,6 +239,23 @@ NvidiaVfxRuntimeMeasurements NvidiaVfxSession::TakeMeasurements() noexcept {
 }
 bool NvidiaVfxSession::_Transfer(ID3D11Texture2D* texture, NvCVImage& image, bool importing) noexcept {
 	if (!texture) return false;
+	D3D11_TEXTURE2D_DESC desc{}; texture->GetDesc(&desc);
+	const auto encoding = desc.Format == DXGI_FORMAT_R8G8B8A8_UNORM ? NVCV_RGBA :
+		desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? NVCV_BGRA : NVCV_FORMAT_UNKNOWN;
+	const auto component = NVCV_U8;
+	const bool linearSdr = image.pixelFormat == NVCV_RGBA || image.pixelFormat == NVCV_BGRA;
+	const bool textureSdr = encoding == NVCV_RGBA || encoding == NVCV_BGRA;
+	const bool convert = image.pixelFormat != encoding;
+	if (encoding == NVCV_FORMAT_UNKNOWN || desc.SampleDesc.Count != 1 || desc.MipLevels != 1 || desc.ArraySize != 1 ||
+		image.width != desc.Width || image.height != desc.Height || image.componentType != component ||
+		image.planar != NVCV_INTERLEAVED || image.gpuMem != NVCV_GPU || !image.pixels ||
+		image.pixelBytes != 4 || image.pitch < int(uint64_t(desc.Width) * 4) ||
+		(convert && !(linearSdr && textureSdr))) {
+		Logger::Get().Error(fmt::format("Nvidia VFX {} image contract mismatch: DXGI={} {}x{} NvCV={}/{} layout={} pitch={} {}x{}",
+			importing ? "import" : "export", uint32_t(desc.Format), desc.Width, desc.Height,
+			int(image.pixelFormat), int(image.componentType), uint32_t(image.planar), image.pitch, image.width, image.height));
+		return false;
+	}
 	const auto started = NativeBackendTiming::Now();
 	auto& stage = importing ? _measurements.importImage : _measurements.exportImage;
 	const int ticket = _timings ? _timings->Begin(stage, stream) : -1;
@@ -257,18 +275,59 @@ bool NvidiaVfxSession::_Transfer(ID3D11Texture2D* texture, NvCVImage& image, boo
 		if (!NvidiaVfxSucceeded(NvCVImage_InitFromD3D11Texture(&wrapper, texture), "InitFromD3D11Texture")) return false;
 		retained.copy_from(texture);
 	}
+	const auto wrapperValid = [&] {
+		return wrapper.width == desc.Width && wrapper.height == desc.Height && wrapper.pixelFormat == encoding &&
+			wrapper.componentType == component && wrapper.planar == NVCV_INTERLEAVED &&
+			wrapper.gpuMem == NVCV_CUDA_ARRAY && wrapper.pixelBytes == 4;
+	};
+	if (!wrapperValid()) {
+		Logger::Get().Error("Nvidia VFX D3D wrapper does not match the texture encoding"); return false;
+	}
+	auto& bridge = importing ? _inputBridge : _outputBridge;
+	if (convert && (bridge.width != desc.Width || bridge.height != desc.Height || bridge.pixelFormat != encoding)) {
+		if (!Synchronize()) return false;
+		NvCVImage_Dealloc(&bridge);
+		if (!NvidiaVfxSucceeded(NvCVImage_Alloc(&bridge, desc.Width, desc.Height, encoding, NVCV_U8,
+			NVCV_INTERLEAVED, NVCV_GPU, 32), "Alloc color bridge")) return false;
+	}
+	// Cross-encoding conversion is confined to linear GPU images. Mapped D3D
+	// arrays only copy to/from a matching encoding, in either direction.
+	if (convert && !importing && !NvidiaVfxSucceeded(
+		NvCVImage_Transfer(&image, &bridge, 1.f, stream, &_temporary), "Convert export encoding")) return false;
 	if (!NvidiaVfxSucceeded(NvCVImage_MapResource(&wrapper, stream), "MapResource")) return false;
-	const bool transferred = NvidiaVfxSucceeded(importing
-		? NvCVImage_Transfer(&wrapper, &image, 1.f, stream, &_temporary)
-		: NvCVImage_Transfer(&image, &wrapper, 1.f, stream, &_temporary), "Transfer");
+	auto& transferImage = convert ? bridge : image;
+	const bool mappedValid = wrapperValid();
+	if (!mappedValid) Logger::Get().Error("Nvidia VFX mapped wrapper encoding changed unexpectedly");
+	const bool transferred = mappedValid && NvidiaVfxSucceeded(importing
+		? NvCVImage_Transfer(&wrapper, &transferImage, 1.f, stream, &_temporary)
+		: NvCVImage_Transfer(&transferImage, &wrapper, 1.f, stream, &_temporary), "Transfer");
 	const bool unmapped = NvidiaVfxSucceeded(NvCVImage_UnmapResource(&wrapper, stream), "UnmapResource");
+	const bool converted = transferred && unmapped && (!convert || !importing || NvidiaVfxSucceeded(
+		NvCVImage_Transfer(&bridge, &image, 1.f, stream, &_temporary), "Convert import encoding"));
 	if (_timings) { _timings->End(ticket, stream); timingEnded = true; }
 	// Experimental async builds rely on same-stream map/transfer/unmap ordering.
 	// Rebinding and destruction still drain. Default builds retain the CPU wait.
-	return transferred && unmapped && (VfxAsyncEnabled || Synchronize());
+	return converted && (VfxAsyncEnabled || Synchronize());
 }
 bool NvidiaVfxSession::Import(ID3D11Texture2D* texture, NvCVImage& image) noexcept { return _Transfer(texture, image, true); }
 bool NvidiaVfxSession::Export(NvCVImage& image, ID3D11Texture2D* texture) noexcept { return _Transfer(texture, image, false); }
+#ifdef MP_ENABLE_NVIDIA_VFX
+bool NvidiaVfxSession::ExportPackedHdr10(NvCVImage& image, ID3D11Texture2D* texture) noexcept {
+	D3D11_TEXTURE2D_DESC desc{};
+	if (texture) texture->GetDesc(&desc);
+	if (!texture || desc.Format != DXGI_FORMAT_R8G8B8A8_UNORM || image.pixelFormat != NVCV_RGB10A2 ||
+		image.componentType != NVCV_P32 || image.planar != NVCV_INTERLEAVED || image.gpuMem != NVCV_GPU ||
+		image.pixelBytes != 4 || !image.pixels) {
+		Logger::Get().Error("Nvidia VFX packed HDR10 export requires an RGBA8 byte carrier and RGB10A2/P32 GPU image"); return false;
+	}
+	// NvCV Init creates a non-owning view. Same-format transfer copies all four
+	// bytes without unpacking, quantizing, or changing the model's descriptor.
+	NvCVImage bytes;
+	if (!NvidiaVfxSucceeded(NvCVImage_Init(&bytes, image.width, image.height, image.pitch, image.pixels,
+		NVCV_RGBA, NVCV_U8, NVCV_INTERLEAVED, NVCV_GPU), "Init packed HDR10 byte view")) return false;
+	return _Transfer(texture, bytes, false);
+}
+#endif
 
 } // namespace Magpie
 #endif

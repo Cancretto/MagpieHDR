@@ -62,6 +62,10 @@ public:
 	NvidiaVfxRuntimeMeasurements TakeMeasurements() noexcept;
 	bool Import(ID3D11Texture2D* texture, NvCVImage& gpuImage) noexcept;
 	bool Export(NvCVImage& gpuImage, ID3D11Texture2D* texture) noexcept;
+#ifdef MP_ENABLE_NVIDIA_VFX
+	// Copy packed HDR10 bits through a CUDA-compatible RGBA8 byte carrier.
+	bool ExportPackedHdr10(NvCVImage& gpuImage, ID3D11Texture2D* byteTexture) noexcept;
+#endif
 	const NvidiaVfxCudaContext& Context() const noexcept { return _context; }
 	NvVFX_Handle effect = nullptr;
 	CUstream stream = nullptr;
@@ -73,6 +77,8 @@ private:
 	NvidiaVfxRuntimeMeasurements _measurements;
 	void* _readyEvent = nullptr;
 	NvCVImage _inputD3D, _outputD3D, _temporary;
+	// Persistent linear buffers for explicit RGBA/BGRA edge conversions.
+	NvCVImage _inputBridge, _outputBridge;
 	winrt::com_ptr<ID3D11Texture2D> _inputTexture, _outputTexture;
 	using SynchronizeFn = NvCV_Status(NvVFX_API*)(CUstream);
 	SynchronizeFn _synchronize = nullptr;

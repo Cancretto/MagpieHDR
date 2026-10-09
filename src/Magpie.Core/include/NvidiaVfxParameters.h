@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <string_view>
+#include <type_traits>
 
 namespace Magpie {
 
@@ -78,8 +79,27 @@ struct NvidiaVfxFrameGenerationSettings {
 	bool automaticShotDetection = true;
 	bool duplicateFrameFiltering = true;
 };
+inline bool NvidiaVfxVfgModelValid(float value) noexcept {
+	return std::isfinite(value) && (value == 0.f || value == 1.f);
+}
+// Only the retired, formerly valid High value migrates. Unknown/fractional
+// values remain invalid and are handled by the normal parameter policy.
+template<class Effect> bool MigrateNvidiaVfxVfgModel(Effect& effect) {
+	using Key = typename std::remove_reference_t<decltype(effect.parameters)>::key_type;
+	using Char = typename Key::value_type;
+	if constexpr (std::is_same_v<Char, wchar_t>) {
+		if (effect.name != L"NvidiaVFX\\VFG") return false;
+	} else {
+		if (effect.name != NVIDIA_VFX_VFG_ID) return false;
+	}
+	const Key key{ Char('m'), Char('o'), Char('d'), Char('e'), Char('l') };
+	const auto it = effect.parameters.find(key);
+	if (it == effect.parameters.end() || it->second != 2.f) return false;
+	it->second = 1.f;
+	return true;
+}
 inline bool NvidiaVfxFrameGenerationSettingsValid(const NvidiaVfxFrameGenerationSettings& value) noexcept {
-	return value.multiplier >= 2 && value.multiplier <= 8 && value.model <= 2;
+	return value.multiplier >= 2 && value.multiplier <= 8 && NvidiaVfxVfgModelValid(float(value.model));
 }
 
 } // namespace Magpie
