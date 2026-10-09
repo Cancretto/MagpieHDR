@@ -40,10 +40,10 @@ void InitializationTests(const std::filesystem::path& output) {
 		const auto original = exists ? ReadBytes(f.Path("Magpie.exe")) : ReadBytes(f.Path(""));
 		RtssProfileSnapshot written; bool unlimited = false; std::wstring error;
 		int validityCalls = 0;
-		if (mode == 0) f.access._version = L"7.3.4.0";
+		if (mode == 0) f.access._update = nullptr;
 		if (mode == 3) f.reloadFault = true;
 		if (mode == 6) SetFileAttributesW(f.Path("Magpie.exe").c_str(), FILE_ATTRIBUTE_READONLY);
-		if (mode == 7) f.getFailure = "FramerateLimit";
+		if (mode == 7) f.access._get = nullptr;
 		const HANDLE locked = mode == 8 ? CreateFileW(f.Path("Magpie.exe").c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr) : INVALID_HANDLE_VALUE;
 		const bool success = f.access.InitializeUnlimited(mode == 4 ? "game.exe" : "Magpie.exe", written, unlimited, error, [&] {
 			++validityCalls;
@@ -122,7 +122,9 @@ void NativeInitializationTests(const std::filesystem::path& directory) {
 	RtssProfileSnapshot global;
 	Require(access.Read("", global, error) && global.rate[0] == 97, "Native initialization isolation sentinel");
 	const auto originalGlobal = global.contents;
-	const auto self = directory / "Profiles/Magpie.exe.cfg";
+	const auto selfName = access.SelfProfile();
+	Require(!selfName.empty() && selfName != "Magpie.exe", "Native initialization uses actual renamed test executable");
+	const auto self = directory / "Profiles" / (selfName + ".cfg");
 	for (bool exists : { false, true }) for (uint32_t time : { 0u, 16667u, 1666667u }) {
 		if (exists) {
 			auto bytes = global.contents;
@@ -138,9 +140,9 @@ void NativeInitializationTests(const std::filesystem::path& directory) {
 		}
 		const auto currentGlobal = ReadBytes(directory / "Profiles/Global");
 		RtssProfileSnapshot before, written;
-		Require(access.Read("Magpie.exe", before, error), "Native self baseline");
+		Require(access.Read(selfName, before, error), "Native self baseline");
 		bool unlimited = false;
-		if (!access.InitializeUnlimited("Magpie.exe", written, unlimited, error, [] { return true; })) {
+		if (!access.InitializeUnlimited(selfName, written, unlimited, error, [] { return true; })) {
 			std::wcerr << L"Native initialization: " << error << L" stage=" << int(access.Failure().stage) << L"\n";
 			throw std::runtime_error("Native self initialization failed");
 		}
@@ -148,7 +150,7 @@ void NativeInitializationTests(const std::filesystem::path& directory) {
 		std::string expected;
 		Require(ClearRtssRateExpression(before.contents, expected) && written.contents == expected && written.detectionLevel == before.detectionLevel, "Native detection and all other bytes preserved");
 		const auto identity = written.fileIdentity;
-		Require(access.InitializeUnlimited("Magpie.exe", written, unlimited, error, [] { return true; }) && unlimited && written.fileIdentity == identity, "Native repeat does not replace the file");
+		Require(access.InitializeUnlimited(selfName, written, unlimited, error, [] { return true; }) && unlimited && written.fileIdentity == identity, "Native repeat does not replace the file");
 		Require(ReadBytes(directory / "Profiles/Global") == currentGlobal, "Native Global unchanged by self initialization");
 	}
 	WriteBytes(directory / "Profiles/Global", originalGlobal);

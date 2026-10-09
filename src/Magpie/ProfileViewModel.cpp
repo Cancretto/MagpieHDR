@@ -761,10 +761,13 @@ RtssStatus ProfileViewModel::_RtssStatus() const {
 	// Tool inventory is shared; another profile's write result is not.
 	result.rtss = active.rtss;
 	result.afterburner = active.afterburner;
-	result.accessReady = active.accessReady;
-	if (active.state != RtssState::Checking && (active.rtss.executable.empty() || !active.rtss.running)) {
-		result.state = active.rtss.executable.empty() ? RtssState::NotInstalled : RtssState::NotRunning;
-		result.rateKnown = false;
+	result.readReady = active.readReady;
+	result.applyReady = active.applyReady;
+	result.initializeReady = active.initializeReady;
+	if (active.state != RtssState::Checking && (active.rtss.executable.empty() || !active.readReady)) {
+		result.state = active.rtss.executable.empty() ? RtssState::NotInstalled : active.state;
+		result.rateKnown = false; result.rateUnavailable = !active.rtss.executable.empty();
+		result.reloaded = result.profileSaved = false;
 		result.detectionDisabled = result.targetOverridesGlobal = false;
 		result.failureStage = active.failureStage;
 		if (active.rtss.executable.empty()) result.profile.clear();
@@ -845,7 +848,12 @@ IVector<hstring> ProfileViewModel::RtssStatusSegments() const {
 	if (!s.rtss.version.empty()) add(L"RTSS " + s.rtss.version);
 	add(std::wstring(loader.GetString(key)));
 	if (s.rateKnown) add(s.timeLimit ? std::wstring(loader.GetString(L"Rtss_TimeLimit")) : s.currentRate > 0 ?
-		fmt::format(L"{:g} FPS", s.currentRate) : std::wstring(loader.GetString(L"Rtss_NoLimit")));
+		fmt::format(fmt::runtime(std::wstring_view(loader.GetString(L"Rtss_ProfileRate"))), s.currentRate) : std::wstring(loader.GetString(L"Rtss_NoLimit")));
+	if (s.rateUnavailable) add(std::wstring(loader.GetString(L"Rtss_RateUnknown")));
+	if (!s.rtss.executable.empty() && !s.rtss.running && s.state != RtssState::NotRunning)
+		add(std::wstring(loader.GetString(L"Rtss_Status_NotRunning")));
+	if (s.profileSaved) add(std::wstring(loader.GetString(L"Rtss_ProfileSaved")));
+	if (s.reloaded) add(std::wstring(loader.GetString(L"Rtss_Reloaded")));
 	if (!s.failureStage.empty()) add(std::wstring(loader.GetString(s.failureStage)));
 	if (!IsRtssManaged() && !s.selfInitialization) add(std::wstring(loader.GetString(L"Rtss_UnmanagedNotice")));
 	if (s.detectionDisabled) add(std::wstring(loader.GetString(L"Rtss_DetectionDisabled")));
@@ -875,7 +883,7 @@ bool ProfileViewModel::CanLaunchAfterburner() const {
 }
 bool ProfileViewModel::CanInitializeMagpie() const {
 	const auto s = _RtssStatus();
-	return s.accessReady && s.rtss.running &&
+	return s.initializeReady &&
 		!RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie();
 }
 hstring ProfileViewModel::RtssInitializeText() const {

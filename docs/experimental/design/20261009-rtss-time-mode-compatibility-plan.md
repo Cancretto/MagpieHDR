@@ -30,4 +30,4 @@
 
 此方案不定义 DLL 内部状态修改，不修改用户现有文件进行试验。对应实现与其他版本验证继续列在[保存失败 TODO](../todos/20261009-rtss-save-failure-TODO.md)的后续兼容项。
 
-版本门槛和相关能力拆分按[能力判断整改 TODO](../todos/20261009-rtss-capability-checks-TODO.md)执行。已有本机版本记录保留为验证证据，不转为运行白名单。
+版本门槛和相关能力拆分已按[能力判断整改 TODO](../todos/20261009-rtss-capability-checks-TODO.md)完成第一阶段，见[实施记录](../reviews/20261009-rtss-capability-checks.md)。运行时仅在相应操作需要时请求重载，离线初始化按实际保存和读回判断。已有本机版本记录保留为验证证据，不转为运行白名单。

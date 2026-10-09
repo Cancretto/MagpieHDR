@@ -136,6 +136,20 @@ std::filesystem::path RegistryInstall(bool afterburner) {
 
 }
 
+std::string RtssProfileAccess::ProfileName(const std::wstring& name) {
+	if (name.empty() || name.find_first_of(L"\\/:,\r\n*?\t\"<>|") != std::wstring::npos ||
+		_wcsicmp(std::filesystem::path(name).extension().c_str(), L".exe") != 0) return {};
+	BOOL lossy = FALSE;
+	const bool utf8 = GetACP() == CP_UTF8;
+	const DWORD flags = utf8 ? WC_ERR_INVALID_CHARS : WC_NO_BEST_FIT_CHARS;
+	BOOL* const loss = utf8 ? nullptr : &lossy;
+	const int size = WideCharToMultiByte(CP_ACP, flags, name.c_str(), int(name.size()), nullptr, 0, nullptr, loss);
+	if (!size || lossy) return {};
+	std::string result(size_t(size), '\0');
+	if (!WideCharToMultiByte(CP_ACP, flags, name.c_str(), int(name.size()), result.data(), size, nullptr, loss) || lossy) return {};
+	return result;
+}
+
 RtssToolInfo RtssProfileAccess::DetectTool(bool afterburner) {
 	RtssToolInfo result;
 	result.executable = RegistryInstall(afterburner);
@@ -179,6 +193,8 @@ void RtssProfileAccess::_Unload() {
 
 bool RtssProfileAccess::Initialize(const RtssToolInfo& tool, std::wstring& error) {
 	_version = tool.version;
+	_running = tool.running;
+	_selfProfile = ProfileName(Win32Helper::GetExePath().filename().native());
 	_ResetFailure("");
 	if (_faulted) { error = L"InterfaceFault"; return false; }
 	if (tool.executable.empty()) { error = L"NotInstalled"; return false; }
@@ -213,28 +229,27 @@ bool RtssProfileAccess::Initialize(const RtssToolInfo& tool, std::wstring& error
 	_get = reinterpret_cast<PropertyFn>(GetProcAddress(_module, "GetProfileProperty"));
 	_set = reinterpret_cast<PropertyFn>(GetProcAddress(_module, "SetProfileProperty"));
 	_update = reinterpret_cast<void (*)()>(GetProcAddress(_module, "UpdateProfiles"));
-	if (!_load || !_save || !_delete || !_get || !_set || !_update) {
-		error = L"UnsupportedInterface"; _Unload(); return false;
-	}
-	if (!_CallProfile(_load, "")) { error = L"InterfaceFault"; return false; }
-	uint32_t value = 0;
-	if (!_Get("FramerateLimit", value) || !_Get("FramerateLimitDenominator", value) ||
-		!_Get("FrametimeLimit", value) || !_Get("AppDetectionLevel", value)) {
-		error = _faulted ? L"InterfaceFault" : L"UnsupportedInterface"; _Unload(); return false;
-	}
+	// Loading a module is not a promise that every operation is available.
+	// Each transaction checks only its own exports and properties.
 	return true;
 #endif
 }
 
+bool RtssProfileAccess::_RequireInterface(bool available, RtssFailureStage stage, const char* name, std::wstring& error) {
+	if (available && !_faulted) return true;
+	_failure.property = name;
+	return _Fail(stage, L"MissingInterface", error);
+}
+
 bool RtssProfileAccess::_Get(const char* property, uint32_t& value) {
-	const bool result = !_faulted && GuardProperty(_get, property, reinterpret_cast<BYTE*>(&value), sizeof(value), _faulted) != FALSE;
+	const bool result = _get && !_faulted && GuardProperty(_get, property, reinterpret_cast<BYTE*>(&value), sizeof(value), _faulted) != FALSE;
 	_failure.nativeFault = _faulted;
 	if (!result) { _failure.property = property; _failure.observedKnown = false; }
 	return result;
 }
 
 bool RtssProfileAccess::_Set(const char* property, uint32_t value) {
-	return !_faulted && GuardProperty(_set, property, reinterpret_cast<BYTE*>(&value), sizeof(value), _faulted) != FALSE;
+	return _set && !_faulted && GuardProperty(_set, property, reinterpret_cast<BYTE*>(&value), sizeof(value), _faulted) != FALSE;
 }
 
 void RtssProfileAccess::_ResetFailure(const std::string& profile) {
@@ -251,18 +266,25 @@ bool RtssProfileAccess::_Fail(RtssFailureStage stage, const wchar_t* reason, std
 	return false;
 }
 
-bool RtssProfileAccess::_SetIfChanged(const char* property, uint32_t value, std::wstring& error) {
+bool RtssProfileAccess::_SetIfChanged(const char* property, uint32_t value, std::wstring& error, const uint32_t* knownValue) {
 	_failure.property = property;
 	_failure.requested = value;
 	_failure.observedKnown = _Get(property, _failure.observed);
-	if (!_failure.observedKnown) return _Fail(RtssFailureStage::Setting, L"ReadPropertyFailed", error);
+	if (!_failure.observedKnown) {
+		if (_faulted) return _Fail(RtssFailureStage::Setting, L"ReadPropertyFailed", error);
+		// A known snapshot can avoid an unnecessary setter. Otherwise the
+		// authorized setter must accept the value, and Save must prove it on disk.
+		if (knownValue) { _failure.observed = *knownValue; _failure.observedKnown = true; }
+	}
 	// Get can return values the setter rejects, including FrametimeLimit=0 in 7.3.5.
-	if (_failure.observed != value) {
+	if (!_failure.observedKnown || _failure.observed != value) {
 		if (!_Set(property, value)) return _Fail(RtssFailureStage::Setting, L"SetPropertyFailed", error);
 		_failure.observedKnown = _Get(property, _failure.observed);
-		if (!_failure.observedKnown || _failure.observed != value) {
+		if (_faulted || (_failure.observedKnown && _failure.observed != value)) {
 			return _Fail(RtssFailureStage::Setting, L"SetReadbackFailed", error);
 		}
+		// Getter absence is not setter rejection. Every caller verifies the
+		// saved fields; an omitted/unreadable result still fails that verification.
 	}
 	_failure.property.clear();
 	_failure.observedKnown = false;
@@ -280,13 +302,13 @@ bool RtssProfileAccess::_VerifyProperty(const char* property, uint32_t expected,
 }
 
 bool RtssProfileAccess::_CallProfile(ProfileFn function, const char* profile) {
-	const bool result = !_faulted && GuardProfile(function, profile, _faulted);
+	const bool result = function && !_faulted && GuardProfile(function, profile, _faulted);
 	_failure.nativeFault = _faulted;
 	return result;
 }
 
 bool RtssProfileAccess::_Reload() {
-	return !_faulted && GuardReload(_update, _faulted);
+	return !_faulted && (!_running || (_update && GuardReload(_update, _faulted)));
 }
 
 std::filesystem::path RtssProfileAccess::_ProfilePath(const std::string& profile) const {
@@ -342,6 +364,7 @@ bool RtssProfileAccess::_ReadFile(const std::string& profile, RtssProfileSnapsho
 		}
 	}
 	snapshot.rate = { 0, 1, 0, 1 };
+	snapshot.rateKnown = {};
 	for (size_t i = 0; i < RATE_KEYS.size(); ++i) {
 		const auto it = snapshot.fields.find(RATE_KEYS[i]);
 		if (it == snapshot.fields.end()) continue;
@@ -352,6 +375,12 @@ bool RtssProfileAccess::_ReadFile(const std::string& profile, RtssProfileSnapsho
 			error = L"InvalidRateExpression"; return false;
 		}
 		snapshot.rate[i] = value;
+		snapshot.rateKnown[i] = true;
+	}
+	if (const auto it = snapshot.fields.find("hooking/detection"); it != snapshot.fields.end()) {
+		const auto& text = it->second;
+		const auto [end, result] = std::from_chars(text.data(), text.data() + text.size(), snapshot.detectionLevel);
+		snapshot.detectionKnown = result == std::errc{} && end == text.data() + text.size();
 	}
 	return true;
 }
@@ -367,24 +396,29 @@ bool RtssProfileAccess::Read(const std::string& profile, RtssProfileSnapshot& sn
 bool RtssProfileAccess::_Read(const std::string& profile, RtssProfileSnapshot& snapshot, std::wstring& error) {
 	snapshot = {};
 	if (!_module) { error = L"NotInitialized"; return false; }
+	if (!_RequireInterface(_load != nullptr, RtssFailureStage::Read, "LoadProfile", error) ||
+		!_RequireInterface(_get != nullptr, RtssFailureStage::Read, "GetProfileProperty", error)) return false;
 	if (!_Exists(profile, snapshot.exists, error)) return false;
 	if (profile.empty() && !snapshot.exists) { error = L"GlobalProfileMissing"; return false; }
 	if (!_CallProfile(_load, snapshot.exists ? profile.c_str() : "")) { error = L"InterfaceFault"; return false; }
 	if (!_ReadFile(snapshot.exists ? profile : "", snapshot, error)) return false;
-	uint32_t limit = 0, denominator = 0, time = 0;
-	if (!_Get("FramerateLimit", limit) || !_Get("FramerateLimitDenominator", denominator) ||
-		!_Get("FrametimeLimit", time) || !_Get("AppDetectionLevel", snapshot.detectionLevel)) {
-		error = _faulted ? L"InterfaceFault" : L"ReadPropertyFailed"; _failure.nativeFault = _faulted; return false;
-	}
-	const std::array<uint32_t, 3> properties{ limit, denominator, time };
-	if (!denominator) { error = L"InvalidRateExpression"; return false; }
+	constexpr std::array<const char*, 3> properties{ "FramerateLimit", "FramerateLimitDenominator", "FrametimeLimit" };
 	for (size_t i = 0; i < properties.size(); ++i) {
-		if (snapshot.fields.contains(RATE_KEYS[i]) && snapshot.rate[i] != properties[i]) {
-			error = L"ProfileChangedWhileReading"; return false;
+		uint32_t value = 0;
+		if (!_Get(properties[i], value)) {
+			if (_faulted) return _Fail(RtssFailureStage::Read, L"InterfaceFault", error);
+			// An explicit disk field remains readable; an omitted field is unknown.
+			// Required getters are checked again by the setter transaction.
+			continue;
 		}
-		// Partial profiles may omit defaults; use the interface's effective value.
-		snapshot.rate[i] = properties[i];
+		if (i == 1 && !value) return _Fail(RtssFailureStage::Read, L"InvalidRateExpression", error);
+		if (snapshot.rateKnown[i] && snapshot.rate[i] != value) return _Fail(RtssFailureStage::Read, L"ProfileChangedWhileReading", error);
+		snapshot.rate[i] = value; snapshot.rateKnown[i] = true;
 	}
+	uint32_t detection = 0;
+	if (_Get("AppDetectionLevel", detection)) { snapshot.detectionLevel = detection; snapshot.detectionKnown = true; }
+	else if (_faulted) return _Fail(RtssFailureStage::Read, L"InterfaceFault", error);
+	_failure.property.clear(); _failure.observedKnown = false;
 	return true;
 }
 
@@ -406,16 +440,14 @@ bool RtssProfileAccess::InitializeUnlimited(const std::string& profile, RtssProf
 	written = {}; alreadyUnlimited = false;
 	_failure.stage = RtssFailureStage::Read;
 	// This explicit command cannot address Global, paths or arbitrary executables.
-	if (_stricmp(profile.c_str(), "Magpie.exe") != 0) return _Fail(RtssFailureStage::Setting, L"InvalidSelfProfile", error);
+	if (_selfProfile.empty() || _stricmp(profile.c_str(), _selfProfile.c_str()) != 0) return _Fail(RtssFailureStage::Setting, L"InvalidSelfProfile", error);
 	RtssProfileSnapshot before;
 	if (!_Read(profile, before, error)) return false;
 	if (!stillValid()) return _Fail(RtssFailureStage::Cancelled, L"Cancelled", error);
-	if (before.exists && !before.rate[0] && !before.rate[2]) {
+	if (before.exists && before.rateKnown[0] && before.rateKnown[2] && !before.rate[0] && !before.rate[2]) {
 		written = before; alreadyUnlimited = true; _failure.stage = RtssFailureStage::None; return true;
 	}
-	// The byte-level format and reload semantics are verified with this SDK build.
-	// Other versions remain readable; they are never silently subjected to this patch.
-	if (_version != L"7.3.5.28314") return _Fail(RtssFailureStage::Setting, L"UnsupportedProfileFormat", error);
+	if (!_RequireInterface(!_running || _update != nullptr, RtssFailureStage::Reload, "UpdateProfiles", error)) return false;
 	if (!_CheckWriteAccess(profile, before.exists, error)) return false;
 	std::string contents;
 	if (!ClearRtssRateExpression(before.contents, contents)) return _Fail(RtssFailureStage::Setting, L"UnsupportedProfileFormat", error);
@@ -465,7 +497,7 @@ bool RtssProfileAccess::_WriteUnlimited(const std::string& profile, const RtssPr
 	}
 	RtssProfileSnapshot confirmed;
 	if (!_Read(profile, confirmed, error)) return false;
-	if (confirmed != before) return _Fail(RtssFailureStage::Conflict, L"Conflict", error);
+	if (!SameInput(confirmed, before)) return _Fail(RtssFailureStage::Conflict, L"Conflict", error);
 	if (!stillValid()) return _Fail(RtssFailureStage::Cancelled, L"Cancelled", error);
 	_failure.saveAttempted = true;
 	const bool committed = before.exists ? ReplaceFileW(path.c_str(), tempName, backupName, 0, nullptr, nullptr) != FALSE :
@@ -515,8 +547,9 @@ bool RtssProfileAccess::_WriteUnlimited(const std::string& profile, const RtssPr
 	if (!_Read(profile, written, error)) return false;
 	_failure.readbackComplete = true;
 	if (!written.exists || written.contents != contents || written.rate[0] || written.rate[2] ||
-		written.rate[1] != before.rate[1] || written.rate[3] != before.rate[3] ||
-		written.detectionLevel != before.detectionLevel || !NonRateEqual(before, written)) {
+		(before.rateKnown[1] && written.rateKnown[1] && written.rate[1] != before.rate[1]) ||
+		(before.rateKnown[3] && written.rateKnown[3] && written.rate[3] != before.rate[3]) ||
+		(before.detectionKnown && written.detectionKnown && written.detectionLevel != before.detectionLevel) || !NonRateEqual(before, written)) {
 		return _Fail(RtssFailureStage::Verify, L"VerifyFailed", error);
 	}
 	if (!_Reload()) return _Fail(RtssFailureStage::Reload, L"ReloadFailed", error);
@@ -533,17 +566,21 @@ bool RtssProfileAccess::Apply(const std::string& profile, uint32_t rate, const R
 	_failure.stage = RtssFailureStage::Read;
 	RtssProfileSnapshot current;
 	if (!_Read(profile, current, error)) return false;
-	if (current != before) return _Fail(RtssFailureStage::Conflict, L"Conflict", error);
+	if (!SameInput(current, before)) return _Fail(RtssFailureStage::Conflict, L"Conflict", error);
 	if (!rate || rate > 1000) return _Fail(RtssFailureStage::Setting, L"InvalidRate", error);
+	if (!_RequireInterface(_set != nullptr, RtssFailureStage::Setting, "SetProfileProperty", error) ||
+		!_RequireInterface(_save != nullptr, RtssFailureStage::Save, "SaveProfile", error) ||
+		!_RequireInterface(_update != nullptr, RtssFailureStage::Reload, "UpdateProfiles", error)) return false;
+	if (!_running) return _Fail(RtssFailureStage::Setting, L"NotRunning", error);
 	if (!_CheckWriteAccess(profile, before.exists, error)) return false;
-	if (!_SetIfChanged("FrametimeLimit", 0, error)) {
+	if (!_SetIfChanged("FrametimeLimit", 0, error, current.rateKnown[2] ? &current.rate[2] : nullptr)) {
 		// A positive FPS property does not prove that RTSS has left time mode.
 		if (error == L"SetPropertyFailed" && current.rate[2]) error = L"TimeModeUnsupported";
 		return false;
 	}
-	if (!_SetIfChanged("FramerateLimitDenominator", 1, error) ||
-		!_SetIfChanged("FramerateLimit", rate, error) ||
-		(!before.exists && !_SetIfChanged("AppDetectionLevel", 1, error))) return false;
+	if (!_SetIfChanged("FramerateLimitDenominator", 1, error, current.rateKnown[1] ? &current.rate[1] : nullptr) ||
+		!_SetIfChanged("FramerateLimit", rate, error, current.rateKnown[0] ? &current.rate[0] : nullptr) ||
+		(!before.exists && !_SetIfChanged("AppDetectionLevel", 1, error, current.detectionKnown ? &current.detectionLevel : nullptr))) return false;
 	_failure.stage = RtssFailureStage::Read;
 	RtssProfileSnapshot disk;
 	if (!_ReadFile(before.exists ? profile : "", disk, error)) return false;
@@ -564,9 +601,13 @@ bool RtssProfileAccess::Apply(const std::string& profile, uint32_t rate, const R
 	if (written == before && (before.rate[0] != rate || before.rate[1] != 1 || before.rate[2] != 0)) {
 		return _Fail(RtssFailureStage::Save, L"SaveFailed", error);
 	}
+	if (!written.rateKnown[0] || !written.rateKnown[1] || !written.rateKnown[2])
+		return _Fail(RtssFailureStage::Verify, L"ReadPropertyFailed", error);
 	if (!_VerifyProperty("FramerateLimit", rate, written.rate[0], error) ||
 		!_VerifyProperty("FramerateLimitDenominator", 1, written.rate[1], error) ||
-		!_VerifyProperty("FrametimeLimit", 0, written.rate[2], error) ||
+		!_VerifyProperty("FrametimeLimit", 0, written.rate[2], error)) return false;
+	if (!before.exists && !written.detectionKnown) return _Fail(RtssFailureStage::Verify, L"ReadPropertyFailed", error);
+	if ((!before.exists || (before.detectionKnown && written.detectionKnown)) &&
 		!_VerifyProperty("AppDetectionLevel", before.exists ? before.detectionLevel : 1, written.detectionLevel, error)) return false;
 	if (before.exists && !NonRateEqual(before, written)) {
 		return _Fail(RtssFailureStage::Verify, L"VerifyFailed", error);
@@ -584,11 +625,15 @@ bool RtssProfileAccess::Restore(const std::string& profile, const RtssProfileSna
 	RtssProfileSnapshot current;
 	if (!_Read(profile, current, error)) { _failure.nativeFault = _faulted; return false; }
 	if (created && !current.exists) { _failure.stage = RtssFailureStage::None; return true; }
+	if (!current.rateKnown[0] || !current.rateKnown[1] || !current.rateKnown[2])
+		return _Fail(RtssFailureStage::Restore, L"ReadPropertyFailed", error);
 	if (!SameRate(current, lastWritten) || (created && (current.contents != lastWritten.contents || !NonRateEqual(current, lastWritten) ||
 		current.detectionLevel != lastWritten.detectionLevel))) {
 		conflict = true; return _Fail(RtssFailureStage::Conflict, L"Conflict", error);
 	}
+	if (!_RequireInterface(!_running || _update != nullptr, RtssFailureStage::Reload, "UpdateProfiles", error)) return false;
 	if (created) {
+		if (!_RequireInterface(_delete != nullptr, RtssFailureStage::Restore, "DeleteProfile", error)) return false;
 		RtssProfileSnapshot confirmed;
 		if (!_Read(profile, confirmed, error)) return false;
 		if (!confirmed.exists || confirmed.contents != lastWritten.contents) {
@@ -605,12 +650,23 @@ bool RtssProfileAccess::Restore(const std::string& profile, const RtssProfileSna
 		_failure.stage = RtssFailureStage::None;
 		return true;
 	}
+	if (!_RequireInterface(_set != nullptr, RtssFailureStage::Setting, "SetProfileProperty", error) ||
+		!_RequireInterface(_save != nullptr, RtssFailureStage::Restore, "SaveProfile", error)) return false;
+	// Missing original information cannot be restored by guessing defaults.
+	// This is a stop-time requirement, never a guarantee required before Apply.
+	constexpr std::array<const char*, 4> properties{
+		"FramerateLimit", "FramerateLimitDenominator", "FrametimeLimit", "LimitTimeDenominator" };
+	for (size_t i = 0; i < properties.size(); ++i) {
+		if (!original.rateKnown[i] && (i < 3 || original.rate[2])) {
+			_failure.property = properties[i]; return _Fail(RtssFailureStage::Restore, L"ReadPropertyFailed", error);
+		}
+	}
 	// Preserve current non-rate fields. No silent file fallback for unsupported expressions.
-	if (current.rate[3] != original.rate[3]) return _Fail(RtssFailureStage::Restore, L"TimeDenominatorChanged", error);
+	if (original.rateKnown[3] && (!current.rateKnown[3] || current.rate[3] != original.rate[3])) return _Fail(RtssFailureStage::Restore, L"TimeDenominatorChanged", error);
 	if (!_CheckWriteAccess(profile, true, error)) return false;
-	if (!_SetIfChanged("FramerateLimitDenominator", original.rate[1], error) ||
-		!_SetIfChanged("FrametimeLimit", original.rate[2], error) ||
-		!_SetIfChanged("FramerateLimit", original.rate[0], error)) return false;
+	if (!_SetIfChanged("FramerateLimitDenominator", original.rate[1], error, current.rateKnown[1] ? &current.rate[1] : nullptr) ||
+		!_SetIfChanged("FrametimeLimit", original.rate[2], error, current.rateKnown[2] ? &current.rate[2] : nullptr) ||
+		!_SetIfChanged("FramerateLimit", original.rate[0], error, current.rateKnown[0] ? &current.rate[0] : nullptr)) return false;
 	_failure.stage = RtssFailureStage::Restore;
 	RtssProfileSnapshot disk;
 	if (!_ReadFile(profile, disk, error)) return false;
@@ -624,12 +680,12 @@ bool RtssProfileAccess::Restore(const std::string& profile, const RtssProfileSna
 	if (!after.exists || !NonRateEqual(current, after)) {
 		return _Fail(RtssFailureStage::Verify, L"RestoreVerifyFailed", error);
 	}
-	constexpr std::array<const char*, 4> properties{
-		"FramerateLimit", "FramerateLimitDenominator", "FrametimeLimit", "LimitTimeDenominator" };
 	for (size_t i = 0; i < properties.size(); ++i) {
+		if (!original.rateKnown[i]) continue;
+		if (!after.rateKnown[i]) return _Fail(RtssFailureStage::Verify, L"ReadPropertyFailed", error);
 		if (!_VerifyProperty(properties[i], original.rate[i], after.rate[i], error)) return false;
 	}
-	if (!_VerifyProperty("AppDetectionLevel", current.detectionLevel, after.detectionLevel, error)) return false;
+	if (current.detectionKnown && after.detectionKnown && !_VerifyProperty("AppDetectionLevel", current.detectionLevel, after.detectionLevel, error)) return false;
 	for (const auto key : RATE_KEYS) {
 		if (original.fields.contains(key) != after.fields.contains(key)) {
 			return _Fail(RtssFailureStage::Verify, L"RestoreExpressionChanged", error);

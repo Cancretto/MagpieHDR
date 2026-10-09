@@ -22,7 +22,7 @@ struct RtssSettings {
 		return uint32_t(scope) <= uint32_t(RtssScope::Target) &&
 			uint32_t(rateMode) <= uint32_t(RtssRateMode::ContentSync) &&
 			uint32_t(exitPolicy) <= uint32_t(RtssExitPolicy::RestoreOriginal) &&
-			customRate >= MinimumRate && customRate <= MaximumRate;
+			(rateMode == RtssRateMode::ContentSync || (customRate >= MinimumRate && customRate <= MaximumRate));
 	}
 	static std::optional<uint32_t> EditedRate(double value) noexcept {
 		if (!std::isfinite(value) || value < MinimumRate || value > MaximumRate) return std::nullopt;

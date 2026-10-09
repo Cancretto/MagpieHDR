@@ -31,19 +31,23 @@ struct TargetIdentity {
 	}
 };
 
-std::string ProfileName(const std::wstring& name) {
-	if (name.empty() || name.find_first_of(L"\\/:,\r\n*?\t") != std::wstring::npos ||
-		_wcsicmp(std::filesystem::path(name).extension().c_str(), L".exe") != 0) return {};
-	BOOL lossy = FALSE;
-	const bool utf8 = GetACP() == CP_UTF8;
-	const DWORD flags = utf8 ? WC_ERR_INVALID_CHARS : WC_NO_BEST_FIT_CHARS;
-	BOOL* const loss = utf8 ? nullptr : &lossy;
-	const int size = WideCharToMultiByte(CP_ACP, flags, name.c_str(), int(name.size()),
-		nullptr, 0, nullptr, loss);
-	if (!size || lossy) return {};
-	std::string result(size_t(size), '\0');
-	WideCharToMultiByte(CP_ACP, flags, name.c_str(), int(name.size()), result.data(), size, nullptr, loss);
-	return lossy ? std::string{} : result;
+std::string ProfileName(const std::wstring& name) { return RtssProfileAccess::ProfileName(name); }
+
+void SetAccessStatus(const RtssProfileAccess& access, RtssStatus& status) {
+	const bool sameInstallation = !status.rtss.executable.empty() &&
+		_wcsicmp(access.Directory().c_str(), status.rtss.executable.parent_path().c_str()) == 0;
+	status.readReady = sameInstallation && access.CanRead();
+	status.applyReady = sameInstallation && access.CanApply();
+	status.initializeReady = sameInstallation && access.CanInitializeUnlimited();
+}
+
+void SetRateStatus(const RtssProfileSnapshot& snapshot, RtssStatus& status) {
+	status.timeLimit = snapshot.rateKnown[2] && snapshot.rate[2] > 0;
+	status.rateKnown = snapshot.rateKnown[2] && (status.timeLimit || (snapshot.rateKnown[0] &&
+		(!snapshot.rate[0] || (snapshot.rateKnown[1] && snapshot.rate[1]))));
+	status.rateUnavailable = !status.rateKnown;
+	status.currentRate = status.rateKnown && snapshot.rate[0] && snapshot.rateKnown[1] ? double(snapshot.rate[0]) / snapshot.rate[1] : 0;
+	status.detectionDisabled = snapshot.detectionKnown && !snapshot.detectionLevel;
 }
 
 std::shared_ptr<TargetIdentity> ResolveTarget(HWND source) {
@@ -73,8 +77,7 @@ std::shared_ptr<TargetIdentity> ResolveTarget(HWND source) {
 	FILETIME exited{}, kernel{}, user{};
 	if (!result->process || !GetProcessTimes(result->process.get(), &result->creation, &exited, &kernel, &user)) return {};
 	result->exe = Win32Helper::GetWindowExeName(actual);
-	if (_wcsicmp(result->exe.c_str(), L"ApplicationFrameHost.exe") == 0 ||
-		_wcsicmp(result->exe.c_str(), L"Magpie.exe") == 0) return {};
+	if (_wcsicmp(result->exe.c_str(), L"ApplicationFrameHost.exe") == 0) return {};
 	result->profile = ProfileName(result->exe);
 	return result->profile.empty() || !result->Valid() ? nullptr : result;
 }
@@ -91,7 +94,14 @@ const wchar_t* ProfileFailureText(const RtssProfileFailure& failure, const std::
 	if (failure.nativeFault || error == L"InterfaceFault") return L"Rtss_Failure_Interface";
 	if (failure.fileError == ERROR_ACCESS_DENIED || failure.fileError == ERROR_PRIVILEGE_NOT_HELD) return L"Rtss_Failure_Permission";
 	if (error == L"TimeModeUnsupported") return L"Rtss_Failure_TimeMode";
-	if (error == L"UnsupportedProfileFormat" || error == L"InvalidSelfProfile") return L"Rtss_Failure_ProfileFormat";
+	if (error == L"MissingInterface" || error == L"UnsupportedInterface") return L"Rtss_Failure_MissingInterface";
+	if (error == L"ReadPropertyFailed") return L"Rtss_Failure_Property";
+	if (error == L"UnsupportedArchitecture") return L"Rtss_Failure_Architecture";
+	if (error == L"InvalidSelfProfile" || error == L"InvalidProfileName") return L"Rtss_Failure_ProfileObject";
+	if (error == L"SelfProfileConflict") return L"Rtss_Failure_SelfProfileConflict";
+	if (error == L"InstallationChanged") return L"Rtss_Failure_InstallationChanged";
+	if (error == L"UnsupportedProfileFormat" || error == L"UnsupportedProfileEncoding" ||
+		error == L"DuplicateProfileField" || error == L"InvalidRateExpression") return L"Rtss_Failure_ProfileFormat";
 	switch (failure.stage) {
 	case RtssFailureStage::Read: return L"Rtss_Failure_Read";
 	case RtssFailureStage::Setting: return L"Rtss_Failure_Set";
@@ -123,6 +133,7 @@ struct RtssService::Session {
 	std::atomic<uint32_t> desiredRate = 0;
 	std::atomic<bool> contentConstrained = false;
 	std::string profile;
+	std::filesystem::path installation;
 	RtssProfileSnapshot original, lastWritten;
 	bool modified = false, created = false, suspended = false, finished = false;
 };
@@ -198,6 +209,7 @@ RtssStatus RtssService::Status() const {
 }
 
 void RtssService::_Publish(RtssStatus status) {
+	SetAccessStatus(_access, status);
 	{
 		std::lock_guard lock(_mutex); _status = std::move(status);
 	}
@@ -205,18 +217,21 @@ void RtssService::_Publish(RtssStatus status) {
 }
 
 bool RtssService::_Prepare(RtssStatus& status) {
+	status.readReady = status.applyReady = status.initializeReady = false;
 	status.rtss = RtssProfileAccess::DetectTool(false);
 	status.afterburner = RtssProfileAccess::DetectTool(true);
 	if (status.rtss.executable.empty()) { status.state = RtssState::NotInstalled; return false; }
-	if (!status.rtss.running) { status.state = RtssState::NotRunning; return false; }
 	std::wstring error;
 	if (!_access.Initialize(status.rtss, error)) {
 		status.state = Incompatible(error) ? RtssState::Incompatible : RtssState::Failed;
 		status.failureStage = error == L"InterfaceFault" ? L"Rtss_Failure_Interface" : error == L"LibraryMissing" ?
-			L"Rtss_Failure_LibraryMissing" : error == L"AccessDenied" ? L"Rtss_Failure_Permission" : L"Rtss_Failure_Access";
+			L"Rtss_Failure_LibraryMissing" : error == L"AccessDenied" ? L"Rtss_Failure_Permission" :
+			error == L"UnsupportedArchitecture" ? L"Rtss_Failure_Architecture" : L"Rtss_Failure_Access";
 		LogProfileFailure("check", error, _access.Failure()); return false;
 	}
-	status.accessReady = true;
+	SetAccessStatus(_access, status);
+	status.state = status.readReady ? (status.rtss.running ? RtssState::WaitingTarget : RtssState::NotRunning) : RtssState::Incompatible;
+	status.failureStage = status.readReady ? L"" : L"Rtss_Failure_MissingInterface";
 	return true;
 }
 
@@ -246,6 +261,7 @@ void RtssService::ContentTargetChanged(uint64_t sessionId, HWND source, bool fix
 			_Queue([this, identity = session->identity] {
 				auto status = Status(); status.profileIdentity = identity;
 				status.selfInitialization = false;
+				status.reloaded = status.profileSaved = status.rateUnavailable = false;
 				status.profile.clear(); status.rateKnown = false;
 				status.state = RtssState::Failed; status.failureStage = L"Rtss_Failure_Target";
 				_Publish(std::move(status));
@@ -302,6 +318,11 @@ void RtssService::_TryApply(const std::shared_ptr<Session>& session) {
 	status.desiredRate = session->desiredRate.load();
 	status.contentConstrained = session->contentConstrained;
 	if (!_Prepare(status)) { _Publish(std::move(status)); return; }
+	if (session->modified && _wcsicmp(session->installation.c_str(), status.rtss.executable.parent_path().c_str()) != 0) {
+		session->suspended = true; status.state = RtssState::Conflict;
+		status.failureStage = L"Rtss_Failure_InstallationChanged"; _Publish(std::move(status)); return;
+	}
+	if (!status.rtss.running) { status.state = RtssState::NotRunning; _Publish(std::move(status)); return; }
 	if (target && !target->Valid()) {
 		const auto rebound = ResolveTarget(target->source);
 		if (rebound && session->initialTarget && rebound->SameProcess(*session->initialTarget)) {
@@ -310,6 +331,10 @@ void RtssService::_TryApply(const std::shared_ptr<Session>& session) {
 	}
 	if (!target || !target->Valid()) {
 		status.state = RtssState::Failed; status.failureStage = L"Rtss_Failure_Target"; _Publish(std::move(status)); return;
+	}
+	if (_stricmp(target->profile.c_str(), _access.SelfProfile().c_str()) == 0) {
+		session->suspended = true; status.state = RtssState::Failed;
+		status.failureStage = L"Rtss_Failure_SelfProfileConflict"; _Publish(std::move(status)); return;
 	}
 	if (!status.desiredRate) { status.state = RtssState::WaitingContent; _Publish(std::move(status)); return; }
 	RtssProfileSnapshot before;
@@ -327,10 +352,10 @@ void RtssService::_TryApply(const std::shared_ptr<Session>& session) {
 	if (session->modified && before.rate[0] == status.desiredRate && before.rate[1] == 1 && before.rate[2] == 0) {
 		status.state = RtssState::Written; status.currentRate = status.desiredRate;
 		status.rateKnown = true;
-		status.detectionDisabled = !before.detectionLevel; _Publish(std::move(status)); return;
+		status.detectionDisabled = before.detectionKnown && !before.detectionLevel; _Publish(std::move(status)); return;
 	}
 	if (session->cancelled || !target->Valid()) return;
-	if (!session->modified) { session->original = before; session->created = !before.exists; }
+	if (!session->modified) { session->original = before; session->created = !before.exists; session->installation = status.rtss.executable.parent_path(); }
 	RtssProfileSnapshot written;
 	bool saveAttempted = false, readbackComplete = false;
 	bool success = false;
@@ -352,13 +377,16 @@ void RtssService::_TryApply(const std::shared_ptr<Session>& session) {
 	}
 	if (!success) {
 		if (error == L"Cancelled") return;
+		status.profileSaved = _access.Failure().stage == RtssFailureStage::Reload && readbackComplete;
+		if (status.profileSaved) SetRateStatus(written, status);
 		LogProfileFailure("write", error, _access.Failure()); status.state = error == L"Conflict" ? RtssState::Conflict : RtssState::Failed;
 		status.failureStage = error == L"Conflict" ? L"" : ProfileFailureText(_access.Failure(), error, false);
 		session->suspended = true; _Publish(std::move(status)); return;
 	}
 	status.state = RtssState::Written; status.currentRate = status.desiredRate;
 	status.rateKnown = true;
-	status.detectionDisabled = !written.detectionLevel;
+	status.detectionDisabled = written.detectionKnown && !written.detectionLevel;
+	status.reloaded = status.rtss.running;
 	if (session->profile.empty()) {
 		RtssProfileSnapshot targetProfile;
 		if (_access.Read(target->profile, targetProfile, error)) status.targetOverridesGlobal = targetProfile.exists;
@@ -376,8 +404,14 @@ void RtssService::_Finish(const std::shared_ptr<Session>& session) {
 	status.timeLimit = false;
 	status.targetOverridesGlobal = false;
 	status.failureStage.clear();
+	status.reloaded = status.profileSaved = status.rateUnavailable = false;
 	status.profileIdentity = session->identity;
 	status.profile = session->profile.empty() ? L"Global" : session->initialTarget->exe;
+	if (!_Prepare(status) || _wcsicmp(session->installation.c_str(), status.rtss.executable.parent_path().c_str()) != 0) {
+		status.state = session->settings.exitPolicy == RtssExitPolicy::KeepChanges ? RtssState::Kept : RtssState::RestoreFailed;
+		if (_wcsicmp(session->installation.c_str(), status.rtss.executable.parent_path().c_str()) != 0) status.failureStage = L"Rtss_Failure_InstallationChanged";
+		_Publish(std::move(status)); return;
+	}
 	if (session->settings.exitPolicy == RtssExitPolicy::KeepChanges) {
 		RtssProfileSnapshot current;
 		std::wstring error;
@@ -385,9 +419,7 @@ void RtssService::_Finish(const std::shared_ptr<Session>& session) {
 			if (!RtssProfileAccess::SameRate(current, session->lastWritten)) {
 				status.state = RtssState::Conflict; _Publish(std::move(status)); return;
 			}
-			status.currentRate = double(current.rate[0]) / current.rate[1];
-			status.timeLimit = current.rate[2] > 0; status.rateKnown = true;
-			status.detectionDisabled = !current.detectionLevel;
+			SetRateStatus(current, status);
 		}
 		status.state = RtssState::Kept; _Publish(std::move(status)); return;
 	}
@@ -397,9 +429,10 @@ void RtssService::_Finish(const std::shared_ptr<Session>& session) {
 	try { restored = _access.Restore(session->profile, session->original, session->lastWritten, session->created, conflict, error); }
 	catch (...) { error = L"RestoreException"; }
 	if (!restored) {
+		status.profileSaved = _access.Failure().stage == RtssFailureStage::Reload && _access.Failure().readbackComplete;
 		LogProfileFailure("restore", error, _access.Failure()); status.state = conflict ? RtssState::Conflict : RtssState::RestoreFailed;
 		status.failureStage = conflict ? L"" : ProfileFailureText(_access.Failure(), error, true);
-	} else status.state = RtssState::Restored;
+	} else { status.state = RtssState::Restored; status.reloaded = status.rtss.running; }
 	_Publish(std::move(status));
 }
 
@@ -411,7 +444,7 @@ void RtssService::Recheck(bool retry) {
 			_TryApply(_workerSession); return;
 		}
 		RtssStatus status;
-		if (_Prepare(status)) status.state = RtssState::WaitingTarget;
+		_Prepare(status);
 		_Publish(std::move(status));
 	});
 }
@@ -422,6 +455,7 @@ void RtssService::Launch(bool afterburner) {
 	_Queue([this, afterburner] {
 		auto status = Status(); status.state = RtssState::StartingTool;
 		status.selfInitialization = false; status.rateKnown = false;
+		status.reloaded = status.profileSaved = status.rateUnavailable = false;
 		status.detectionDisabled = status.targetOverridesGlobal = false;
 		status.profileIdentity.reset();
 		status.profile.clear(); status.failureStage.clear(); _Publish(status);
@@ -449,6 +483,7 @@ void RtssService::Launch(bool afterburner) {
 						if (tool.running) { Recheck(false); return; }
 						auto status = Status(); status.state = RtssState::ToolStartFailed;
 						status.selfInitialization = false; status.rateKnown = false;
+						status.reloaded = status.profileSaved = status.rateUnavailable = false;
 						status.detectionDisabled = status.targetOverridesGlobal = false;
 						status.profileIdentity.reset();
 						status.profile = afterburner ? L"MSI Afterburner" : L"RTSS";
@@ -484,6 +519,13 @@ void RtssService::_InitializeMagpie() {
 	std::wstring error;
 	try {
 		if (_Prepare(status)) {
+			if (_workerSession && !_workerSession->cancelled && !_workerSession->finished) {
+				const auto target = _workerSession->target.load();
+				if (target && target->Valid() && _stricmp(target->profile.c_str(), _access.SelfProfile().c_str()) == 0) {
+					status.state = RtssState::Failed; status.failureStage = L"Rtss_Failure_SelfProfileConflict";
+					_Publish(std::move(status)); return;
+				}
+			}
 			status.state = RtssState::InitializingMagpie; _Publish(status);
 			RtssProfileSnapshot written;
 			bool alreadyUnlimited = false;
@@ -491,9 +533,12 @@ void RtssService::_InitializeMagpie() {
 			if (_access.InitializeUnlimited(name, written, alreadyUnlimited, error, [this] { return _notify.load(); })) {
 				status.state = alreadyUnlimited ? RtssState::MagpieAlreadyUnlimited : RtssState::MagpieInitialized;
 				status.currentRate = 0; status.rateKnown = true;
+				status.reloaded = !alreadyUnlimited && status.rtss.running;
 			} else {
 				status.state = error == L"Conflict" ? RtssState::Conflict : RtssState::Failed;
 				status.failureStage = error == L"Conflict" ? L"" : ProfileFailureText(_access.Failure(), error, false);
+				status.profileSaved = _access.Failure().stage == RtssFailureStage::Reload && _access.Failure().readbackComplete;
+				if (status.profileSaved) { status.currentRate = 0; status.rateKnown = true; }
 				LogProfileFailure("initialize Magpie", error, _access.Failure());
 			}
 		}
@@ -517,16 +562,14 @@ void RtssService::Preview(RtssSettings settings, std::wstring executable, std::f
 				status.profile = profile.empty() ? L"Global" : std::filesystem::path(executable).filename().native();
 				if (_access.Read(profile, snapshot, error)) {
 					status.state = snapshot.exists ? RtssState::Read : RtssState::MissingProfile;
-					status.currentRate = double(snapshot.rate[0]) / snapshot.rate[1];
-					status.rateKnown = true;
-					status.timeLimit = snapshot.rate[2] > 0;
-					status.detectionDisabled = !snapshot.detectionLevel;
+					SetRateStatus(snapshot, status);
 				} else {
 					status.state = RtssState::Failed; status.failureStage = ProfileFailureText(_access.Failure(), error, false);
 					LogProfileFailure("preview", error, _access.Failure());
 				}
 			}
 		}
+		SetAccessStatus(_access, status);
 		if (_notify) _dispatcher.TryEnqueue([this, status = std::move(status), completed] {
 			if (_notify) completed(status);
 		});

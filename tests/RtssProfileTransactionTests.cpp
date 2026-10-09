@@ -58,6 +58,7 @@ struct Fixture {
 		access._directory = directory;
 		access._module = reinterpret_cast<HMODULE>(1); // The destructor must never FreeLibrary this fixture.
 		access._version = L"mock-7.3.5";
+		access._selfProfile = "Magpie.exe";
 		access._load = Load; access._save = Save; access._delete = Delete;
 		access._get = Get; access._set = Set; access._update = Update;
 		active = this;
@@ -120,6 +121,125 @@ struct Fixture {
 	static void Update() { ++active->reloads; if (active->reloadFault) RaiseException(EXCEPTION_ACCESS_VIOLATION, 0, 0, nullptr); }
 };
 
+void CapabilityTests(const std::filesystem::path& output) {
+	for (int missing = 0; missing < 6; ++missing) {
+		Fixture f(output);
+		if (missing == 0) f.access._delete = nullptr;
+		if (missing == 1) f.access._save = nullptr;
+		if (missing == 2) f.access._set = nullptr;
+		if (missing == 3) f.access._update = nullptr;
+		if (missing == 4) f.access._load = nullptr;
+		if (missing == 5) f.access._get = nullptr;
+		RtssProfileSnapshot before, written;
+		std::wstring error; bool attempted = false, complete = false, unlimited = false;
+		const bool read = f.access.Read("", before, error);
+		Require(read == (missing < 4) && f.access.CanRead() == read, "Only Load/Get exports required for read");
+		Require(f.access.CanApply() == (missing == 0), "Apply does not require Delete");
+		Require(f.access.CanInitializeUnlimited() == (missing < 4), "Self command does not depend on save, set or delete");
+		if (missing < 4) {
+			const auto original = ReadBytes(f.Path(""));
+			const bool applied = f.access.Apply("new.exe", 60, f.Snapshot("new.exe"), written, attempted, complete, error, [] { return true; });
+			Require(applied == (missing == 0), "Missing export affects only dependent writes");
+			if (missing) Require(!attempted && f.saves == 0 && f.setters.empty() && error == L"MissingInterface" && original == ReadBytes(f.Path("")), "Required export failure precedes mutation");
+			Require(f.access.InitializeUnlimited("Magpie.exe", written, unlimited, error, [] { return true; }) == (missing != 3), "File initialization has independent export requirements");
+			if (missing == 3) {
+				f.access._running = false;
+				Require(f.access.InitializeUnlimited("Magpie.exe", written, unlimited, error, [] { return true; }) && f.reloads == 0, "Offline clear works without UpdateProfiles");
+			}
+		}
+	}
+	for (const std::string property : { "AppDetectionLevel", "FrametimeLimit", "FramerateLimitDenominator", "FramerateLimit" }) {
+		Fixture f(output); f.getFailure = property;
+		RtssProfileSnapshot snapshot, written; std::wstring error; bool attempted = false, complete = false;
+		Require(f.access.Read("", snapshot, error) && snapshot.rateKnown[0], "Optional getter does not discard readable fields");
+		const bool applied = f.access.Apply("", 60, snapshot, written, attempted, complete, error, [] { return true; });
+		Require(applied && attempted && complete, "Missing getter does not block an unchanged known time/denominator/detection value");
+		if (!applied) Require(!attempted && f.saves == 0 && error == L"ReadPropertyFailed" && f.access.Failure().property == property, "Required property absence is precise and does not save");
+	}
+	for (auto property : {"FrametimeLimit", "FramerateLimitDenominator"}) {
+		Fixture f(output); f.getFailure = property;
+		WriteBytes(f.Path(""), std::string_view(property) == "FrametimeLimit" ? Profile(30, 1, 16667) : Profile(30, 2));
+		const auto before = f.Snapshot("");
+		RtssProfileSnapshot written; std::wstring error; bool attempted = false, complete = false;
+		const bool applied = f.access.Apply("", 60, before, written, attempted, complete, error, [] { return true; });
+		if (std::string_view(property) == "FrametimeLimit")
+			Require(!applied && !attempted && f.saves == 0 && error == L"TimeModeUnsupported" && f.access.Failure().property == property,
+				"Actual time setter refusal is not disguised as missing getter");
+		else Require(applied && attempted && complete && written.rate[1] == 1,
+			"Changed denominator can verify accepted setter through explicit saved field");
+	}
+	for (int missing = 0; missing < 4; ++missing) {
+		Fixture f(output);
+		std::string bytes = Profile();
+		const char* fields[] = {"Detection=3\n", "LimitTime=0\n", "LimitDenominator=1\n", "LimitTimeDenominator=1\n"};
+		const char* properties[] = {"AppDetectionLevel", "FrametimeLimit", "FramerateLimitDenominator", "unused"};
+		bytes.erase(bytes.find(fields[missing]), std::string(fields[missing]).size());
+		WriteBytes(f.Path(""), bytes); f.getFailure = properties[missing];
+		const auto snapshot = f.Snapshot("");
+		Require(missing == 0 ? !snapshot.detectionKnown : !snapshot.rateKnown[missing == 1 ? 2 : missing == 2 ? 1 : 3], "Omitted and unavailable information stays unknown");
+		Require(f.saves == 0 && f.setters.empty(), "Read capability never probes by writing");
+	}
+	for (auto version : { L"7.3.4.0", L"7.3.5.28314", L"7.4.99.999", L"" }) {
+		Fixture f(output); f.access._version = version;
+		WriteBytes(f.Path("Magpie.exe"), Profile(60, 1000, 16667, 100, 3, "kept"));
+		const auto global = ReadBytes(f.Path("")); RtssProfileSnapshot written;
+		std::wstring error; bool unlimited = false;
+		Require(f.access.InitializeUnlimited("Magpie.exe", written, unlimited, error, [] { return true; }) && !unlimited && written.rate[0] == 0 && written.rate[2] == 0, "Version metadata does not gate identical initialization ability");
+		Require(global == ReadBytes(f.Path("")) && written.rate[1] == 1000 && written.rate[3] == 100 && f.access.Failure().version == version, "Version diagnostic and non-cap fields preserved");
+		f.access._update = nullptr;
+		Require(f.access.InitializeUnlimited("Magpie.exe", written, unlimited, error, [] { return true; }) && unlimited && f.reloads == 1, "Unlimited no-op needs no reload capability");
+	}
+	for (bool exists : { false, true }) {
+		Fixture f(output); f.access._running = false; f.access._save = nullptr; f.access._set = nullptr;
+		f.access._delete = nullptr; f.access._update = nullptr;
+		if (exists) WriteBytes(f.Path("Magpie.exe"), Profile(30));
+		RtssProfileSnapshot written; std::wstring error; bool unlimited = false;
+		Require(f.access.InitializeUnlimited("Magpie.exe", written, unlimited, error, [] { return true; }) && written.exists && written.rate[0] == 0 && written.rate[2] == 0, "Offline initialization persists and reads back");
+		Require(f.reloads == 0 && f.saves == 0 && f.setters.empty() && !f.access.CanApply(), "Offline operation never invokes reload or live cap");
+	}
+	{
+		Fixture f(output); f.access._selfProfile = "RenamedMagpie.exe";
+		RtssProfileSnapshot written; std::wstring error; bool unlimited = false;
+		for (const std::string name : {"", "Magpie.exe", "game.exe", "../RenamedMagpie.exe"})
+			Require(!f.access.InitializeUnlimited(name, written, unlimited, error, [] { return true; }) && error == L"InvalidSelfProfile", "Self binding cannot be redirected to Global/game/old name/path");
+		Require(f.access.InitializeUnlimited("RenamedMagpie.exe", written, unlimited, error, [] { return true; }) && !std::filesystem::exists(f.Path("Magpie.exe")), "Actual renamed self has independent profile");
+	}
+	{
+		Fixture f(output);
+		auto bytes = Profile(0, 2); bytes.erase(bytes.find("Limit=0\n"), std::string("Limit=0\n").size());
+		WriteBytes(f.Path(""), bytes); f.getFailure = "FramerateLimit";
+		const auto original = f.Snapshot("");
+		Require(!original.rateKnown[0], "Original omitted FPS is unknown when getter is unavailable");
+		f.afterSet = [&f] { f.getFailure.clear(); };
+		RtssProfileSnapshot written; std::wstring error; bool attempted = false, complete = false, conflict = false;
+		Require(f.access.Apply("", 60, original, written, attempted, complete, error, [] { return true; }), "Authorized apply can succeed when required getter becomes available during transaction");
+		const auto setters = f.setters.size();
+		Require(!f.access.Restore("", original, written, false, conflict, error) && error == L"ReadPropertyFailed" &&
+			f.access.Failure().property == "FramerateLimit" && f.setters.size() == setters && f.saves == 1,
+			"Stop does not guess unknown original FPS or impose restore guarantee before start");
+	}
+	{
+		Fixture f(output);
+		auto bytes = Profile(60); bytes.erase(bytes.find("Detection=3\n"), std::string("Detection=3\n").size());
+		WriteBytes(f.Path("Magpie.exe"), bytes);
+		RtssProfileSnapshot written; std::wstring error; bool unlimited = false;
+		Require(f.access.InitializeUnlimited("Magpie.exe", written, unlimited, error, [&f] {
+			f.getFailure = "AppDetectionLevel"; return true;
+		}) && !written.detectionKnown && written.rate[0] == 0 && written.rate[2] == 0,
+			"Optional getter becoming unavailable is not a profile conflict or a fabricated detection value");
+		Require(written.contents.find("Detection=") == std::string::npos && f.saves == 0, "Optional metadata cannot replace non-rate bytes");
+	}
+	{
+		Fixture f(output); f.getFailure = f.ignore = "FramerateLimit";
+		const auto before = f.Snapshot(""); RtssProfileSnapshot written;
+		std::wstring error; bool attempted = false, complete = false;
+		Require(!f.access.Apply("", 60, before, written, attempted, complete, error, [] { return true; }) && attempted && complete && written.rate[0] == 0 && f.reloads == 0,
+			"Accepted-but-ignored setter is rejected by disk readback when getter is absent");
+	}
+	for (auto name : {L"Magpie.exe", L"Renamed Magpie.exe", L"UPPER.EXE"}) Require(!RtssProfileAccess::ProfileName(name).empty(), "Legal trusted filename conversion");
+	for (auto name : {L"", L"Global", L"../Magpie.exe", L"C:\\Magpie.exe", L"bad\"name.exe", L"app.dll"}) Require(RtssProfileAccess::ProfileName(name).empty(), "Invalid profile filenames rejected");
+}
+
 void MockTests(const std::filesystem::path& output) {
 	for (const std::string name : {"", "existing.exe", "new.exe"}) for (const uint32_t original : {0u, 30u, 60u}) {
 		Fixture f(output);
@@ -174,7 +294,12 @@ void MockTests(const std::filesystem::path& output) {
 		if (kind == 9) WriteBytes(f.Path(""), Profile(15));
 		if (kind == 10) f.afterSet = [&f] { WriteBytes(f.Path(""), Profile(17)); };
 		if (kind == 12) f.saveMode = SaveMode::Fault;
-		Require(!f.access.Apply(name, 60, before, written, attempted, complete, error, [] { return true; }), "Fault must fail");
+		const bool applied = f.access.Apply(name, 60, before, written, attempted, complete, error, [] { return true; });
+		if (kind == 3) {
+			Require(applied && attempted && complete && written.rate[0] == 60, "Getter absence alone cannot reject accepted and verified FPS setter");
+			continue;
+		}
+		Require(!applied, "Fault must fail");
 		const auto failure = f.access.Failure();
 		Require(failure.saveAttempted == attempted && failure.readbackComplete == complete, "Transaction diagnostic flags");
 		if (kind <= 2) {
@@ -182,8 +307,7 @@ void MockTests(const std::filesystem::path& output) {
 			Require(failure.property == (kind == 0 ? "FrametimeLimit" : "FramerateLimit"), "Specific rejected property");
 			Require(error == (kind == 0 ? L"TimeModeUnsupported" : kind == 1 ? L"SetPropertyFailed" : L"SetReadbackFailed"), "Specific setter reason");
 		}
-		if (kind == 3) Require(!attempted && failure.stage == RtssFailureStage::Read, "Getter failure stage");
-		if (kind == 4 || kind == 11) Require(attempted && complete && failure.stage == RtssFailureStage::Save, "Void save no-op detected");
+				if (kind == 4 || kind == 11) Require(attempted && complete && failure.stage == RtssFailureStage::Save, "Void save no-op detected");
 		if (kind == 5 || kind == 6) Require(attempted && failure.stage == RtssFailureStage::Verify && f.reloads == 0, "Partial/invalid save verified before reload");
 		if (kind == 7 || kind == 8 || kind == 12) Require(failure.nativeFault && error == L"InterfaceFault", "Native faults remain distinct");
 		if (kind == 9 || kind == 10) Require(!attempted && error == L"Conflict", "External edits never overwritten");
@@ -241,14 +365,15 @@ void MockTests(const std::filesystem::path& output) {
 		if (kind == 3) f.reloadFault = true;
 		if (kind == 4) f.saveMode = SaveMode::Fault;
 		if (kind == 5) f.getFailure = "FramerateLimit";
-		Require(!f.access.Restore("", before, written, false, conflict, error), "Restore failure reported once");
+		const bool restored = f.access.Restore("", before, written, false, conflict, error);
+		if (kind == 5) { Require(restored && f.Snapshot("").rate == before.rate, "Restore verifies saved fields when getter is absent"); continue; }
+		Require(!restored, "Restore failure reported once");
 		Require(!conflict, "Ordinary restore failures are not conflicts");
 		const auto failure = f.access.Failure();
 		if (kind == 0) Require(failure.stage == RtssFailureStage::Setting && failure.property == "FramerateLimit" && !failure.saveAttempted, "Restore setter failure detail");
 		if (kind == 1 || kind == 2) Require(failure.stage == RtssFailureStage::Verify && failure.saveAttempted, "Restore save readback failure detail");
 		if (kind == 3 || kind == 4) Require(failure.nativeFault && error == L"InterfaceFault", "Restore native fault quarantined");
-		if (kind == 5) Require(failure.stage == RtssFailureStage::Restore && failure.property == "FramerateLimit", "Restore getter failure detail");
-	}
+			}
 	{
 		Fixture f(output);
 		const auto before = f.Snapshot("");
@@ -281,7 +406,7 @@ void MockTests(const std::filesystem::path& output) {
 void NativeTests(const std::filesystem::path& directory) {
 	RtssProfileAccess access;
 	std::wstring error;
-	Require(access.Initialize({directory / L"RTSS.exe", L"isolated-installed-version", false}, error), "Native initialize");
+	Require(access.Initialize({directory / L"RTSS.exe", L"isolated-installed-version", true}, error), "Native initialize");
 	RtssProfileSnapshot global;
 	Require(access.Read("", global, error) && global.rate[0] == 97, "Native isolation sentinel");
 	for (const std::string name : {"", "existing.exe", "new.exe", "fractional.exe"}) {
@@ -358,6 +483,7 @@ void NativeTests(const std::filesystem::path& directory) {
 int wmain(int argc, wchar_t** argv) {
 	try {
 		if (argc != 2 && argc != 3) throw std::runtime_error("Expected output directory and optional isolated RTSS directory");
+		CapabilityTests(std::filesystem::path(argv[1]) / ("capability-run-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64())));
 		MockTests(std::filesystem::path(argv[1]) / ("mock-run-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64())));
 		std::cout << "RTSS production transaction mock: " << checks << " checks passed.\n";
 		if (argc == 3) {

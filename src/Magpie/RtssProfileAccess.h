@@ -23,7 +23,9 @@ struct RtssProfileSnapshot {
 	std::string contents;
 	std::array<uint64_t, 2> fileIdentity{};
 	bool exists = false;
+	std::array<bool, 4> rateKnown{};
 	uint32_t detectionLevel = 0;
+	bool detectionKnown = false;
 	bool operator==(const RtssProfileSnapshot&) const = default;
 };
 
@@ -48,6 +50,7 @@ public:
 	RtssProfileAccess(const RtssProfileAccess&) = delete;
 	RtssProfileAccess& operator=(const RtssProfileAccess&) = delete;
 	static RtssToolInfo DetectTool(bool afterburner);
+	static std::string ProfileName(const std::wstring& name);
 	static bool LaunchTool(const RtssToolInfo& tool, std::wstring& error);
 	bool Initialize(const RtssToolInfo& tool, std::wstring& error);
 	bool Read(const std::string& profile, RtssProfileSnapshot& snapshot, std::wstring& error);
@@ -59,8 +62,19 @@ public:
 	bool InitializeUnlimited(const std::string& profile, RtssProfileSnapshot& written,
 		bool& alreadyUnlimited, std::wstring& error, const std::function<bool()>& stillValid);
 	const RtssProfileFailure& Failure() const noexcept { return _failure; }
+	bool CanRead() const noexcept { return _module && !_faulted && _load && _get; }
+	bool CanApply() const noexcept { return CanRead() && _set && _save && _running && _update; }
+	bool CanInitializeUnlimited() const noexcept { return CanRead() && !_selfProfile.empty(); }
+	const std::string& SelfProfile() const noexcept { return _selfProfile; }
+	const std::filesystem::path& Directory() const noexcept { return _directory; }
+	static bool SameInput(const RtssProfileSnapshot& a, const RtssProfileSnapshot& b) noexcept {
+		if (a.exists != b.exists || a.contents != b.contents || a.fileIdentity != b.fileIdentity) return false;
+		for (size_t i = 0; i < a.rate.size(); ++i)
+			if (a.rateKnown[i] && b.rateKnown[i] && a.rate[i] != b.rate[i]) return false;
+		return !a.detectionKnown || !b.detectionKnown || a.detectionLevel == b.detectionLevel;
+	}
 	static bool SameRate(const RtssProfileSnapshot& a, const RtssProfileSnapshot& b) noexcept {
-		return a.exists == b.exists && a.rate == b.rate;
+		return a.exists == b.exists && a.rate == b.rate && a.rateKnown == b.rateKnown;
 	}
 
 private:
@@ -74,9 +88,10 @@ private:
 	bool _WriteUnlimited(const std::string& profile, const RtssProfileSnapshot& before,
 		const std::string& contents, RtssProfileSnapshot& written, std::wstring& error,
 		const std::function<bool()>& stillValid);
+	bool _RequireInterface(bool available, RtssFailureStage stage, const char* name, std::wstring& error);
 	bool _Get(const char* property, uint32_t& value);
 	bool _Set(const char* property, uint32_t value);
-	bool _SetIfChanged(const char* property, uint32_t value, std::wstring& error);
+	bool _SetIfChanged(const char* property, uint32_t value, std::wstring& error, const uint32_t* knownValue = nullptr);
 	bool _VerifyProperty(const char* property, uint32_t expected, uint32_t actual, std::wstring& error);
 	void _ResetFailure(const std::string& profile);
 	bool _Fail(RtssFailureStage stage, const wchar_t* reason, std::wstring& error);
@@ -90,6 +105,8 @@ private:
 	void (*_update)() = nullptr;
 	bool _faulted = false;
 	std::wstring _version;
+	std::string _selfProfile;
+	bool _running = true;
 	RtssProfileFailure _failure;
 };
 

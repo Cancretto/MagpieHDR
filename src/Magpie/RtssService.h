@@ -29,7 +29,8 @@ struct RtssStatus {
 	bool detectionDisabled = false;
 	bool targetOverridesGlobal = false;
 	bool contentConstrained = false;
-	bool accessReady = false;
+	bool readReady = false, applyReady = false, initializeReady = false;
+	bool reloaded = false, profileSaved = false, rateUnavailable = false;
 	bool selfInitialization = false;
 	std::weak_ptr<const uint8_t> profileIdentity;
 	std::wstring failureStage;

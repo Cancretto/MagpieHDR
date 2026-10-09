@@ -18,6 +18,11 @@ for name in ("RtssStatusText", "RtssSyncText", "RtssLaunchText", "AfterburnerLau
     start = vm.index(f"hstring ProfileViewModel::{name}() const {{")
     end = vm.index("\n}", start) + 2
     getters.append(vm[start:end])
+for signature in ("RtssStatus ProfileViewModel::_RtssStatus() const {", "bool ProfileViewModel::CanInitializeMagpie() const {"):
+    start = vm.index(signature)
+    end = vm.index("\n}", start) + 2
+    getters.append(vm[start:end].replace("ProfileViewModel::", "StatusViewModel::"))
+
 enum = re.search(r"enum class RtssState \{.*?\};", service, re.S).group()
 status = re.search(r"struct RtssStatus \{.*?\n\};", service, re.S).group()
 states = re.findall(r"\b\w+\b", enum.split("{", 1)[1].split("}", 1)[0])

@@ -19,7 +19,12 @@ source = source.replace('#include "RtssProfileAccess.h"', '#include "RtssProfile
 source = '#ifdef RTSS_TEST_FILE_COMMIT\n#include "RtssFileCommitHooks.g.h"\n#endif\n' + source
 start = source.index("bool IsRunning(")
 end = source.index("RtssProfileAccess::~RtssProfileAccess()")
-source = source[:start] + "}\n\n" + source[end:]
+name_start = source.index("std::string RtssProfileAccess::ProfileName(")
+name_end = source.index("\n}\n", name_start) + 2
+name_method = source[name_start:name_end]
+source = source[:start] + "}\n\n" + name_method + "\n\n" + source[end:]
+source = '#include <windows.h>\n#include <filesystem>\nnamespace Magpie::Win32Helper { std::filesystem::path GetExePath() {\n' + \
+    'wchar_t path[32768]{}; GetModuleFileNameW(nullptr, path, 32768); return path; } }\n' + source
 service = (repo / "src/Magpie/RtssService.cpp").read_text(encoding="utf-8-sig")
 start = service.index("const wchar_t* ProfileFailureText(")
 end = service.index("\n}\n", start) + 2
@@ -37,10 +42,10 @@ status_end = enum_source.index("\n};", enum_source.index("struct RtssStatus {"))
 session_start = service.index("struct RtssService::Session {")
 session_end = service.index("\n};", session_start) + 3
 methods = []
-for name in ("_TryApply", "_Finish", "_InitializeMagpie"):
-    method_start = service.index("void RtssService::" + name + "(")
+for name in ("_TryApply", "_Finish", "_InitializeMagpie", "_Prepare"):
+    method_start = service.index(("bool" if name == "_Prepare" else "void") + " RtssService::" + name + "(")
     method_end = service.index("\n}", method_start) + 2
     methods.append(service[method_start:method_end])
 (args.output / "RtssSessionCases.g.h").write_text(enum_source[enum_start:status_end], encoding="utf-8")
-(args.output / "RtssSessionTransactions.g.h").write_text(service[session_start:session_end] + "\n" + "\n".join(methods), encoding="utf-8")
+(args.output / "RtssSessionTransactions.g.h").write_text(service[session_start:session_end] + "\n" + service[service.index("bool Incompatible("):service.index("\n}\n", service.index("bool Incompatible(")) + 2] + "\n" + service[service.index("void SetAccessStatus("):service.index("\n}\n", service.index("void SetAccessStatus(")) + 2] + "\n" + service[service.index("void SetRateStatus("):service.index("\n}\n", service.index("void SetRateStatus(")) + 2] + "\n" + "\n".join(methods), encoding="utf-8")
 print("Extracted complete production RTSS profile transactions, Win32 I/O, SEH and status mapping.")

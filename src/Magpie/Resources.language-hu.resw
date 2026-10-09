@@ -420,7 +420,7 @@
   <data name="Rtss_Status_Checking" xml:space="preserve"><value>Checking RTSS…</value></data>
   <data name="Rtss_Status_NotInstalled" xml:space="preserve"><value>RTSS was not found.</value></data>
   <data name="Rtss_Status_NotRunning" xml:space="preserve"><value>RTSS is not running.</value></data>
-  <data name="Rtss_Status_Incompatible" xml:space="preserve"><value>This RTSS version or architecture does not support the required profile interface.</value></data>
+  <data name="Rtss_Status_Incompatible" xml:space="preserve"><value>Required RTSS profile interface is unavailable.</value></data>
   <data name="Rtss_Status_Failed" xml:space="preserve"><value>The RTSS operation failed.</value></data>
   <data name="Rtss_Status_WaitingTarget" xml:space="preserve"><value>The target profile is read when scaling starts.</value></data>
   <data name="Rtss_Status_Read" xml:space="preserve"><value>Profile read successfully.</value></data>
@@ -487,6 +487,16 @@
     <value>Already unlimited.</value>
   </data>
   <data name="Rtss_Failure_ProfileFormat" xml:space="preserve">
-    <value>This version’s profile format is not supported yet.</value>
+    <value>Could not process the profile format.</value>
   </data>
+  <data name="Rtss_Failure_MissingInterface" xml:space="preserve"><value>An interface required for this operation is missing.</value></data>
+  <data name="Rtss_Failure_Property" xml:space="preserve"><value>A property required for this operation could not be read.</value></data>
+  <data name="Rtss_Failure_Architecture" xml:space="preserve"><value>Profile library architecture does not match.</value></data>
+  <data name="Rtss_Failure_ProfileObject" xml:space="preserve"><value>Could not confirm the initialization target.</value></data>
+  <data name="Rtss_Failure_SelfProfileConflict" xml:space="preserve"><value>The target and Magpie share the same profile name.</value></data>
+  <data name="Rtss_Failure_InstallationChanged" xml:space="preserve"><value>RTSS profile directory has changed.</value></data>
+  <data name="Rtss_ProfileRate" xml:space="preserve"><value>Profile limit: {:g} FPS</value></data>
+  <data name="Rtss_RateUnknown" xml:space="preserve"><value>Profile limit could not be read.</value></data>
+  <data name="Rtss_Reloaded" xml:space="preserve"><value>Profile reload requested.</value></data>
+  <data name="Rtss_ProfileSaved" xml:space="preserve"><value>Profile saved.</value></data>
 </root>

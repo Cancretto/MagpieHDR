@@ -50,6 +50,21 @@ int main() {
 	for (const auto bad : { "0", "14", "361", "59.5", "null", "\"60\"" })
 		Check(Read(std::string("{\"rtss\":{\"scope\":2,\"customRate\":") + bad + "}}").scope == RtssScope::None,
 			"Damaged custom rate grants external control");
+	for (const auto bad : { "0", "14", "361", "59.5", "null", "\"60\"" }) {
+		const auto restored = Read(std::string("{\"rtss\":{\"scope\":2,\"rateMode\":1,\"exitPolicy\":0,\"customRate\":") + bad + "}}");
+		Check(restored.scope == RtssScope::Target && restored.rateMode == RtssRateMode::ContentSync && restored.exitPolicy == RtssExitPolicy::KeepChanges,
+			"Unused manual damage preserves scope, sync and exit choice");
+		Check(Read(Write(restored)) == restored && restored.ResolveRate(true, 72) == 72, "Unused manual damage survives next save and sync");
+	}
+	for (uint32_t bad : {0u, 14u, 361u, UINT32_MAX}) {
+		RtssSettings s{RtssScope::Global, RtssRateMode::ContentSync, bad, RtssExitPolicy::RestoreOriginal};
+		Check(s.IsValid() && s.ResolveRate(true, 72) == 72, "Sync validity ignores unused manual value");
+		const auto saved = Read(Write(s));
+		Check(saved.scope == s.scope && saved.rateMode == s.rateMode && saved.exitPolicy == s.exitPolicy && saved.customRate == 60,
+			"Writer normalizes only damaged unused preference");
+		s.rateMode = RtssRateMode::Custom;
+		Check(!s.IsValid() && !s.ResolveRate(true, 72), "Active invalid manual value cannot grant external write");
+	}
 	Check(RtssSettings::EditedRate(15) == 15 && RtssSettings::EditedRate(360) == 360, "Editor endpoints");
 	Check(RtssSettings::EditedRate(59.5) == 60, "Editor integer conversion");
 	for (double bad : { 0.0, 14.0, 361.0, std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity() })

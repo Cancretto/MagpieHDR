@@ -50,7 +50,20 @@ for name, limit, denominator, time in (("Global", 97, 1, 0), ("existing.exe.cfg"
 (isolated / "Profiles/time-fractional.exe.cfg").write_text(rate_profile(text, 0, 1, 1666667, 100), encoding="utf-8")
 sparse = re.sub(r"(?mi)^(LimitDenominator|LimitTime|LimitTimeDenominator)=.*\n", "", rate_profile(text, 30))
 (isolated / "Profiles/sparse.exe.cfg").write_text(sparse, encoding="utf-8")
-result = {"isolated": str(isolated), "dll_sha256": hashlib.sha256((isolated / "RTSSHooks64.dll").read_bytes()).hexdigest()}
+def rtss_processes():
+    observed = subprocess.run(["pwsh", "-NoProfile", "-Command",
+        "@(@(Get-Process -Name RTSS -ErrorAction SilentlyContinue) | Select-Object Id, Path) | ConvertTo-Json -Compress"],
+        text=True, capture_output=True, timeout=20)
+    if observed.returncode:
+        return {"error": observed.stderr}
+    return json.loads(observed.stdout) if observed.stdout.strip() else []
+
+processes_before = rtss_processes()
+result = {"directory_source": "explicit installed argument; distinct copied installation",
+          "installed": str(installed), "copied_rtss_exe_sha256": hashlib.sha256((isolated / "RTSS.exe").read_bytes()).hexdigest(),
+          "rtss_processes_before": processes_before, "fully_offline": processes_before == [],
+          "native_apply_running_flag": True, "native_init_running_flag": False,
+          "copied_rtss_launched": False, "dll_path": str(isolated / "RTSSHooks64.dll"), "isolated": str(isolated), "dll_sha256": hashlib.sha256((isolated / "RTSSHooks64.dll").read_bytes()).hexdigest()}
 try:
     process = subprocess.run([str(exe), str(output), str(isolated)], text=True, capture_output=True, timeout=60)
     result.update(returncode=process.returncode, stdout=process.stdout, stderr=process.stderr)
@@ -64,6 +77,7 @@ try:
         print(initialization.stderr, end="")
 finally:
     after = hashes()
+    result["rtss_processes_after"] = rtss_processes()
     result["original_profiles_unchanged"] = before == after
     result["original_profile_count"] = len(before)
     result["changed_original_profiles"] = sorted(k for k in before.keys() | after.keys() if before.get(k) != after.get(k))
