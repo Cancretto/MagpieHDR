@@ -205,10 +205,10 @@ int main() {
 	for (auto reads : moduleInfoReads) assert(reads == 1);
 	const SourceWindowIdentity source{fakeCapture, fakeRoot, 10, 11, 101, 20, 21, 102};
 	const auto ui = RegisterSessionWindow(fakeMainUI);
-	uint64_t sessionEpoch = 10;
+	uint64_t firstSessionEpoch = 10;
 	auto start = [&](ForegroundPresentationPath path, bool windowed = false, uint32_t vendor = 0x10de) {
 		fakeDiagnostic.clear();
-		NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++sessionEpoch, true, windowed, ui);
+		NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++firstSessionEpoch, true, windowed, ui);
 		assert(!control.snapshot.armed);
 		NvidiaForegroundCompatibility::DeviceInitialized(vendor, 123, -4, path,
 			path == ForegroundPresentationPath::DLSSFrontendDXGI ? 4u : path == ForegroundPresentationPath::XeSSProxy ? 2u : 1u);
@@ -260,28 +260,28 @@ int main() {
 	assert(control.snapshot.mode == ForegroundCompatibilityMode::Off && DetourForegroundWindow() == fakeRoot);
 	for (const wchar_t* diagnostic : {L"standard", L"trace", L"reference"}) {
 		fakeDiagnostic = diagnostic;
-		NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++sessionEpoch, true, false, ui);
+		NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++firstSessionEpoch, true, false, ui);
 		NvidiaForegroundCompatibility::DeviceInitialized(0x10de, 0, 0, ForegroundPresentationPath::XeSSProxy, 2);
 		NvidiaForegroundCompatibility::PresentationState(true, true);
 		assert(DetourForegroundWindow() == fakeRoot);
 	}
 	fakeDiagnostic = L"profile";
-	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++sessionEpoch, true, false, ui);
+	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++firstSessionEpoch, true, false, ui);
 	NvidiaForegroundCompatibility::DeviceInitialized(0x10de, 0, 0, ForegroundPresentationPath::XeSSProxy, 2);
 	NvidiaForegroundCompatibility::PresentationState(true, true);
 	assert(control.snapshot.diagnostics && DetourForegroundWindow() == fakeOutput);
 	assert(!VRRPerformance::Enabled());
 	fakeDiagnostic = L"standard"; fakePerformance = true;
-	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++sessionEpoch, true, false, ui);
+	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++firstSessionEpoch, true, false, ui);
 	assert(control.snapshot.mode == ForegroundCompatibilityMode::Off && VRRPerformance::Enabled());
 	assert(DetourForegroundWindow() == fakeRoot);
 	NvidiaForegroundCompatibility::FinishRetire(); assert(!VRRPerformance::Enabled());
 	fakeDiagnostic.clear();
-	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++sessionEpoch, false, false, ui);
+	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++firstSessionEpoch, false, false, ui);
 	assert(control.snapshot.mode == ForegroundCompatibilityMode::Off && VRRPerformance::Enabled());
 	NvidiaForegroundCompatibility::FinishRetire(); fakePerformance = false;
 	fakeDiagnostic.clear();
-	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++sessionEpoch, false, false, ui);
+	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++firstSessionEpoch, false, false, ui);
 	NvidiaForegroundCompatibility::DeviceInitialized(0x10de, 0, 0, ForegroundPresentationPath::DLSSFrontendDXGI, 4);
 	assert(control.path == ForegroundPresentationPath::DLSSFrontendDXGI && control.multiplier == 4);
 	assert(!control.snapshot.armed && DetourForegroundWindow() == fakeRoot);
@@ -300,8 +300,8 @@ int main() {
 	queryPhase = ForegroundQueryPhase::FirstPresent;
 	auto nextPhase = RecordCandidate(value, 0x9000, unknownIndex, fakeRoot);
 	assert(nextPhase); nextPhase->state = 2;
-	for (auto [foreground, role] : {std::pair{fakeRoot, "source"}, {fakeOutput, "fakeOutput"}, {fakeMainUI, "magpie-main-ui"},
-		{parameter, "parameter-host"}, {fakePopup, "source-fakePopup"}, {other, "external"}, {HWND(nullptr), "none"}})
+	for (auto [foreground, role] : {std::pair{fakeRoot, "source"}, {fakeOutput, "output"}, {fakeMainUI, "magpie-main-ui"},
+		{parameter, "parameter-host"}, {fakePopup, "source-popup"}, {other, "external"}, {HWND(nullptr), "none"}})
 		assert(std::string_view(ForegroundRole(value, foreground)) == role);
 	assert(DetourForegroundWindow() == fakeOutput && GetLastError() == 73);
 	assert(NvidiaForegroundCompatibility::RealForegroundWindow() == fakeRoot && GetLastError() == 73);
