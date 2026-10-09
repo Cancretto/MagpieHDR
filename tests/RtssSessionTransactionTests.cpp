@@ -37,8 +37,10 @@ public:
 	std::shared_ptr<Session> _workerSession;
 	unsigned publications = 0;
 	std::atomic<bool> _notify = true;
+	std::atomic<bool> _magpieInitialized = false;
 	explicit RtssService(RtssProfileAccess& access) : _access(access) {}
 	bool _Prepare(RtssStatus& status);
+	void _RefreshMagpieInitialization(const RtssStatus& status);
 	void _Publish(RtssStatus value) { SetCapabilities(value); _status = std::move(value); ++publications; }
 	void SetCapabilities(RtssStatus& status) {
 		status.readReady = _access.CanRead(); status.applyReady = _access.CanApply(); status.initializeReady = _access.CanInitializeUnlimited();
@@ -57,6 +59,38 @@ int wmain(int argc, wchar_t** argv) {
 		const auto selfExe = Win32Helper::GetExePath().filename().native();
 		const auto selfName = RtssProfileAccess::ProfileName(selfExe);
 		const auto output = std::filesystem::path(argv[1]) / ("session-run-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64()));
+		{
+			Fixture f(output); RtssService service(f.access);
+			RtssStatus status;
+			Require(service._Prepare(status), "Prepare initialization inventory");
+			WriteBytes(f.Path(""), Profile(0));
+			WriteBytes(f.Path("game.exe"), Profile(0));
+			const auto global = ReadBytes(f.Path("")), game = ReadBytes(f.Path("game.exe"));
+			service._RefreshMagpieInitialization(status);
+			Require(!service._magpieInitialized, "Global/game unlimited do not initialize missing self profile");
+			WriteBytes(f.Path(selfName), Profile(0));
+			service._RefreshMagpieInitialization(status);
+			Require(service._magpieInitialized, "Existing independent unlimited profile is detected");
+			RtssService reopened(f.access); reopened._RefreshMagpieInitialization(status);
+			Require(reopened._magpieInitialized, "Fresh service detects persisted initialization without cached success");
+			WriteBytes(f.Path(selfName), Profile(60));
+			service._RefreshMagpieInitialization(status);
+			Require(!service._magpieInitialized, "External frame cap restores initialization action");
+			WriteBytes(f.Path(selfName), Profile(0, 1, 16));
+			service._RefreshMagpieInitialization(status);
+			Require(!service._magpieInitialized, "Time cap is not treated as unlimited");
+			WriteBytes(f.Path(selfName), "[Framerate]\nLimit=0\n"); f.getFailure = "FrametimeLimit";
+			service._RefreshMagpieInitialization(status);
+			Require(!service._magpieInitialized, "Unknown time cap does not hide initialization");
+			f.getFailure.clear(); WriteBytes(f.Path(selfName), Profile(0));
+			service._RefreshMagpieInitialization(status);
+			Require(service._magpieInitialized, "Repaired self profile hides initialization again");
+			status.readReady = false; service._RefreshMagpieInitialization(status);
+			Require(!service._magpieInitialized, "Unavailable read capability clears stale initialization");
+			Require(f.saves == 0 && f.reloads == 0 && f.deletes == 0 && f.setters.empty() &&
+				ReadBytes(f.Path("")) == global && ReadBytes(f.Path("game.exe")) == game,
+				"Initialization inventory is read-only and leaves target/global profiles unchanged");
+		}
 		auto session = [](RtssScope scope, RtssExitPolicy exit) {
 			auto s = std::make_shared<RtssService::Session>();
 			s->settings.scope = scope; s->settings.exitPolicy = exit;
@@ -144,6 +178,7 @@ int wmain(int argc, wchar_t** argv) {
 			const bool created = s->created;
 			service._InitializeMagpie();
 			Require(service._status.selfInitialization && service._status.profile == selfExe && service._status.state == RtssState::MagpieInitialized, "Initialization result labels its own profile");
+			Require(service._magpieInitialized, "Successful worker initialization hides action immediately");
 			Require(s->original == original && s->lastWritten == lastWritten && s->created == created && !s->finished && s->settings.exitPolicy == exit, "Initialization leaves game transaction ownership and policy intact");
 			const auto initialized = f.Snapshot(selfName).contents;
 			service._InitializeMagpie();

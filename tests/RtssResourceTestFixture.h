@@ -33,9 +33,10 @@ struct RtssToolInfo { std::wstring executable, version; bool running = false; };
 #include "RtssResourceCases.g.h"
 struct RtssService {
 	RtssStatus status;
-	bool pending = false, launching = false;
+	bool pending = false, launching = false, initialized = false;
 	static RtssService& Get() { static RtssService service; return service; }
 	bool IsInitializingMagpie() const { return pending; }
+	bool IsMagpieInitialized() const { return initialized; }
 	bool IsLaunching() const { return launching; }
 	RtssStatus Status() const { return status; }
 };
@@ -64,5 +65,6 @@ struct StatusViewModel {
 	RtssStatus _rtssPreview;
 	RtssStatus _RtssStatus() const;
 	bool CanInitializeMagpie() const;
+	bool ShowRtssInitialize() const;
 };
 #include "RtssResourceGetters.g.h"

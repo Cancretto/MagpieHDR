@@ -23,6 +23,7 @@ int main() {
 			for (auto key : ResourceKeys) Require(!resources.GetString(key).empty(), "Empty RTSS resource");
 #ifdef RTSS_SOURCE_RESOURCES
 			const bool chinese = std::wstring_view(language) == L"zh-Hans";
+			Require(resources.GetString(L"Rtss_InitializeMagpie") == (chinese ? L"初始化" : L"Initialize"), "Short initialization action text");
 			Require(resources.GetString(L"Rtss_Rate_Sync/Content") == (chinese ? L"与内容帧率同步" : L"Sync with content frame rate"), "Sync option wording");
 			Require(resources.GetString(L"Rtss_Status_Written") == (chinese ? L"配置已更新。" : L"Profile updated."), "Written result wording");
 			Require(resources.GetString(L"Rtss_GlobalNotice/Text") == (chinese ? L"使用全局配置的应用共用此上限。" : L"Applications using the global profile share this limit."), "Global factual hint");
@@ -110,6 +111,11 @@ int main() {
 		Require(model._RtssStatus().state == RtssState::Read && model._RtssStatus().rateKnown && model._RtssStatus().currentRate == 60,
 			"Actual status merge retains offline read rather than clearing data");
 		Require(model.CanInitializeMagpie(), "Actual button availability permits offline self initialization");
+		Require(model.ShowRtssInitialize(), "Uninitialized profile shows the action");
+		RtssService::Get().initialized = true;
+		Require(!model.ShowRtssInitialize() && !model.CanInitializeMagpie(), "Initialized profile hides and disables the action across profiles");
+		RtssService::Get().initialized = false;
+		Require(model.ShowRtssInitialize() && model.CanInitializeMagpie(), "Recheck of changed profile restores the action");
 		RtssService::Get().launching = true;
 		Require(!model.CanInitializeMagpie(), "Button prevents conflicting launch command");
 		RtssService::Get().launching = false; RtssService::Get().pending = true;

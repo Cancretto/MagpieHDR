@@ -51,6 +51,7 @@ public:
 	void Launch(bool afterburner);
 	void InitializeMagpie();
 	bool IsInitializingMagpie() const noexcept { return _initializationPending; }
+	bool IsMagpieInitialized() const noexcept { return _magpieInitialized; }
 	bool IsLaunching() const noexcept { return _launchPending; }
 	void Preview(RtssSettings settings, std::wstring executable,
 		std::function<void(RtssStatus)> completed);
@@ -69,6 +70,7 @@ private:
 	void _TryApply(const std::shared_ptr<Session>& session);
 	void _Finish(const std::shared_ptr<Session>& session);
 	void _InitializeMagpie();
+	void _RefreshMagpieInitialization(const RtssStatus& status);
 	bool _Prepare(RtssStatus& status);
 	std::shared_ptr<Session> _uiSession;
 	std::shared_ptr<Session> _workerSession;
@@ -84,6 +86,7 @@ private:
 	bool _closing = false;
 	bool _exited = false;
 	std::atomic<bool> _notify = false;
+	std::atomic<bool> _magpieInitialized = false; // worker writes, UI reads
 	bool _launchPending = false; // UI thread
 	bool _initializationPending = false; // UI thread
 	winrt::DispatcherQueueTimer _launchTimer{ nullptr };

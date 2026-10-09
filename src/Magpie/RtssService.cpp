@@ -441,10 +441,14 @@ void RtssService::Recheck(bool retry) {
 		if (_workerSession && !_workerSession->cancelled) {
 			// A conflict stays suspended; a failed write may be retried explicitly.
 			if (retry && Status().state != RtssState::Conflict) _workerSession->suspended = false;
-			_TryApply(_workerSession); return;
+			_TryApply(_workerSession);
+			auto status = Status();
+			_RefreshMagpieInitialization(status);
+			_Publish(std::move(status)); return;
 		}
 		RtssStatus status;
 		_Prepare(status);
+		_RefreshMagpieInitialization(status);
 		_Publish(std::move(status));
 	});
 }
@@ -513,6 +517,7 @@ void RtssService::InitializeMagpie() {
 }
 
 void RtssService::_InitializeMagpie() {
+	_magpieInitialized = false;
 	RtssStatus status;
 	status.selfInitialization = true;
 	status.profile = Win32Helper::GetExePath().filename().native();
@@ -532,6 +537,7 @@ void RtssService::_InitializeMagpie() {
 			const auto name = ProfileName(status.profile);
 			if (_access.InitializeUnlimited(name, written, alreadyUnlimited, error, [this] { return _notify.load(); })) {
 				status.state = alreadyUnlimited ? RtssState::MagpieAlreadyUnlimited : RtssState::MagpieInitialized;
+				_magpieInitialized = true;
 				status.currentRate = 0; status.rateKnown = true;
 				status.reloaded = !alreadyUnlimited && status.rtss.running;
 			} else {
@@ -549,10 +555,24 @@ void RtssService::_InitializeMagpie() {
 	_Publish(std::move(status));
 }
 
+void RtssService::_RefreshMagpieInitialization(const RtssStatus& status) {
+	// This is inventory work, performed on page preview/recheck rather than the
+	// content-rate update path. Never confuse Global or the game with our profile.
+	bool initialized = false;
+	if (status.readReady && _access.CanRead() && !_access.SelfProfile().empty()) {
+		RtssProfileSnapshot snapshot;
+		std::wstring error;
+		initialized = _access.Read(_access.SelfProfile(), snapshot, error) && snapshot.exists &&
+			snapshot.rateKnown[0] && snapshot.rateKnown[2] && !snapshot.rate[0] && !snapshot.rate[2];
+	}
+	_magpieInitialized = initialized;
+}
+
 void RtssService::Preview(RtssSettings settings, std::wstring executable, std::function<void(RtssStatus)> completed) {
 	_Queue([this, settings, executable = std::move(executable), completed = std::move(completed)] {
 		RtssStatus status;
 		if (_Prepare(status)) {
+			_RefreshMagpieInitialization(status);
 			std::string profile;
 			if (settings.scope == RtssScope::Target) profile = ProfileName(std::filesystem::path(executable).filename().native());
 			if (settings.scope == RtssScope::Target && profile.empty()) status.state = RtssState::WaitingTarget;
@@ -569,6 +589,7 @@ void RtssService::Preview(RtssSettings settings, std::wstring executable, std::f
 				}
 			}
 		}
+		if (!status.readReady) _magpieInitialized = false;
 		SetAccessStatus(_access, status);
 		if (_notify) _dispatcher.TryEnqueue([this, status = std::move(status), completed] {
 			if (_notify) completed(status);
