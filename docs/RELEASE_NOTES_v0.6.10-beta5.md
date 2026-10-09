@@ -4,6 +4,7 @@
 
 ## 中文
 
+- **VSR 颜色与 VFG 档位：** VSR 使用统一 RGBA 模型输入输出，在 BGRA 纹理边界显式转换；TrueHDR packed 输出经无损字节纹理导出。VFG 调整为性能／均衡两档，旧 High 配置在加载或导入时迁移为均衡。RTSS 初始化按钮隐藏或恢复后重新测量工具按钮宽度。实际游戏颜色、布局及性能仍需验收。
 - **VFX 更新：** 合入 `feature/nvidia-vfx-optimization` 的缓冲轮换、比较线程组归约、纹理视图缓存及编码匹配；四项统一套件改用经签名与哈希检查的十个运行 DLL 和完整许可通知。Async／CUDA 直连保持关闭，详细计时仍按原开关启用；真实 GPU 画质、稳定性及性能另行验收。
 - **RTSS 状态操作：** 初始化按钮简化为“初始化”；检测到 Magpie 独立不限帧配置后隐藏，配置改变或检测失败时保留重试。初始化与启动工具采用同页默认控件字号。
 - **配置页闪退修复：** RTSS 状态分段列表改用支持 XAML 对象绑定的集合，修复打开配置文件时的 `0x80070057` 异常。增加真实 ItemsSource 回归，覆盖全部状态、管理范围及状态更新。
@@ -16,6 +17,7 @@
 
 This local Beta5 retains deployed Beta4 (49de3f25). The public update entry stays at 0.6.9.
 
+- **VSR color and VFG modes:** use RGBA model I/O with explicit conversion at BGRA texture boundaries and lossless byte-carrier export for packed TrueHDR output. VFG offers Performance/Balanced; loading or importing retired High settings migrates them to Balanced. Re-measure RTSS tool actions when initialization visibility changes. Live game color, layout and performance acceptance remain pending.
 - **VFX update:** integrate buffer rotation, group-reduced frame comparisons, cached texture views and encoding matching from `feature/nvidia-vfx-optimization`. Distribute the four-feature suite with ten verified runtime DLLs and license notices. Async/CUDA handoff stay disabled; GPU quality, stability and performance acceptance remain pending.
 - **RTSS status actions:** shorten the Initialize label, hide it once Magpie's own unlimited profile is verified, and restore it when initialization cannot be confirmed. Initialize and Launch tools inherit the normal control font size.
 - **Profile page crash fix:** use a XAML-bindable RTSS status collection to prevent `0x80070057` when opening a profile. Native ItemsSource regression covers all states, management scopes and status updates.
