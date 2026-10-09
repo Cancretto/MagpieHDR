@@ -71,6 +71,10 @@ int main() {
 			Require(resources.GetString(L"Rtss_Status_Written") == (chinese ? L"配置已更新。" : L"Profile updated."), "Written result wording");
 			Require(resources.GetString(L"Rtss_GlobalNotice/Text") == (chinese ? L"使用全局配置的应用共用此上限。" : L"Applications using the global profile share this limit."), "Global factual hint");
 			Require(resources.GetString(L"Rtss_TargetOverridesGlobal") == (chinese ? L"目标使用独立配置。" : L"The target uses its own profile."), "Target factual hint");
+			Require(resources.GetString(L"Rtss_Failure_Set") == (chinese ? L"设置帧率失败。" : L"Could not set the frame rate."), "Setting failure wording");
+			Require(resources.GetString(L"Rtss_Failure_Verify") == (chinese ? L"核对配置失败。" : L"Could not verify the profile."), "Verification failure wording");
+			Require(resources.GetString(L"Rtss_Failure_Reload") == (chinese ? L"重载配置失败。" : L"Could not reload the profile."), "Reload failure wording");
+			Require(resources.GetString(L"Rtss_Failure_TimeMode") == (chinese ? L"无法切换帧时间模式。" : L"Could not switch from frame time mode."), "Time mode failure wording");
 #endif
 			ProfileViewModel vm;
 			for (auto state : States) for (auto scope : {RtssScope::None, RtssScope::Global, RtssScope::Target}) {

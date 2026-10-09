@@ -1912,4 +1912,8 @@
   <data name="Rtss_Failure_LibraryMissing" xml:space="preserve"><value>RTSS 配置接口库缺失。</value></data>
   <data name="Rtss_Failure_Permission" xml:space="preserve"><value>访问被拒绝。</value></data>
   <data name="Rtss_SyncedRate_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>RTSS 同步帧率上限</value></data>
+  <data name="Rtss_Failure_Set" xml:space="preserve"><value>设置帧率失败。</value></data>
+  <data name="Rtss_Failure_Verify" xml:space="preserve"><value>核对配置失败。</value></data>
+  <data name="Rtss_Failure_Reload" xml:space="preserve"><value>重载配置失败。</value></data>
+  <data name="Rtss_Failure_TimeMode" xml:space="preserve"><value>无法切换帧时间模式。</value></data>
 </root>

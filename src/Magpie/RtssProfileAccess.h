@@ -26,6 +26,17 @@ struct RtssProfileSnapshot {
 	bool operator==(const RtssProfileSnapshot&) const = default;
 };
 
+enum class RtssFailureStage { None, Read, Setting, Save, Verify, Reload, Restore, Conflict, Cancelled };
+
+struct RtssProfileFailure {
+	RtssFailureStage stage = RtssFailureStage::None;
+	std::string profile, property;
+	std::wstring version;
+	uint32_t requested = 0, observed = 0;
+	DWORD fileError = 0;
+	bool observedKnown = false, saveAttempted = false, readbackComplete = false, nativeFault = false;
+};
+
 // Worker-thread only. The DLL maintains a current loaded profile, so callers
 // must serialize complete transactions, not just individual exported calls.
 class RtssProfileAccess {
@@ -43,6 +54,7 @@ public:
 		std::wstring& error, const std::function<bool()>& stillValid);
 	bool Restore(const std::string& profile, const RtssProfileSnapshot& original,
 		const RtssProfileSnapshot& lastWritten, bool created, bool& conflict, std::wstring& error);
+	const RtssProfileFailure& Failure() const noexcept { return _failure; }
 	static bool SameRate(const RtssProfileSnapshot& a, const RtssProfileSnapshot& b) noexcept {
 		return a.exists == b.exists && a.rate == b.rate;
 	}
@@ -53,8 +65,14 @@ private:
 	std::filesystem::path _ProfilePath(const std::string& profile) const;
 	bool _Exists(const std::string& profile, bool& exists, std::wstring& error);
 	bool _ReadFile(const std::string& profile, RtssProfileSnapshot& snapshot, std::wstring& error);
+	bool _Read(const std::string& profile, RtssProfileSnapshot& snapshot, std::wstring& error);
+	bool _CheckWriteAccess(const std::string& profile, bool exists, std::wstring& error);
 	bool _Get(const char* property, uint32_t& value);
 	bool _Set(const char* property, uint32_t value);
+	bool _SetIfChanged(const char* property, uint32_t value, std::wstring& error);
+	bool _VerifyProperty(const char* property, uint32_t expected, uint32_t actual, std::wstring& error);
+	void _ResetFailure(const std::string& profile);
+	bool _Fail(RtssFailureStage stage, const wchar_t* reason, std::wstring& error);
 	bool _CallProfile(ProfileFn function, const char* profile);
 	bool _Reload();
 	void _Unload();
@@ -64,6 +82,8 @@ private:
 	PropertyFn _get = nullptr, _set = nullptr;
 	void (*_update)() = nullptr;
 	bool _faulted = false;
+	std::wstring _version;
+	RtssProfileFailure _failure;
 };
 
 }
