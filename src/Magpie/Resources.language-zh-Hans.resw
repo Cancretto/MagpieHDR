@@ -1960,6 +1960,8 @@
   <data name="EffectParam_NvidiaVFX_VFG_automaticShotDetection_Label" xml:space="preserve"><value>自动场景切换检测</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_duplicateFrameFiltering_Label" xml:space="preserve"><value>重复帧过滤</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_model_Label" xml:space="preserve"><value>模型档位</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_model_Option_0" xml:space="preserve"><value>性能</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_model_Option_1" xml:space="preserve"><value>均衡</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_multiplier_Label" xml:space="preserve"><value>帧数倍率</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_debanding_Label" xml:space="preserve"><value>去色带</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Label" xml:space="preserve"><value>分类</value></data>

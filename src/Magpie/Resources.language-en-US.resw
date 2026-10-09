@@ -1960,6 +1960,8 @@
   <data name="EffectParam_NvidiaVFX_VFG_automaticShotDetection_Label" xml:space="preserve"><value>Automatic shot detection</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_duplicateFrameFiltering_Label" xml:space="preserve"><value>Duplicate frame filtering</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_model_Label" xml:space="preserve"><value>Model</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_model_Option_0" xml:space="preserve"><value>Performance</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_model_Option_1" xml:space="preserve"><value>Balanced</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_multiplier_Label" xml:space="preserve"><value>Frame multiplier</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_HDR_debanding_Label" xml:space="preserve"><value>Debanding</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Label" xml:space="preserve"><value>Category</value></data>

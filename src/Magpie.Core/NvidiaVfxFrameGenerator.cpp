@@ -223,6 +223,7 @@ NvidiaVfxFrameMeasurements NvidiaVfxFrameGenerator::TakeMeasurements() noexcept 
 #endif
 }
 bool NvidiaVfxFrameGenerator::ApplyModel(DeviceResources& resources, ID3D11Texture2D* input, uint32_t model) noexcept {
+	if (!NvidiaVfxVfgModelValid(float(model))) return false;
 	auto settings = _settings; settings.model = model;
 	return Initialize(resources, input, settings);
 }

@@ -62,11 +62,18 @@ baseline=subprocess.check_output(['git','show','49de3f25478008c962e24015cf81d7e9
 policy=(include/'HdrParameterPolicy.h').read_text(encoding='utf-8-sig')
 check('Beta4 exact-input/ordinary/coarse policy preserved',policy.replace(' || parameter.name == "debanding"','')==baseline)
 
-for language in ['en-US','zh-Hans']:
+vfg=(root/'src/Effects/NvidiaVFX/VFG.hlsl').read_text(encoding='utf-8-sig')
+check('VFG exposes Performance/Balanced with stable 0/1 ABI',
+      re.findall(r'^//!OPTION (\d+) (.+)$',vfg,re.M)==[('0','Performance'),('1','Balanced')])
+check('VFG Balanced remains default',parameters(root/'src/Effects/NvidiaVFX/VFG.hlsl')['model']['default']=='1')
+for language in ['en-US','zh-Hans','zh-Hant']:
     resources=ET.parse(root/f'src/Magpie/Resources.language-{language}.resw')
     names=[item.attrib['name'] for item in resources.findall('data')]
     check('Unique resource keys: '+language,len(names)==len(set(names)))
-    for key in ['NvidiaVfx_Upscale_Process','NvidiaVfx_Upscale_Auto','EffectParam_NvidiaVFX_VFG_model_Label','EffectParam_RTXVideo_RTXVideo_VSR_category_Label','EffectParam_RTXVideo_RTXVideo_HDR_debanding_Label']:
+    keys=['EffectParam_NvidiaVFX_VFG_model_Option_0','EffectParam_NvidiaVFX_VFG_model_Option_1']
+    if language!='zh-Hant':
+        keys+=['NvidiaVfx_Upscale_Process','NvidiaVfx_Upscale_Auto','EffectParam_NvidiaVFX_VFG_model_Label','EffectParam_RTXVideo_RTXVideo_VSR_category_Label','EffectParam_RTXVideo_RTXVideo_HDR_debanding_Label']
+    for key in keys:
         check('Localized resource: '+language+'/'+key,key in names)
 
 receipt={'scope':'source-only; no compilation, deployment or GPU execution', 'passed':len(results),'checks':results}

@@ -14,9 +14,8 @@ int multiplier;
 //!PARAMETER
 //!LABEL Model
 //!DEFAULT 1
-//!OPTION 0 Low
-//!OPTION 1 Medium
-//!OPTION 2 High
+//!OPTION 0 Performance
+//!OPTION 1 Balanced
 int model;
 
 //!PARAMETER

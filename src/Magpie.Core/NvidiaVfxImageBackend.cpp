@@ -14,6 +14,7 @@
 #ifdef MP_ENABLE_NVIDIA_VFX
 #include <nvVFXUpscale.h>
 #include <nvVFXTrueHDR.h>
+#include <nvVFXVideoSuperRes.h>
 #endif
 
 namespace Magpie {
@@ -37,6 +38,9 @@ struct NvidiaVfxImageBackend::Impl {
 			kind == NvidiaVfxImageKind::Upscale ? NVVFX_FX_SR_UPSCALE : NVVFX_FX_TRUE_HDR;
 		if (!NvidiaVfxSucceeded(NvVFX_CreateEffect(selector, &effect), "CreateEffect")) return nullptr;
 		auto cleanup = wil::scope_exit([&] { if (effect) NvVFX_DestroyEffect(effect); });
+		// Select RGB8 before binding I/O, including transactional tier changes.
+		if (kind == NvidiaVfxImageKind::Vsr && !NvidiaVfxSucceeded(
+			NvVFX_SetU32(effect, NVVFX_IMAGE_ENCODING_MODE, NVVFX_IMAGE_ENCODING_RGB8), "SetVsrImageEncoding")) return nullptr;
 		if (!NvidiaVfxSucceeded(NvVFX_SetCudaStream(effect, NVVFX_CUDA_STREAM, session.stream), "SetCudaStream") ||
 			!NvidiaVfxSucceeded(NvVFX_SetImage(effect, NVVFX_INPUT_IMAGE, &session.input), "SetImage(input)") ||
 			!NvidiaVfxSucceeded(NvVFX_SetImage(effect, NVVFX_OUTPUT_IMAGE, &session.output), "SetImage(output)")) return nullptr;
@@ -110,8 +114,12 @@ bool NvidiaVfxImageBackend::Initialize(DeviceResources& resources, ID3D11Texture
 	candidate->kind = kind;
 	if (!candidate->session.Initialize(resources, library)) return false;
 	NvidiaVfxContextScope scope(candidate->session.Context());
-	const auto inputEncoding = in.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? NVCV_BGRA : NVCV_RGBA;
-	const auto outputEncoding = out.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? NVCV_BGRA : NVCV_RGBA;
+	// Mixed RGBA/BGRA VSR I/O swaps R/B in Core 1.3.0.0 on the synthetic
+	// D3D11 probe. Keep the model contract RGBA; convert at the texture edges.
+	const auto inputEncoding = kind == NvidiaVfxImageKind::Vsr ? NVCV_RGBA :
+		in.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? NVCV_BGRA : NVCV_RGBA;
+	const auto outputEncoding = kind == NvidiaVfxImageKind::Vsr ? NVCV_RGBA :
+		out.Format == DXGI_FORMAT_B8G8R8A8_UNORM ? NVCV_BGRA : NVCV_RGBA;
 	if (!scope || !NvidiaVfxSucceeded(NvCVImage_Alloc(&candidate->session.input, in.Width, in.Height,
 		inputEncoding, NVCV_U8, NVCV_INTERLEAVED, NVCV_GPU, 32), "Alloc(input)") ||
 		!NvidiaVfxSucceeded(NvCVImage_Alloc(&candidate->session.output,
@@ -121,7 +129,9 @@ bool NvidiaVfxImageBackend::Initialize(DeviceResources& resources, ID3D11Texture
 			kind == NvidiaVfxImageKind::TrueHdr ? NVCV_P32 : NVCV_U8,
 			NVCV_INTERLEAVED, NVCV_GPU, 32), "Alloc(output)")) return false;
 	if (kind == NvidiaVfxImageKind::TrueHdr) {
-		candidate->packedHdr = DirectXHelper::CreateTexture2D(resources.GetD3DDevice(), DXGI_FORMAT_R10G10B10A2_UNORM,
+		// CUDA D3D11 registration excludes R10G10B10A2. Carry its raw bytes in
+		// RGBA8, then unpack the full 10-bit PQ/Rec.2020 value in the adapter.
+		candidate->packedHdr = DirectXHelper::CreateTexture2D(resources.GetD3DDevice(), DXGI_FORMAT_R8G8B8A8_UNORM,
 			out.Width, out.Height, D3D11_BIND_SHADER_RESOURCE);
 		candidate->descriptors.Initialize(resources.GetD3DDevice());
 		if (!candidate->packedHdr || !candidate->adapter.Initialize(resources, candidate->descriptors)) return false;
@@ -181,12 +191,12 @@ bool NvidiaVfxImageBackend::Draw(const NativeEffectDrawContext& context) noexcep
 }
 bool NvidiaVfxImageBackend::_ExportTrueHdr(const NativeEffectDrawContext& context) noexcept {
 #ifdef MP_ENABLE_NVIDIA_VFX
-	if (!_impl->session.Export(_impl->session.output, _impl->packedHdr.get())) return false;
+	if (!_impl->session.ExportPackedHdr10(_impl->session.output, _impl->packedHdr.get())) return false;
 	HdrTransformParameters parameters;
 	const auto peak = _option.parameters.find("peakNits");
 	parameters.hdrPeakNits = peak == _option.parameters.end() ? 1000.f : peak->second;
 	// Decode PQ and BT.2020 explicitly into the 80-nit canonical scRGB domain.
-	return _impl->adapter.ConvertHdr10ToCanonical(_impl->packedHdr.get(), context.output, parameters);
+	return _impl->adapter.ConvertPackedHdr10ToCanonical(_impl->packedHdr.get(), context.output, parameters);
 #else
 	(void)context; return false;
 #endif

@@ -119,6 +119,14 @@ void Main(uint3 id : SV_DispatchThreadID) {
     outputTexture.GetDimensions(width, height);
     if (id.x >= width || id.y >= height) return;
     float4 value = sourceTexture.Load(int3(id.xy, 0));
+    if (mode == 9) {
+        // RGBA8 is a byte carrier, not an 8-bit HDR conversion. Load (never
+        // filter) and reconstruct the original little-endian packed word.
+        uint4 bytes = uint4(round(saturate(value) * 255.0));
+        uint packed = bytes.x | (bytes.y << 8) | (bytes.z << 16) | (bytes.w << 24);
+        value = float4(float3(packed & 1023u, (packed >> 10) & 1023u,
+            (packed >> 20) & 1023u) / 1023.0, float((packed >> 30) & 3u) / 3.0);
+    }
     float3 result;
     if (mode == 0) {
         float3 mapped = MapHdrToSdr(value.rgb);
@@ -157,7 +165,7 @@ void Main(uint3 id : SV_DispatchThreadID) {
 			EncodePq(rec2020.r * 80.0),
 			EncodePq(rec2020.g * 80.0),
 			EncodePq(rec2020.b * 80.0));
-	} else if (mode == 6) {
+	} else if (mode == 6 || mode == 9) {
 		float3 rec2020 = float3(
 			DecodePq(value.r) / 80.0,
 			DecodePq(value.g) / 80.0,
@@ -333,6 +341,15 @@ bool HdrSurfaceAdapter::ConvertHdr10ToCanonical(
 ) const noexcept {
 	return _Convert(input, output, parameters, HdrTransferFunction::PQ,
 		false, 6u, 1.0f);
+}
+
+bool HdrSurfaceAdapter::ConvertPackedHdr10ToCanonical(ID3D11Texture2D* input, ID3D11Texture2D* output,
+	const HdrTransformParameters& parameters) const noexcept {
+	if (!input || !output) return false;
+	D3D11_TEXTURE2D_DESC in{}, out{}; input->GetDesc(&in); output->GetDesc(&out);
+	if (in.Format != DXGI_FORMAT_R8G8B8A8_UNORM || out.Format != DXGI_FORMAT_R16G16B16A16_FLOAT ||
+		in.SampleDesc.Count != 1 || out.SampleDesc.Count != 1) return false;
+	return _Convert(input, output, parameters, HdrTransferFunction::PQ, false, 9);
 }
 
 }

@@ -55,4 +55,37 @@ int main() {
 	assert(PlanNvidiaVfxExecution(hdr,BuildHdrComponentPlan(hdr)).error==NvidiaVfxPlanError::ExpectedSdr);
 	unsafe[0].parameters["multiplier"]=std::numeric_limits<float>::quiet_NaN();
 	assert(PlanNvidiaVfxExecution(unsafe,BuildHdrComponentPlan(unsafe)).error==NvidiaVfxPlanError::InvalidSettings);
+
+	// Retired High migrates at persistence boundaries, not inside the execution
+	// plan. Reject direct legacy/invalid runtime requests; preserve other effects.
+	for (float value : { 0.f, 1.f, 2.f, -1.f, 3.f, .5f, 1.5f,
+		std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN() }) {
+		StoredEffect effect{std::string(NVIDIA_VFX_VFG_ID),{{"model",value},{"multiplier",4.f},{"duplicateFrameFiltering",0.f}}};
+		assert(NvidiaVfxVfgModelValid(value) == (value == 0.f || value == 1.f));
+		std::vector<StoredEffect> chain{effect};
+		assert((PlanNvidiaVfxExecution(chain,BuildHdrComponentPlan(chain)).error == NvidiaVfxPlanError::None) == NvidiaVfxVfgModelValid(value));
+		const bool migrated = MigrateNvidiaVfxVfgModel(effect);
+		assert(migrated == (value == 2.f));
+		assert(!MigrateNvidiaVfxVfgModel(effect));
+		assert(effect.parameters.at("multiplier") == 4.f && effect.parameters.at("duplicateFrameFiltering") == 0.f);
+		if (migrated) {
+			assert(effect.parameters.at("model") == 1.f);
+			chain[0] = effect;
+			assert(PlanNvidiaVfxExecution(chain,BuildHdrComponentPlan(chain)).settings.model == 1);
+		}
+	}
+	StoredEffect missing{std::string(NVIDIA_VFX_VFG_ID)};
+	assert(!MigrateNvidiaVfxVfgModel(missing) && missing.parameters.empty());
+	std::vector<StoredEffect> defaultChain{missing};
+	assert(PlanNvidiaVfxExecution(defaultChain,BuildHdrComponentPlan(defaultChain)).settings.model == 1);
+	StoredEffect other{"ThirdParty\\VFG",{{"model",2.f}}};
+	assert(!MigrateNvidiaVfxVfgModel(other) && other.parameters.at("model") == 2.f);
+	struct WideEffect { std::wstring name; std::map<std::wstring,float> parameters; };
+	WideEffect stored{L"NvidiaVFX\\VFG",{{L"model",2.f},{L"multiplier",8.f}}};
+	assert(MigrateNvidiaVfxVfgModel(stored) && stored.parameters.at(L"model") == 1.f);
+	assert(!MigrateNvidiaVfxVfgModel(stored) && stored.parameters.at(L"multiplier") == 8.f);
+	for (uint32_t model : { 0u, 1u, 2u, 3u, UINT32_MAX }) {
+		NvidiaVfxFrameGenerationSettings settings; settings.model = model;
+		assert(NvidiaVfxFrameGenerationSettingsValid(settings) == (model <= 1));
+	}
 }

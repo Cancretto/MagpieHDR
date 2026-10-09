@@ -187,7 +187,7 @@
 									<ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
 								</ItemsControl>
 							</local:SettingsCard.Description>
-							<local:WrapPanel HorizontalSpacing="8" VerticalSpacing="8" VerticalAlignment="Center">
+							<local:WrapPanel x:Name="RtssActionsPanel" HorizontalSpacing="8" VerticalSpacing="8" VerticalAlignment="Center">
 								<local:WrapPanel.Resources>
 									<ResourceDictionary>
 										<ResourceDictionary.ThemeDictionaries>
@@ -210,9 +210,9 @@
 								        Visibility="{x:Bind ViewModel.ShowRtssInitialize, Mode=OneWay}"
 								        Style="{StaticResource RtssActionButtonStyle}" IsEnabled="{x:Bind ViewModel.CanInitializeMagpie, Mode=OneWay}"
 								        Click="{x:Bind ViewModel.InitializeMagpieRtss}" />
-								<Button x:Uid="Rtss_Tools" Style="{StaticResource RtssActionButtonStyle}">
+								<Button x:Name="RtssToolsButton" x:Uid="Rtss_Tools" Style="{StaticResource RtssActionButtonStyle}">
 									<Button.ContentTemplate>
-										<DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+										<DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
 											<TextBlock Text="{Binding}" TextWrapping="Wrap" VerticalAlignment="Center" />
 											<FontIcon Grid.Column="1" Glyph="&#xE70D;" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center" />
 										</Grid></DataTemplate>

@@ -277,19 +277,19 @@
         "name": "Nvidia VFX VFG",
         "subcategory": "",
         "summary": "SDR 2–8× 补帧，可逐帧接入 TrueHDR。",
-        "details": "Windows x64 需要 Ada／Blackwell 渲染 GPU。默认 2×、Medium、自动场切和重复帧过滤开启。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。",
-        "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR 2–8× 补帧，可逐帧接入 TrueHDR。 Windows x64 需要 Ada／Blackwell 渲染 GPU。默认 2×、Medium、自动场切和重复帧过滤开启。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。 "
+        "details": "Windows x64 需要 Ada／Blackwell 渲染 GPU。性能（Low）／均衡（Medium）两档，默认 2×、均衡、自动场切和重复帧过滤开启。旧 High 设置迁移为均衡。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。",
+        "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR 2–8× 补帧，可逐帧接入 TrueHDR。 Windows x64 需要 Ada／Blackwell 渲染 GPU。性能（Low）／均衡（Medium）两档，默认 2×、均衡、自动场切和重复帧过滤开启。旧 High 设置迁移为均衡。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。 "
       },
       "en-US": {
         "name": "Nvidia VFX VFG",
         "subcategory": "",
         "summary": "SDR interpolation at 2–8x, with per-output TrueHDR.",
-        "details": "Windows x64 requires an Ada/Blackwell rendering GPU. Defaults: 2x, Medium, automatic shot detection and duplicate filtering enabled. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported.",
-        "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR interpolation at 2–8x, with per-output TrueHDR. Windows x64 requires an Ada/Blackwell rendering GPU. Defaults: 2x, Medium, automatic shot detection and duplicate filtering enabled. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported. "
+        "details": "Windows x64 requires an Ada/Blackwell rendering GPU. Performance (Low) or Balanced (Medium). Defaults: 2x, Balanced, automatic shot detection and duplicate filtering enabled. Retired High settings migrate to Balanced. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported.",
+        "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR interpolation at 2–8x, with per-output TrueHDR. Windows x64 requires an Ada/Blackwell rendering GPU. Performance (Low) or Balanced (Medium). Defaults: 2x, Balanced, automatic shot detection and duplicate filtering enabled. Retired High settings migrate to Balanced. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported. "
       },
       "source": {
         "path": "src/Effects/NvidiaVFX/VFG.hlsl",
-        "sha256": "9857b3ce6ef04e3d82f2387b3982d60fe1fbf8a04267a53e48c4f3b933ce79f7",
+        "sha256": "ca6bebbb46a16ce84852cabd6aa6a07a7c0ea6bc1963eb3578dd9984296c3536",
         "output": {
           "WIDTH": "INPUT_WIDTH",
           "HEIGHT": "INPUT_HEIGHT"
