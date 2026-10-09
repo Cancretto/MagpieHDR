@@ -4,6 +4,7 @@
 
 ## 中文
 
+- **配置页闪退修复：** RTSS 状态分段列表改用支持 XAML 对象绑定的集合，修复打开配置文件时的 `0x80070057` 异常。增加真实 ItemsSource 回归，覆盖全部状态、管理范围及状态更新。
 - **NVIDIA VFX 统一套件：** 本地构建启用匹配的官方 1.3.0.0 Core 与四项功能库。加入 Nvidia VFX Upscale 自动／五档倍率与最终尺寸适配；统一 VSR 的分类与档位、旧别名和参数迁移；接入 SDR VFG 2–8× 及逐输出帧 TrueHDR 后处理。TrueHDR 保留原四项参数、精确输入和步进，新增默认开启的去色带。四槽背压、资源代次与参数 revision 保留；实际 GPU 功能、颜色、稳定性和性能仍需验收。
 - **截图内容：** 主页可选择原始输入与最终效果双图、仅最终效果、仅原始输入；默认仅最终效果。双图使用同一真实帧编号，独立保存 input/output 文件；异步等待、会话变化、文件竞争及部分失败有明确处理。效果／通道的独立 PNG／DDS 导出保留。
 - **RTSS：** 状态按内容分段换行，加入 Magpie 独立不限帧配置初始化；按每项操作实际可用的接口、字段和运行条件判断能力。版本号用于诊断，恢复条件不阻断开始，停止仅作一次尽力恢复。新配置及尚未迁移的旧配置默认请求管理员启动，之后保留用户主动关闭的选择；实际 UAC、自启动与游戏限帧另行验收。
@@ -13,6 +14,7 @@
 
 This local Beta5 retains deployed Beta4 (49de3f25). The public update entry stays at 0.6.9.
 
+- **Profile page crash fix:** use a XAML-bindable RTSS status collection to prevent `0x80070057` when opening a profile. Native ItemsSource regression covers all states, management scopes and status updates.
 - **Unified NVIDIA VFX:** enable the matched official 1.3.0.0 Core and Upscale/VSR/VFG/TrueHDR libraries for local testing. Add native upscale selection and final size adaptation, VSR categories and legacy migration, SDR VFG at 2–8x, and per-output-frame TrueHDR processing. Preserve exact HDR parameter input and stepping, with debanding enabled by default. GPU functionality, color, lifetime and performance acceptance remain pending.
 - **Screenshot content:** choose paired original input/final output, output only (default), or input only. Pair captures at a real-frame submission boundary; retain asynchronous handling, session validation and collision-safe partial-save behavior. Independent effect/channel PNG and DDS export remains available.
 - **RTSS:** segmented status layout, independent unlimited Magpie profile initialization, per-operation capability checks and one best-effort restoration. New and unmigrated settings request administrator startup by default, while later user choices are retained. Physical UI, UAC/startup tasks and actual target FPS require separate acceptance.
