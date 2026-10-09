@@ -1724,11 +1724,11 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 			continue;
 		}
 		ImGui::PushID(itemId++);
-		const auto title=role==HdrManagedRole::InputMapping ? EffectParameterLocalization::Resource(L"HdrGroup_InputCard/Header","Input / HDR compatibility") :
+		const auto hdrSectionTitle=role==HdrManagedRole::InputMapping ? EffectParameterLocalization::Resource(L"HdrGroup_InputCard/Header","Input / HDR compatibility") :
 			role==HdrManagedRole::Output ? EffectParameterLocalization::Resource(L"HdrGroup_OutputCard/Header","HDR output") + " · " +
 				EffectParameterLocalization::Resource(ClassifyHdrComponent(ScalingWindow::Get().Options().effects[effectIdx].name)==HdrComponentKind::RtxVideoHdr ?
 					L"HdrGroup_OutputRtx" : L"HdrGroup_OutputNative","HDR mapping") : std::string(GetEffectDisplayName(description));
-		ImGui::SeparatorText(title.c_str());
+		ImGui::SeparatorText(hdrSectionTitle.c_str());
 
 		std::string_view currentGroup;
 		// 仅在 _DEBUG 下读取（参数元数据一致性告警），release 下以 maybe_unused 抑制 ClangCL -Werror
