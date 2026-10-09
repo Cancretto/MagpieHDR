@@ -11,7 +11,10 @@ repo = Path(__file__).resolve().parents[1]
 vm = (repo / "src/Magpie/ProfileViewModel.cpp").read_text(encoding="utf-8-sig")
 service = (repo / "src/Magpie/RtssService.h").read_text(encoding="utf-8-sig")
 getters = []
-for name in ("RtssStatusText", "RtssSyncText", "RtssLaunchText", "AfterburnerLaunchText"):
+start = vm.index("IVector<hstring> ProfileViewModel::RtssStatusSegments() const {")
+end = vm.index("\n}", start) + 2
+getters.append(vm[start:end])
+for name in ("RtssStatusText", "RtssSyncText", "RtssLaunchText", "AfterburnerLaunchText", "RtssInitializeText"):
     start = vm.index(f"hstring ProfileViewModel::{name}() const {{")
     end = vm.index("\n}", start) + 2
     getters.append(vm[start:end])
@@ -28,4 +31,4 @@ args.output.mkdir(parents=True, exist_ok=True)
     ",".join("RtssState::" + name for name in states) + "};\n" +
     "inline const wchar_t* ResourceKeys[] = {" + ",".join('L"' + key + '"' for key in keys) + "};\n",
     encoding="utf-8")
-print(f"Extracted 4 production getters, {len(states)} states and {len(keys)} dynamic resource keys.")
+print(f"Extracted {len(getters)} production getters, {len(states)} states and {len(keys)} dynamic resource keys.")

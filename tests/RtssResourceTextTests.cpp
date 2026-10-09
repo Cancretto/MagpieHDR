@@ -11,6 +11,7 @@
 #include "RtssSettings.h"
 
 using namespace winrt;
+using namespace Windows::Foundation::Collections;
 using namespace Magpie;
 namespace Resources = Windows::ApplicationModel::Resources;
 
@@ -25,6 +26,11 @@ struct ResourceLoader {
 // Status inputs are fixtures; the extracted getter bodies resolve strings from
 // the real product PRI. No service, process launch or profile write runs.
 struct RtssToolInfo { std::wstring executable, version; bool running = false; };
+struct RtssService {
+	bool pending = false;
+	static RtssService& Get() { static RtssService service; return service; }
+	bool IsInitializingMagpie() const { return pending; }
+};
 #include "RtssResourceCases.g.h"
 struct ProfileData {
 	RtssSettings rtss;
@@ -38,10 +44,13 @@ struct ProfileViewModel {
 	RtssStatus _RtssStatus() const { return status; }
 	bool IsRtssManaged() const { return data.rtss.scope != RtssScope::None; }
 	bool IsRtssSyncAvailable() const { return syncAvailable; }
+	bool ShowRtssGlobalNotice() const { return data.rtss.scope == RtssScope::Global; }
+	IVector<hstring> RtssStatusSegments() const;
 	hstring RtssStatusText() const;
 	hstring RtssSyncText() const;
 	hstring RtssLaunchText() const;
 	hstring AfterburnerLaunchText() const;
+	hstring RtssInitializeText() const;
 };
 #include "RtssResourceGetters.g.h"
 static unsigned checks = 0;
@@ -77,12 +86,31 @@ int main() {
 			Require(resources.GetString(L"Rtss_Failure_TimeMode") == (chinese ? L"无法切换帧时间模式。" : L"Could not switch from frame time mode."), "Time mode failure wording");
 #endif
 			ProfileViewModel vm;
+			for (bool pending : { false, true }) {
+				RtssService::Get().pending = pending;
+				Require(vm.RtssInitializeText() == resources.GetString(pending ? L"Rtss_InitializingMagpie" : L"Rtss_InitializeMagpie"), "Initialization button uses native map and busy text");
+			}
 			for (auto state : States) for (auto scope : {RtssScope::None, RtssScope::Global, RtssScope::Target}) {
 				vm.data.rtss.scope = scope;
 				vm.status.state = state;
 				Require(!vm.RtssStatusText().empty(), "Empty status text");
 			}
 			vm.status.state = RtssState::Read;
+			vm.data.rtss.scope = RtssScope::Global;
+			vm.status.rtss.executable = L"RTSS.exe";
+			vm.status.profile = L"Global"; vm.status.rtss.version = L"7.3.5.28314";
+			vm.status.rateKnown = true; vm.status.currentRate = 60;
+			vm.status.failureStage = L"Rtss_Failure_Read";
+			const auto segments = vm.RtssStatusSegments();
+			Require(segments.GetAt(0) == L"Global" && segments.GetAt(1) == L"\u00a0-\u00a0RTSS 7.3.5.28314", "Profile and version lead the status");
+			Require(segments.GetAt(3) == L"\u00a0-\u00a060 FPS" && segments.GetAt(4) == hstring(L"\u00a0-\u00a0" + std::wstring(resources.GetString(L"Rtss_Failure_Read"))), "Rate precedes specific error");
+			Require(std::wstring_view(vm.RtssStatusText()).find(L'\n') == std::wstring_view::npos, "Status stays one paragraph");
+			vm.status.profile.clear(); vm.status.rtss.version.clear(); vm.status.rateKnown = false; vm.status.failureStage.clear();
+			vm.data.rtss.scope = RtssScope::Target;
+			Require(vm.RtssStatusSegments().Size() == 1, "Missing object, version and rate are omitted");
+			vm.status.profile = L"Global"; vm.status.rtss.executable.clear();
+			Require(vm.RtssStatusSegments().Size() == 1, "Uninstalled tool does not fabricate an object");
+			vm.status.profile.clear();
 			vm.status.rateKnown = true;
 			vm.status.detectionDisabled = vm.status.targetOverridesGlobal = true;
 			vm.status.failureStage = L"Rtss_Failure_Read";

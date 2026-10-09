@@ -69,7 +69,9 @@ struct _AppSettingsData {
 	OverlayOptions _overlayOptions;
 	
 	bool _isPortableMode = false;
-	bool _isAlwaysRunAsAdmin = false;
+	bool _isAlwaysRunAsAdmin = true;
+	uint32_t _adminStartupDefaultsVersion = 1;
+	uint32_t _adminAutoStartDefaultsVersion = 0;
 	bool _isDeveloperMode = false;
 	bool _isDebugMode = false;
 	bool _isBenchmarkMode = false;
@@ -261,6 +263,7 @@ public:
 	}
 
 	void IsAlwaysRunAsAdmin(bool value) noexcept;
+	void UpdateAdminAutoStart() noexcept;
 
 	bool IsShowNotifyIcon() const noexcept {
 		return _isShowNotifyIcon;

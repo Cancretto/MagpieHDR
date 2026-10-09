@@ -16,6 +16,7 @@ header = (repo / "src/Magpie/RtssProfileAccess.h").read_text(encoding="utf-8-sig
 source = source.replace('#include "pch.h"\n', "")
 source = source.replace('#include "Win32Helper.h"\n', "")
 source = source.replace('#include "RtssProfileAccess.h"', '#include "RtssProfileAccess.g.h"')
+source = '#ifdef RTSS_TEST_FILE_COMMIT\n#include "RtssFileCommitHooks.g.h"\n#endif\n' + source
 start = source.index("bool IsRunning(")
 end = source.index("RtssProfileAccess::~RtssProfileAccess()")
 source = source[:start] + "}\n\n" + source[end:]
@@ -25,6 +26,10 @@ end = service.index("\n}\n", start) + 2
 args.output.mkdir(parents=True, exist_ok=True)
 (args.output / "RtssProfileAccess.g.h").write_text(header.replace("private:", "public:"), encoding="utf-8")
 (args.output / "RtssProfileAccess.g.cpp").write_text(source, encoding="utf-8")
+(args.output / "RtssProfileExpression.h").write_text((repo / "src/Magpie/RtssProfileExpression.h").read_text(encoding="utf-8-sig"), encoding="utf-8")
+(args.output / "RtssFileCommitHooks.g.h").write_text(
+    '#include <windows.h>\nBOOL RtssTestReplaceFileW(LPCWSTR, LPCWSTR, LPCWSTR, DWORD, LPVOID, LPVOID);\n'
+    '#define ReplaceFileW RtssTestReplaceFileW\n', encoding="utf-8")
 (args.output / "RtssFailureText.g.h").write_text(service[start:end], encoding="utf-8")
 enum_source = (repo / "src/Magpie/RtssService.h").read_text(encoding="utf-8-sig")
 enum_start = enum_source.index("enum class RtssState {")
@@ -32,7 +37,7 @@ status_end = enum_source.index("\n};", enum_source.index("struct RtssStatus {"))
 session_start = service.index("struct RtssService::Session {")
 session_end = service.index("\n};", session_start) + 3
 methods = []
-for name in ("_TryApply", "_Finish"):
+for name in ("_TryApply", "_Finish", "_InitializeMagpie"):
     method_start = service.index("void RtssService::" + name + "(")
     method_end = service.index("\n}", method_start) + 2
     methods.append(service[method_start:method_end])

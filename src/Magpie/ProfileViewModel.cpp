@@ -727,6 +727,7 @@ void ProfileViewModel::_SaveFrameRefresh() {
 void ProfileViewModel::_NotifyRtssChanged() {
 	for (const auto property : { L"RtssScopeIndex", L"RtssRateModeIndex", L"RtssCustomRate", L"RtssSyncedRate", L"RtssExitPolicyIndex",
 		L"IsRtssManaged", L"ShowRtssCustomRate", L"ShowRtssSyncedRate", L"IsRtssSyncAvailable", L"ShowRtssGlobalNotice", L"RtssStatusText",
+		L"RtssStatusSegments", L"CanInitializeMagpie", L"RtssInitializeText",
 		L"RtssSyncText", L"CanLaunchRtss", L"CanLaunchAfterburner", L"RtssLaunchText", L"AfterburnerLaunchText" })
 		RaisePropertyChanged(property);
 }
@@ -753,14 +754,21 @@ void ProfileViewModel::_LoadRtssPreview() {
 
 RtssStatus ProfileViewModel::_RtssStatus() const {
 	const auto active = RtssService::Get().Status();
+	if (active.selfInitialization) return active;
 	if (active.profileIdentity.lock() == _data->runtimeIdentity) return active;
 	if (active.state == RtssState::StartingTool || active.state == RtssState::ToolStartFailed) return active;
 	auto result = _rtssPreview;
 	// Tool inventory is shared; another profile's write result is not.
 	result.rtss = active.rtss;
 	result.afterburner = active.afterburner;
-	if (active.rtss.executable.empty() && active.state != RtssState::Checking) result.state = RtssState::NotInstalled;
-	else if (!active.rtss.running && active.state != RtssState::Checking) result.state = RtssState::NotRunning;
+	result.accessReady = active.accessReady;
+	if (active.state != RtssState::Checking && (active.rtss.executable.empty() || !active.rtss.running)) {
+		result.state = active.rtss.executable.empty() ? RtssState::NotInstalled : RtssState::NotRunning;
+		result.rateKnown = false;
+		result.detectionDisabled = result.targetOverridesGlobal = false;
+		result.failureStage = active.failureStage;
+		if (active.rtss.executable.empty()) result.profile.clear();
+	}
 	return result;
 }
 
@@ -803,7 +811,7 @@ bool ProfileViewModel::ShowRtssSyncedRate() const noexcept { return _data->rtss.
 bool ProfileViewModel::IsRtssSyncAvailable() const noexcept { return _data->frameRefresh.contentMode != ContentFrameRateMode::Source; }
 bool ProfileViewModel::ShowRtssGlobalNotice() const noexcept { return _data->rtss.scope == RtssScope::Global; }
 
-hstring ProfileViewModel::RtssStatusText() const {
+IVector<hstring> ProfileViewModel::RtssStatusSegments() const {
 	const auto loader = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
 	const auto s = _RtssStatus();
 	const wchar_t* key = L"Rtss_Status_Checking";
@@ -824,21 +832,31 @@ hstring ProfileViewModel::RtssStatusText() const {
 	case RtssState::RestoreFailed: key = L"Rtss_Status_RestoreFailed"; break;
 	case RtssState::StartingTool: key = L"Rtss_Status_StartingTool"; break;
 	case RtssState::ToolStartFailed: key = L"Rtss_Status_ToolStartFailed"; break;
+	case RtssState::InitializingMagpie: key = L"Rtss_Status_InitializingMagpie"; break;
+	case RtssState::MagpieInitialized: key = L"Rtss_Status_MagpieInitialized"; break;
+	case RtssState::MagpieAlreadyUnlimited: key = L"Rtss_Status_MagpieAlreadyUnlimited"; break;
 	default: break;
 	}
+	auto segments = single_threaded_vector<hstring>();
+	auto add = [&](const std::wstring& value) {
+		if (!value.empty()) segments.Append(hstring(segments.Size() ? L"\u00a0-\u00a0" + value : value));
+	};
+	if (!s.rtss.executable.empty()) add(s.profile);
+	if (!s.rtss.version.empty()) add(L"RTSS " + s.rtss.version);
+	add(std::wstring(loader.GetString(key)));
+	if (s.rateKnown) add(s.timeLimit ? std::wstring(loader.GetString(L"Rtss_TimeLimit")) : s.currentRate > 0 ?
+		fmt::format(L"{:g} FPS", s.currentRate) : std::wstring(loader.GetString(L"Rtss_NoLimit")));
+	if (!s.failureStage.empty()) add(std::wstring(loader.GetString(s.failureStage)));
+	if (!IsRtssManaged() && !s.selfInitialization) add(std::wstring(loader.GetString(L"Rtss_UnmanagedNotice")));
+	if (s.detectionDisabled) add(std::wstring(loader.GetString(L"Rtss_DetectionDisabled")));
+	if (s.targetOverridesGlobal) add(std::wstring(loader.GetString(L"Rtss_TargetOverridesGlobal")));
+	if (ShowRtssGlobalNotice() && !s.selfInitialization) add(std::wstring(loader.GetString(L"Rtss_GlobalNotice/Text")));
+	return segments;
+}
+
+hstring ProfileViewModel::RtssStatusText() const {
 	std::wstring text;
-	if (!IsRtssManaged()) text = std::wstring(loader.GetString(L"Rtss_UnmanagedNotice")) + L"\n";
-	text += loader.GetString(key);
-	if (!s.rtss.version.empty()) text += L"\nRTSS " + s.rtss.version;
-	if (!s.profile.empty()) text += L"\n" + s.profile;
-	if (!s.failureStage.empty()) text += L"\n" + std::wstring(loader.GetString(s.failureStage));
-	if (s.rateKnown && (s.state == RtssState::Read || s.state == RtssState::Written || s.state == RtssState::Kept)) {
-		text += L"\n";
-		text += s.timeLimit ? std::wstring(loader.GetString(L"Rtss_TimeLimit")) : s.currentRate > 0 ?
-			fmt::format(L"{:g} FPS", s.currentRate) : std::wstring(loader.GetString(L"Rtss_NoLimit"));
-	}
-	if (s.detectionDisabled) text += L"\n" + std::wstring(loader.GetString(L"Rtss_DetectionDisabled"));
-	if (s.targetOverridesGlobal) text += L"\n" + std::wstring(loader.GetString(L"Rtss_TargetOverridesGlobal"));
+	for (const auto& segment : RtssStatusSegments()) text += segment;
 	return hstring(text);
 }
 
@@ -850,11 +868,21 @@ hstring ProfileViewModel::RtssSyncText() const {
 }
 
 bool ProfileViewModel::CanLaunchRtss() const {
-	const auto s = _RtssStatus(); return !s.rtss.executable.empty() && !s.rtss.running && !RtssService::Get().IsLaunching();
+	const auto s = _RtssStatus(); return !s.rtss.executable.empty() && !s.rtss.running && !RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie();
 }
 bool ProfileViewModel::CanLaunchAfterburner() const {
-	const auto s = _RtssStatus(); return !s.afterburner.executable.empty() && !s.afterburner.running && !RtssService::Get().IsLaunching();
+	const auto s = _RtssStatus(); return !s.afterburner.executable.empty() && !s.afterburner.running && !RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie();
 }
+bool ProfileViewModel::CanInitializeMagpie() const {
+	const auto s = _RtssStatus();
+	return s.accessReady && s.rtss.running &&
+		!RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie();
+}
+hstring ProfileViewModel::RtssInitializeText() const {
+	return ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID).GetString(
+		RtssService::Get().IsInitializingMagpie() ? L"Rtss_InitializingMagpie" : L"Rtss_InitializeMagpie");
+}
+void ProfileViewModel::InitializeMagpieRtss() { if (CanInitializeMagpie()) RtssService::Get().InitializeMagpie(); }
 hstring ProfileViewModel::RtssLaunchText() const {
 	const auto s = _RtssStatus();
 	return ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID).GetString(s.rtss.executable.empty() ? L"Rtss_LaunchRtssMissing" :

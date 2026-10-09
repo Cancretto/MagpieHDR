@@ -21,6 +21,7 @@ struct RtssProfileSnapshot {
 	std::array<uint32_t, 4> rate{ 0, 1, 0, 1 };
 	std::map<std::string, std::string> fields;
 	std::string contents;
+	std::array<uint64_t, 2> fileIdentity{};
 	bool exists = false;
 	uint32_t detectionLevel = 0;
 	bool operator==(const RtssProfileSnapshot&) const = default;
@@ -32,6 +33,7 @@ struct RtssProfileFailure {
 	RtssFailureStage stage = RtssFailureStage::None;
 	std::string profile, property;
 	std::wstring version;
+	std::wstring recoveryFile;
 	uint32_t requested = 0, observed = 0;
 	DWORD fileError = 0;
 	bool observedKnown = false, saveAttempted = false, readbackComplete = false, nativeFault = false;
@@ -54,6 +56,8 @@ public:
 		std::wstring& error, const std::function<bool()>& stillValid);
 	bool Restore(const std::string& profile, const RtssProfileSnapshot& original,
 		const RtssProfileSnapshot& lastWritten, bool created, bool& conflict, std::wstring& error);
+	bool InitializeUnlimited(const std::string& profile, RtssProfileSnapshot& written,
+		bool& alreadyUnlimited, std::wstring& error, const std::function<bool()>& stillValid);
 	const RtssProfileFailure& Failure() const noexcept { return _failure; }
 	static bool SameRate(const RtssProfileSnapshot& a, const RtssProfileSnapshot& b) noexcept {
 		return a.exists == b.exists && a.rate == b.rate;
@@ -67,6 +71,9 @@ private:
 	bool _ReadFile(const std::string& profile, RtssProfileSnapshot& snapshot, std::wstring& error);
 	bool _Read(const std::string& profile, RtssProfileSnapshot& snapshot, std::wstring& error);
 	bool _CheckWriteAccess(const std::string& profile, bool exists, std::wstring& error);
+	bool _WriteUnlimited(const std::string& profile, const RtssProfileSnapshot& before,
+		const std::string& contents, RtssProfileSnapshot& written, std::wstring& error,
+		const std::function<bool()>& stillValid);
 	bool _Get(const char* property, uint32_t& value);
 	bool _Set(const char* property, uint32_t value);
 	bool _SetIfChanged(const char* property, uint32_t value, std::wstring& error);

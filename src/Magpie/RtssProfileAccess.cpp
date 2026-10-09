@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "RtssProfileAccess.h"
+#include "RtssProfileExpression.h"
 #include "Win32Helper.h"
 #include <charconv>
 #include <sstream>
@@ -50,6 +51,26 @@ bool NonRateEqual(const RtssProfileSnapshot& a, const RtssProfileSnapshot& b) {
 		return fields;
 	};
 	return stripped(a.fields) == stripped(b.fields);
+}
+
+bool ReadDiskFile(const std::filesystem::path& path, std::string& bytes,
+	std::array<uint64_t, 2>& identity, DWORD& error) {
+	const HANDLE raw = CreateFileW(path.c_str(), GENERIC_READ,
+		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (raw == INVALID_HANDLE_VALUE) { error = GetLastError(); return false; }
+	const std::unique_ptr<void, decltype(&CloseHandle)> file(raw, CloseHandle);
+	BY_HANDLE_FILE_INFORMATION info{};
+	LARGE_INTEGER size{};
+	if (!GetFileSizeEx(raw, &size) || !GetFileInformationByHandle(raw, &info)) { error = GetLastError(); return false; }
+	if (size.QuadPart < 0 || size.QuadPart > 1024 * 1024) { error = ERROR_FILE_TOO_LARGE; return false; }
+	bytes.assign(size_t(size.QuadPart), '\0');
+	DWORD count = 0;
+	if (!ReadFile(raw, bytes.data(), DWORD(bytes.size()), &count, nullptr)) { error = GetLastError(); return false; }
+	LARGE_INTEGER after{};
+	if (!GetFileSizeEx(raw, &after)) { error = GetLastError(); return false; }
+	if (count != bytes.size() || after.QuadPart != size.QuadPart) { error = ERROR_RETRY; return false; }
+	identity = { info.dwVolumeSerialNumber, (uint64_t(info.nFileIndexHigh) << 32) | info.nFileIndexLow };
+	return true;
 }
 
 bool IsRunning(const std::filesystem::path& executable) {
@@ -298,30 +319,15 @@ bool RtssProfileAccess::_Exists(const std::string& profile, bool& exists, std::w
 bool RtssProfileAccess::_ReadFile(const std::string& profile, RtssProfileSnapshot& snapshot, std::wstring& error) {
 	const auto path = _ProfilePath(profile);
 	if (path.empty()) { error = L"InvalidProfileName"; return false; }
-	const HANDLE raw = CreateFileW(path.c_str(), GENERIC_READ,
-		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-	if (raw == INVALID_HANDLE_VALUE) {
-		_failure.fileError = GetLastError(); error = L"ReadFailed: " + std::to_wstring(_failure.fileError); return false;
+	std::string bytes;
+	if (!ReadDiskFile(path, bytes, snapshot.fileIdentity, _failure.fileError)) {
+		error = L"ReadFailed: " + std::to_wstring(_failure.fileError); return false;
 	}
-	const std::unique_ptr<void, decltype(&CloseHandle)> file(raw, CloseHandle);
-	LARGE_INTEGER size{};
-	if (!GetFileSizeEx(file.get(), &size)) {
-		_failure.fileError = GetLastError(); error = L"ReadFailed: " + std::to_wstring(_failure.fileError); return false;
+	if (bytes.find('\0') != bytes.npos || bytes.starts_with("\xFF\xFE") || bytes.starts_with("\xFE\xFF")) {
+		error = L"UnsupportedProfileEncoding"; return false;
 	}
-	if (size.QuadPart < 0 || size.QuadPart > 1024 * 1024) { error = L"ProfileTooLarge"; return false; }
-	std::string bytes(size_t(size.QuadPart), '\0');
-	DWORD count = 0;
-	if (!ReadFile(file.get(), bytes.data(), DWORD(bytes.size()), &count, nullptr)) {
-		_failure.fileError = GetLastError(); error = L"ReadFailed: " + std::to_wstring(_failure.fileError); return false;
-	}
-	if (count != bytes.size()) { error = L"ProfileChangedWhileReading"; return false; }
-	LARGE_INTEGER afterSize{};
-	if (!GetFileSizeEx(file.get(), &afterSize)) {
-		_failure.fileError = GetLastError(); error = L"ReadFailed: " + std::to_wstring(_failure.fileError); return false;
-	}
-	if (afterSize.QuadPart != size.QuadPart) { error = L"ProfileChangedWhileReading"; return false; }
 	snapshot.contents = bytes;
-	std::stringstream lines(bytes);
+	std::stringstream lines(bytes.starts_with("\xEF\xBB\xBF") ? bytes.substr(3) : bytes);
 	std::string line, section;
 	snapshot.fields.clear();
 	while (std::getline(lines, line)) {
@@ -392,6 +398,130 @@ bool RtssProfileAccess::_CheckWriteAccess(const std::string& profile, bool exist
 	if (handle != INVALID_HANDLE_VALUE) { CloseHandle(handle); return true; }
 	_failure.fileError = GetLastError();
 	return _Fail(RtssFailureStage::Save, L"WriteAccessFailed", error);
+}
+
+bool RtssProfileAccess::InitializeUnlimited(const std::string& profile, RtssProfileSnapshot& written,
+	bool& alreadyUnlimited, std::wstring& error, const std::function<bool()>& stillValid) {
+	_ResetFailure(profile);
+	written = {}; alreadyUnlimited = false;
+	_failure.stage = RtssFailureStage::Read;
+	// This explicit command cannot address Global, paths or arbitrary executables.
+	if (_stricmp(profile.c_str(), "Magpie.exe") != 0) return _Fail(RtssFailureStage::Setting, L"InvalidSelfProfile", error);
+	RtssProfileSnapshot before;
+	if (!_Read(profile, before, error)) return false;
+	if (!stillValid()) return _Fail(RtssFailureStage::Cancelled, L"Cancelled", error);
+	if (before.exists && !before.rate[0] && !before.rate[2]) {
+		written = before; alreadyUnlimited = true; _failure.stage = RtssFailureStage::None; return true;
+	}
+	// The byte-level format and reload semantics are verified with this SDK build.
+	// Other versions remain readable; they are never silently subjected to this patch.
+	if (_version != L"7.3.5.28314") return _Fail(RtssFailureStage::Setting, L"UnsupportedProfileFormat", error);
+	if (!_CheckWriteAccess(profile, before.exists, error)) return false;
+	std::string contents;
+	if (!ClearRtssRateExpression(before.contents, contents)) return _Fail(RtssFailureStage::Setting, L"UnsupportedProfileFormat", error);
+	return _WriteUnlimited(profile, before, contents, written, error, stillValid);
+}
+
+bool RtssProfileAccess::_WriteUnlimited(const std::string& profile, const RtssProfileSnapshot& before,
+	const std::string& contents, RtssProfileSnapshot& written, std::wstring& error,
+	const std::function<bool()>& stillValid) {
+	const auto path = _ProfilePath(profile);
+	wchar_t tempName[MAX_PATH]{}, backupName[MAX_PATH]{};
+	const auto directory = path.parent_path();
+	if (!GetTempFileNameW(directory.c_str(), L"mpi", 0, tempName)) {
+		_failure.fileError = GetLastError(); return _Fail(RtssFailureStage::Save, L"CreateCandidateFailed", error);
+	}
+	struct TemporaryFiles {
+		const wchar_t* candidate;
+		const wchar_t* backup;
+		bool retainBackup = false;
+		~TemporaryFiles() { DeleteFileW(candidate); if (!retainBackup && *backup) DeleteFileW(backup); }
+	} temporary{ tempName, backupName };
+	{
+		const HANDLE raw = CreateFileW(tempName, GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+		if (raw == INVALID_HANDLE_VALUE) { _failure.fileError = GetLastError(); return _Fail(RtssFailureStage::Save, L"CreateCandidateFailed", error); }
+		const std::unique_ptr<void, decltype(&CloseHandle)> file(raw, CloseHandle);
+		DWORD count = 0;
+		if (!WriteFile(raw, contents.data(), DWORD(contents.size()), &count, nullptr) || !FlushFileBuffers(raw)) {
+			_failure.fileError = GetLastError(); return _Fail(RtssFailureStage::Save, L"WriteCandidateFailed", error);
+		}
+		if (count != contents.size()) { _failure.fileError = ERROR_WRITE_FAULT; return _Fail(RtssFailureStage::Save, L"WriteCandidateFailed", error); }
+	}
+	if (before.exists) {
+		if (!GetTempFileNameW(directory.c_str(), L"mpb", 0, backupName) || !DeleteFileW(backupName)) {
+			_failure.fileError = GetLastError(); return _Fail(RtssFailureStage::Save, L"CreateBackupFailed", error);
+		}
+	}
+	// Recheck both the effective input and its physical identity immediately before
+	// committing. ReplaceFile still has a race window; its actual backup is checked below.
+	std::unique_ptr<void, decltype(&CloseHandle)> sourceLock(nullptr, CloseHandle);
+	if (!before.exists) {
+		// There is no replaced target to compare with for a new profile. Keep its
+		// inherited Global source stable through creation instead.
+		const HANDLE raw = CreateFileW(_ProfilePath("").c_str(), GENERIC_READ, FILE_SHARE_READ,
+			nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+		if (raw == INVALID_HANDLE_VALUE) { _failure.fileError = GetLastError(); return _Fail(RtssFailureStage::Save, L"LockSourceFailed", error); }
+		sourceLock.reset(raw);
+	}
+	RtssProfileSnapshot confirmed;
+	if (!_Read(profile, confirmed, error)) return false;
+	if (confirmed != before) return _Fail(RtssFailureStage::Conflict, L"Conflict", error);
+	if (!stillValid()) return _Fail(RtssFailureStage::Cancelled, L"Cancelled", error);
+	_failure.saveAttempted = true;
+	const bool committed = before.exists ? ReplaceFileW(path.c_str(), tempName, backupName, 0, nullptr, nullptr) != FALSE :
+		MoveFileExW(tempName, path.c_str(), MOVEFILE_WRITE_THROUGH) != FALSE; // No replace of a concurrently created profile.
+	if (!committed) {
+		_failure.fileError = GetLastError();
+		temporary.retainBackup = true;
+		_failure.recoveryFile = backupName;
+		// ReplaceFile may move the old file to backup even on failure. Recover only
+		// a missing destination, using a non-replacing rename.
+		if (before.exists && GetFileAttributesW(path.c_str()) == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND &&
+			MoveFileExW(backupName, path.c_str(), MOVEFILE_WRITE_THROUGH)) {
+			temporary.retainBackup = false; _failure.recoveryFile.clear();
+		}
+		_failure.readbackComplete = _Read(profile, written, error);
+		return _Fail(RtssFailureStage::Save, L"ReplaceProfileFailed", error);
+	}
+	if (before.exists) {
+		std::string replaced;
+		std::array<uint64_t, 2> identity{};
+		if (!ReadDiskFile(backupName, replaced, identity, _failure.fileError) || replaced != before.contents || identity != before.fileIdentity) {
+			temporary.retainBackup = true;
+			_failure.recoveryFile = backupName;
+			// Lock out writers and renames before testing and rolling back our bytes.
+			// An external change after the commit is left intact, with the backup retained.
+			const HANDLE raw = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ,
+				nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+			if (raw != INVALID_HANDLE_VALUE) {
+				const std::unique_ptr<void, decltype(&CloseHandle)> file(raw, CloseHandle);
+				LARGE_INTEGER size{};
+				DWORD count = 0;
+				std::string actual(contents.size(), '\0');
+				if (!replaced.empty() && GetFileSizeEx(raw, &size) && size.QuadPart == LONGLONG(contents.size()) &&
+					ReadFile(raw, actual.data(), DWORD(actual.size()), &count, nullptr) && count == actual.size() && actual == contents) {
+					LARGE_INTEGER start{};
+					if (SetFilePointerEx(raw, start, nullptr, FILE_BEGIN) &&
+						WriteFile(raw, replaced.data(), DWORD(replaced.size()), &count, nullptr) && count == replaced.size() &&
+						SetEndOfFile(raw) && FlushFileBuffers(raw)) temporary.retainBackup = false;
+				}
+			}
+			if (!temporary.retainBackup) _failure.recoveryFile.clear();
+			_failure.readbackComplete = _Read(profile, written, error);
+			return _Fail(RtssFailureStage::Conflict, L"Conflict", error);
+		}
+	}
+	_failure.stage = RtssFailureStage::Verify;
+	if (!_Read(profile, written, error)) return false;
+	_failure.readbackComplete = true;
+	if (!written.exists || written.contents != contents || written.rate[0] || written.rate[2] ||
+		written.rate[1] != before.rate[1] || written.rate[3] != before.rate[3] ||
+		written.detectionLevel != before.detectionLevel || !NonRateEqual(before, written)) {
+		return _Fail(RtssFailureStage::Verify, L"VerifyFailed", error);
+	}
+	if (!_Reload()) return _Fail(RtssFailureStage::Reload, L"ReloadFailed", error);
+	_failure.stage = RtssFailureStage::None;
+	return true;
 }
 
 bool RtssProfileAccess::Apply(const std::string& profile, uint32_t rate, const RtssProfileSnapshot& before,

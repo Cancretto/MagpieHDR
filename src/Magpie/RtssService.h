@@ -14,7 +14,8 @@ namespace Magpie {
 
 enum class RtssState {
 	Checking, NotInstalled, NotRunning, Incompatible, Failed, WaitingTarget, Read, MissingProfile,
-	WaitingContent, Applying, Written, Conflict, Kept, Restored, RestoreFailed, StartingTool, ToolStartFailed
+	WaitingContent, Applying, Written, Conflict, Kept, Restored, RestoreFailed, StartingTool, ToolStartFailed,
+	InitializingMagpie, MagpieInitialized, MagpieAlreadyUnlimited
 };
 
 struct RtssStatus {
@@ -28,6 +29,8 @@ struct RtssStatus {
 	bool detectionDisabled = false;
 	bool targetOverridesGlobal = false;
 	bool contentConstrained = false;
+	bool accessReady = false;
+	bool selfInitialization = false;
 	std::weak_ptr<const uint8_t> profileIdentity;
 	std::wstring failureStage;
 };
@@ -45,6 +48,8 @@ public:
 	void ReleaseProfile(std::weak_ptr<const uint8_t> identity);
 	void Recheck(bool retry = true);
 	void Launch(bool afterburner);
+	void InitializeMagpie();
+	bool IsInitializingMagpie() const noexcept { return _initializationPending; }
 	bool IsLaunching() const noexcept { return _launchPending; }
 	void Preview(RtssSettings settings, std::wstring executable,
 		std::function<void(RtssStatus)> completed);
@@ -62,6 +67,7 @@ private:
 	void _Publish(RtssStatus status);
 	void _TryApply(const std::shared_ptr<Session>& session);
 	void _Finish(const std::shared_ptr<Session>& session);
+	void _InitializeMagpie();
 	bool _Prepare(RtssStatus& status);
 	std::shared_ptr<Session> _uiSession;
 	std::shared_ptr<Session> _workerSession;
@@ -78,6 +84,7 @@ private:
 	bool _exited = false;
 	std::atomic<bool> _notify = false;
 	bool _launchPending = false; // UI thread
+	bool _initializationPending = false; // UI thread
 	winrt::DispatcherQueueTimer _launchTimer{ nullptr };
 };
 

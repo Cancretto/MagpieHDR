@@ -8,6 +8,7 @@
 #include "EffectsService.h"
 #include "EffectDesc.h"
 #include "AutoStartHelper.h"
+#include "AdminStartupSettings.h"
 #include "CommonSharedConstants.h"
 #include "JsonHelper.h"
 #include "LocalizationService.h"
@@ -282,7 +283,7 @@ bool AppSettings::Initialize() noexcept {
 		logger.Info("不存在配置文件");
 		_SetDefaultScalingModes();
 		_SetDefaultShortcuts();
-		SaveAsync();
+		if (!_isAlwaysRunAsAdmin || Win32Helper::IsProcessElevated()) SaveAsync();
 		return true;
 	}
 
@@ -332,8 +333,6 @@ bool AppSettings::Initialize() noexcept {
 		bool recovered = plan.kind != ConfigRecovery::Kind::None;
 		bool reused = false;
 		if (recovered) {
-			if (!ConfigRecovery::Preserve(existingConfigPath, configText, files))
-				return failRecovery(L"AppSettings_BackupFailed", files.original, GetLastError());
 			if (Win32Helper::FileExists(files.result.c_str())) {
 				const auto previous = ConfigPersistence::Read(files.result);
 				if (ConfigPersistence::IsValid(previous)) {
@@ -364,6 +363,12 @@ bool AppSettings::Initialize() noexcept {
 		disableHdr(_defaultProfile);
 		for (Profile& profile : _profiles) disableHdr(profile);
 		if (hdrSettingsChanged) logger.Info("HDR compatibility temporarily disabled in saved profiles");
+		// Load the startup preference before requesting elevation, but defer all
+		// migration writes to the elevated replacement. This also covers portable
+		// configurations in directories the ordinary token cannot write.
+		if (_isAlwaysRunAsAdmin && !Win32Helper::IsProcessElevated()) return true;
+		if (recovered && !ConfigRecovery::Preserve(existingConfigPath, configText, files))
+			return failRecovery(L"AppSettings_BackupFailed", files.original, GetLastError());
 		// Existing versioned migrations also preserve the input before their first write.
 		if (_isConfigMigrationNeeded && !recovered) {
 			if (!ConfigRecovery::Preserve(existingConfigPath, configText, files))
@@ -577,6 +582,16 @@ void AppSettings::IsAlwaysRunAsAdmin(bool value) noexcept {
 	if (AutoStartHelper::IsAutoStartEnabled()) {
 		AutoStartHelper::EnableAutoStart(value);
 	}
+}
+
+void AppSettings::UpdateAdminAutoStart() noexcept {
+	if (_adminAutoStartDefaultsVersion >= ADMIN_STARTUP_DEFAULTS_VERSION) return;
+	if (_isAlwaysRunAsAdmin && !Win32Helper::IsProcessElevated()) return;
+	if (AutoStartHelper::IsAutoStartEnabled() && !AutoStartHelper::EnableAutoStart(_isAlwaysRunAsAdmin)) {
+		Logger::Get().Warn("Could not migrate the administrator auto-start task"); return;
+	}
+	_adminAutoStartDefaultsVersion = ADMIN_STARTUP_DEFAULTS_VERSION;
+	SaveAsync();
 }
 
 void AppSettings::IsShowNotifyIcon(bool value) noexcept {
@@ -803,6 +818,10 @@ std::string AppSettings::_Serialize(const _AppSettingsData& data) {
 	writer.Bool(data._isSimulateExclusiveFullscreen);
 	writer.Key("alwaysRunAsAdmin");
 	writer.Bool(data._isAlwaysRunAsAdmin);
+	writer.Key("adminStartupDefaultsVersion");
+	writer.Uint(data._adminStartupDefaultsVersion);
+	writer.Key("adminAutoStartDefaultsVersion");
+	writer.Uint(data._adminAutoStartDefaultsVersion);
 	writer.Key("showNotifyIcon");
 	writer.Bool(data._isShowNotifyIcon);
 	writer.Key("smoothMotionCompatibilityMode");
@@ -998,10 +1017,9 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 	JsonHelper::ReadBool(root, "warningsAreErrors", _isWarningsAreErrors);
 	JsonHelper::ReadBool(root, "allowScalingMaximized", _isAllowScalingMaximized);
 	JsonHelper::ReadBool(root, "simulateExclusiveFullscreen", _isSimulateExclusiveFullscreen);
-	if (!JsonHelper::ReadBool(root, "alwaysRunAsAdmin", _isAlwaysRunAsAdmin, true)) {
-		// v0.10.0-preview1 使用 alwaysRunAsElevated
-		JsonHelper::ReadBool(root, "alwaysRunAsElevated", _isAlwaysRunAsAdmin);
-	}
+	_isConfigMigrationNeeded |= ReadAdminStartupSettings(root, _isAlwaysRunAsAdmin, _adminStartupDefaultsVersion);
+	_adminAutoStartDefaultsVersion = 0;
+	JsonHelper::ReadUInt(root, "adminAutoStartDefaultsVersion", _adminAutoStartDefaultsVersion, true);
 	if (!JsonHelper::ReadBool(root, "showNotifyIcon", _isShowNotifyIcon, true)) {
 		// v0.10 使用 showTrayIcon
 		JsonHelper::ReadBool(root, "showTrayIcon", _isShowNotifyIcon);

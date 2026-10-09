@@ -56,6 +56,12 @@ try:
     result.update(returncode=process.returncode, stdout=process.stdout, stderr=process.stderr)
     print(process.stdout, end="")
     print(process.stderr, end="")
+    init_exe = output / "RtssInitializationTests.exe"
+    if process.returncode == 0 and init_exe.is_file():
+        initialization = subprocess.run([str(init_exe), str(output), str(isolated)], text=True, capture_output=True, timeout=60)
+        result.update(initialization_returncode=initialization.returncode, initialization_stdout=initialization.stdout, initialization_stderr=initialization.stderr)
+        print(initialization.stdout, end="")
+        print(initialization.stderr, end="")
 finally:
     after = hashes()
     result["original_profiles_unchanged"] = before == after
@@ -64,4 +70,5 @@ finally:
     (output / "native-result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
 assert result["original_profiles_unchanged"], "Original profile files changed during isolated test"
 assert result.get("returncode") == 0, "Native transaction test failed"
+assert result.get("initialization_returncode", 0) == 0, "Native initialization test failed"
 print(f"Original RTSS profiles unchanged: {len(before)} file hashes verified.")

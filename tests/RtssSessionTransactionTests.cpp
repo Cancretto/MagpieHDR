@@ -18,6 +18,8 @@ struct TargetIdentity {
 	bool SameProcess(const TargetIdentity&) const { return true; }
 };
 std::shared_ptr<TargetIdentity> ResolveTarget(HWND) { return {}; }
+std::string ProfileName(const std::wstring& name) { return name == L"Magpie.exe" ? "Magpie.exe" : ""; }
+namespace Win32Helper { std::filesystem::path GetExePath() { return L"C:\\isolated\\Magpie.exe"; } }
 RtssProfileFailure loggedFailure;
 void LogProfileFailure(const char*, const std::wstring&, const RtssProfileFailure& failure) { loggedFailure = failure; }
 }
@@ -27,12 +29,14 @@ public:
 	RtssProfileAccess& _access;
 	RtssStatus _status;
 	unsigned publications = 0;
+	std::atomic<bool> _notify = true;
 	explicit RtssService(RtssProfileAccess& access) : _access(access) {}
 	bool _Prepare(RtssStatus&) { return true; }
 	void _Publish(RtssStatus value) { _status = std::move(value); ++publications; }
 	RtssStatus Status() const { return _status; }
 	void _TryApply(const std::shared_ptr<Session>& session);
 	void _Finish(const std::shared_ptr<Session>& session);
+	void _InitializeMagpie();
 };
 #include "RtssSessionTransactions.g.h"
 }
@@ -115,6 +119,26 @@ int wmain(int argc, wchar_t** argv) {
 			WriteBytes(f.Path(""), Profile(59));
 			service._Finish(s);
 			Require(service._status.state == RtssState::Conflict && f.Snapshot("").rate[0] == 59 && f.saves == 1, "Service restore conflict preserves external value");
+		}
+		for (auto scope : {RtssScope::Global, RtssScope::Target}) for (auto exit : {RtssExitPolicy::KeepChanges, RtssExitPolicy::RestoreOriginal}) {
+			Fixture f(output); f.access._version = L"7.3.5.28314";
+			WriteBytes(f.Path(""), Profile(30));
+			RtssService service(f.access);
+			const auto s = session(scope, exit);
+			service._TryApply(s);
+			const auto original = s->original;
+			const auto lastWritten = s->lastWritten;
+			const bool created = s->created;
+			service._InitializeMagpie();
+			Require(service._status.selfInitialization && service._status.profile == L"Magpie.exe" && service._status.state == RtssState::MagpieInitialized, "Initialization result labels its own profile");
+			Require(s->original == original && s->lastWritten == lastWritten && s->created == created && !s->finished && s->settings.exitPolicy == exit, "Initialization leaves game transaction ownership and policy intact");
+			const auto initialized = f.Snapshot("Magpie.exe").contents;
+			service._InitializeMagpie();
+			Require(service._status.state == RtssState::MagpieAlreadyUnlimited, "Worker no-op result");
+			s->desiredRate = 72; service._TryApply(s);
+			Require(!service._status.selfInitialization && service._status.profile != L"Magpie.exe", "Next sync update identifies the game transaction");
+			service._Finish(s);
+			Require(!service._status.selfInitialization && f.Snapshot("Magpie.exe").contents == initialized, "Stopping game scaling never restores/deletes self initialization");
 		}
 		std::cout << "RTSS production session transactions: " << checks << " checks passed.\n";
 		return 0;

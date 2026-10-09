@@ -26,6 +26,8 @@ static auto ResolveTarget(HWND source) {
 }
 enum class RtssState { Failed };
 struct RtssStatus {
+	bool selfInitialization = false, rateKnown = false;
+	std::wstring profile;
 	std::weak_ptr<const uint8_t> profileIdentity;
 	RtssState state{};
 	std::wstring failureStage;

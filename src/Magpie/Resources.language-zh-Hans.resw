@@ -1900,4 +1900,28 @@
   <data name="Rtss_Failure_Verify" xml:space="preserve"><value>核对配置失败。</value></data>
   <data name="Rtss_Failure_Reload" xml:space="preserve"><value>重载配置失败。</value></data>
   <data name="Rtss_Failure_TimeMode" xml:space="preserve"><value>无法切换帧时间模式。</value></data>
+  <data name="Rtss_InitializeMagpie" xml:space="preserve">
+    <value>初始化 Magpie</value>
+  </data>
+  <data name="Rtss_InitializingMagpie" xml:space="preserve">
+    <value>正在初始化…</value>
+  </data>
+  <data name="Rtss_InitializeMagpieButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>为 RTSS 建立 Magpie 不限帧配置。</value>
+  </data>
+  <data name="Rtss_InitializeMagpieButton.AutomationProperties.Name" xml:space="preserve">
+    <value>初始化 Magpie 的 RTSS 配置</value>
+  </data>
+  <data name="Rtss_Status_InitializingMagpie" xml:space="preserve">
+    <value>正在初始化配置。</value>
+  </data>
+  <data name="Rtss_Status_MagpieInitialized" xml:space="preserve">
+    <value>配置已初始化。</value>
+  </data>
+  <data name="Rtss_Status_MagpieAlreadyUnlimited" xml:space="preserve">
+    <value>已不限帧。</value>
+  </data>
+  <data name="Rtss_Failure_ProfileFormat" xml:space="preserve">
+    <value>此版本的配置格式尚未支持。</value>
+  </data>
 </root>

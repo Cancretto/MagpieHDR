@@ -64,9 +64,9 @@ P01–P09 已完成本轮源码、验证与兼容设计，P10 交给独立编译
 
 ## 后续兼容
 
-- [ ] **C01** 按[独立兼容方案](../design/20261009-rtss-time-mode-compatibility-plan.md)实现并验证非零帧时间转 FPS 和原限帧字段缺失关系恢复。当前不在 API 失败后静默改文件；非零转换显示具体失败原因，SDK 补齐字段后的恢复不报告为原表达精确恢复。
+- [ ] **C01** 按[独立兼容方案](../design/20261009-rtss-time-mode-compatibility-plan.md)实现并验证非零帧时间转 FPS 和原限帧字段缺失关系恢复。Magpie 初始化已完成 7.3.5.28314 的独立帧时间清零入口，见[实施记录](../reviews/20261009-rtss-status-magpie-init-and-admin.md)；本项的 Global/目标转正 FPS 和缺失关系恢复仍未完成。当前不在 API 失败后静默改文件；非零转换显示具体失败原因，SDK 补齐字段后的恢复不报告为原表达精确恢复。
 - [ ] **C02** 对其他拟支持的 RTSS 版本运行完整隔离事务，再确定支持表或最低版本；本轮原生结论仅覆盖 7.3.5.28314。
 
-- [ ] **C03** 按用户已确认的新方案，Magpie 主程序启动时默认请求管理员权限，复用既有管理员启动链路并覆盖默认值、旧配置迁移、取消授权、单实例与自启动。此项由[状态与 Magpie 初始化 TODO 的 A01–A04](20261009-rtss-status-magpie-init-and-admin-TODO.md)统筹，替代原先单独为 RTSS 按需提权的候选方案。保留真实文件权限失败状态，不自动改变目录 ACL。
+- [x] **C03** 按用户已确认的新方案，Magpie 主程序启动时默认请求管理员权限，复用既有管理员启动链路并覆盖默认值、旧配置迁移、取消授权、单实例与自启动。此项由[状态与 Magpie 初始化 TODO 的 A01–A04](20261009-rtss-status-magpie-init-and-admin-TODO.md)统筹，已完成源码/模拟启动与配置迁移，真实 UAC、自启动和单实例验收列于 V03；替代原先单独为 RTSS 按需提权的候选方案。保留真实文件权限失败状态，不自动改变目录 ACL。
 
 关联：[原功能开发清单](20261005-v0.6.9-rtss-target-frame-rate-TODO.md)、[界面调整 TODO](20261009-rtss-ui-text-and-style-TODO.md)、[配置访问实现](../../../src/Magpie/RtssProfileAccess.cpp)、[会话失败映射](../../../src/Magpie/RtssService.cpp)。

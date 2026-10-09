@@ -1851,4 +1851,28 @@
   <data name="Rtss_Failure_Verify" xml:space="preserve"><value>Could not verify the profile.</value></data>
   <data name="Rtss_Failure_Reload" xml:space="preserve"><value>Could not reload the profile.</value></data>
   <data name="Rtss_Failure_TimeMode" xml:space="preserve"><value>Could not switch from frame time mode.</value></data>
+  <data name="Rtss_InitializeMagpie" xml:space="preserve">
+    <value>Initialize Magpie</value>
+  </data>
+  <data name="Rtss_InitializingMagpie" xml:space="preserve">
+    <value>Initializing…</value>
+  </data>
+  <data name="Rtss_InitializeMagpieButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Create an unlimited RTSS profile for Magpie.</value>
+  </data>
+  <data name="Rtss_InitializeMagpieButton.AutomationProperties.Name" xml:space="preserve">
+    <value>Initialize the RTSS profile for Magpie</value>
+  </data>
+  <data name="Rtss_Status_InitializingMagpie" xml:space="preserve">
+    <value>Initializing the profile.</value>
+  </data>
+  <data name="Rtss_Status_MagpieInitialized" xml:space="preserve">
+    <value>Profile initialized.</value>
+  </data>
+  <data name="Rtss_Status_MagpieAlreadyUnlimited" xml:space="preserve">
+    <value>Already unlimited.</value>
+  </data>
+  <data name="Rtss_Failure_ProfileFormat" xml:space="preserve">
+    <value>This version’s profile format is not supported yet.</value>
+  </data>
 </root>

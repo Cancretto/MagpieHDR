@@ -128,8 +128,12 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 	bool IsRtssSyncAvailable() const noexcept;
 	bool ShowRtssGlobalNotice() const noexcept;
 	hstring RtssStatusText() const;
+	IVector<hstring> RtssStatusSegments() const;
 	hstring RtssSyncText() const;
 	bool CanLaunchRtss() const;
+	bool CanInitializeMagpie() const;
+	hstring RtssInitializeText() const;
+	void InitializeMagpieRtss();
 	bool CanLaunchAfterburner() const;
 	hstring RtssLaunchText() const;
 	hstring AfterburnerLaunchText() const;

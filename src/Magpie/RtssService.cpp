@@ -91,6 +91,7 @@ const wchar_t* ProfileFailureText(const RtssProfileFailure& failure, const std::
 	if (failure.nativeFault || error == L"InterfaceFault") return L"Rtss_Failure_Interface";
 	if (failure.fileError == ERROR_ACCESS_DENIED || failure.fileError == ERROR_PRIVILEGE_NOT_HELD) return L"Rtss_Failure_Permission";
 	if (error == L"TimeModeUnsupported") return L"Rtss_Failure_TimeMode";
+	if (error == L"UnsupportedProfileFormat" || error == L"InvalidSelfProfile") return L"Rtss_Failure_ProfileFormat";
 	switch (failure.stage) {
 	case RtssFailureStage::Read: return L"Rtss_Failure_Read";
 	case RtssFailureStage::Setting: return L"Rtss_Failure_Set";
@@ -104,10 +105,10 @@ const wchar_t* ProfileFailureText(const RtssProfileFailure& failure, const std::
 void LogProfileFailure(const char* operation, const std::wstring& error, const RtssProfileFailure& failure) {
 	Logger::Get().Warn(fmt::format(
 		"RTSS {}: {} stage={} profile={} version={} property={} requested={} observed={} observedKnown={} "
-		"saveAttempted={} readbackComplete={} nativeFault={} fileError={}",
+		"saveAttempted={} readbackComplete={} nativeFault={} fileError={} recoveryFile={}",
 		operation, StrHelper::UTF16ToUTF8(error), int(failure.stage), failure.profile.empty() ? "Global" : failure.profile,
 		StrHelper::UTF16ToUTF8(failure.version), failure.property, failure.requested, failure.observed, failure.observedKnown,
-		failure.saveAttempted, failure.readbackComplete, failure.nativeFault, failure.fileError));
+		failure.saveAttempted, failure.readbackComplete, failure.nativeFault, failure.fileError, StrHelper::UTF16ToUTF8(failure.recoveryFile)));
 }
 
 }
@@ -215,6 +216,7 @@ bool RtssService::_Prepare(RtssStatus& status) {
 			L"Rtss_Failure_LibraryMissing" : error == L"AccessDenied" ? L"Rtss_Failure_Permission" : L"Rtss_Failure_Access";
 		LogProfileFailure("check", error, _access.Failure()); return false;
 	}
+	status.accessReady = true;
 	return true;
 }
 
@@ -243,6 +245,8 @@ void RtssService::ContentTargetChanged(uint64_t sessionId, HWND source, bool fix
 			End();
 			_Queue([this, identity = session->identity] {
 				auto status = Status(); status.profileIdentity = identity;
+				status.selfInitialization = false;
+				status.profile.clear(); status.rateKnown = false;
 				status.state = RtssState::Failed; status.failureStage = L"Rtss_Failure_Target";
 				_Publish(std::move(status));
 			});
@@ -367,7 +371,10 @@ void RtssService::_Finish(const std::shared_ptr<Session>& session) {
 	session->finished = true;
 	if (!session->modified) return;
 	auto status = Status();
+	status.selfInitialization = false;
 	status.rateKnown = false;
+	status.timeLimit = false;
+	status.targetOverridesGlobal = false;
 	status.failureStage.clear();
 	status.profileIdentity = session->identity;
 	status.profile = session->profile.empty() ? L"Global" : session->initialTarget->exe;
@@ -410,10 +417,13 @@ void RtssService::Recheck(bool retry) {
 }
 
 void RtssService::Launch(bool afterburner) {
-	if (_launchPending) return;
+	if (_launchPending || _initializationPending) return;
 	_launchPending = true;
 	_Queue([this, afterburner] {
 		auto status = Status(); status.state = RtssState::StartingTool;
+		status.selfInitialization = false; status.rateKnown = false;
+		status.detectionDisabled = status.targetOverridesGlobal = false;
+		status.profileIdentity.reset();
 		status.profile.clear(); status.failureStage.clear(); _Publish(status);
 		std::wstring error;
 		const auto tool = RtssProfileAccess::DetectTool(afterburner);
@@ -438,6 +448,9 @@ void RtssService::Launch(bool afterburner) {
 						const auto tool = RtssProfileAccess::DetectTool(afterburner);
 						if (tool.running) { Recheck(false); return; }
 						auto status = Status(); status.state = RtssState::ToolStartFailed;
+						status.selfInitialization = false; status.rateKnown = false;
+						status.detectionDisabled = status.targetOverridesGlobal = false;
+						status.profileIdentity.reset();
 						status.profile = afterburner ? L"MSI Afterburner" : L"RTSS";
 						status.failureStage = L"Rtss_Failure_StartTimeout";
 						_Publish(std::move(status));
@@ -449,6 +462,46 @@ void RtssService::Launch(bool afterburner) {
 			_launchTimer.Start();
 		});
 	});
+}
+
+void RtssService::InitializeMagpie() {
+	if (_initializationPending || _launchPending || !_notify) return;
+	_initializationPending = true;
+	StatusChanged.Invoke();
+	_Queue([this] {
+		_InitializeMagpie();
+		if (_notify) _dispatcher.TryEnqueue([this] {
+			_initializationPending = false;
+			if (_notify) StatusChanged.Invoke();
+		});
+	});
+}
+
+void RtssService::_InitializeMagpie() {
+	RtssStatus status;
+	status.selfInitialization = true;
+	status.profile = Win32Helper::GetExePath().filename().native();
+	std::wstring error;
+	try {
+		if (_Prepare(status)) {
+			status.state = RtssState::InitializingMagpie; _Publish(status);
+			RtssProfileSnapshot written;
+			bool alreadyUnlimited = false;
+			const auto name = ProfileName(status.profile);
+			if (_access.InitializeUnlimited(name, written, alreadyUnlimited, error, [this] { return _notify.load(); })) {
+				status.state = alreadyUnlimited ? RtssState::MagpieAlreadyUnlimited : RtssState::MagpieInitialized;
+				status.currentRate = 0; status.rateKnown = true;
+			} else {
+				status.state = error == L"Conflict" ? RtssState::Conflict : RtssState::Failed;
+				status.failureStage = error == L"Conflict" ? L"" : ProfileFailureText(_access.Failure(), error, false);
+				LogProfileFailure("initialize Magpie", error, _access.Failure());
+			}
+		}
+	} catch (...) {
+		status.state = RtssState::Failed; status.failureStage = L"Rtss_Failure_Write";
+		LogProfileFailure("initialize Magpie", L"WriteException", _access.Failure());
+	}
+	_Publish(std::move(status));
 }
 
 void RtssService::Preview(RtssSettings settings, std::wstring executable, std::function<void(RtssStatus)> completed) {
