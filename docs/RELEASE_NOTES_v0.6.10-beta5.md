@@ -1,0 +1,25 @@
+# Magpie Experimental 0.6.10 Beta5
+
+本地测试版，继承已部署 Beta4 49de3f25，整合截至 2026-10-09 的功能更新。公开更新入口保持 0.6.9。
+
+## 中文
+
+- **NVIDIA VFX 统一套件：** 本地构建启用匹配的官方 1.3.0.0 Core 与四项功能库。加入 Nvidia VFX Upscale 自动／五档倍率与最终尺寸适配；统一 VSR 的分类与档位、旧别名和参数迁移；接入 SDR VFG 2–8× 及逐输出帧 TrueHDR 后处理。TrueHDR 保留原四项参数、精确输入和步进，新增默认开启的去色带。四槽背压、资源代次与参数 revision 保留；实际 GPU 功能、颜色、稳定性和性能仍需验收。
+- **截图内容：** 主页可选择原始输入与最终效果双图、仅最终效果、仅原始输入；默认仅最终效果。双图使用同一真实帧编号，独立保存 input/output 文件；异步等待、会话变化、文件竞争及部分失败有明确处理。效果／通道的独立 PNG／DDS 导出保留。
+- **RTSS：** 状态按内容分段换行，加入 Magpie 独立不限帧配置初始化；按每项操作实际可用的接口、字段和运行条件判断能力。版本号用于诊断，恢复条件不阻断开始，停止仅作一次尽力恢复。新配置及尚未迁移的旧配置默认请求管理员启动，之后保留用户主动关闭的选择；实际 UAC、自启动与游戏限帧另行验收。
+- **继承功能：** 保留 Beta4 的手动 HDR 链、旧试用组安全迁移、HDR PNG／DDS 导出与清理保护、UWP／参数输入协调、VRR 开销优化及已对齐的开关样式。
+
+## English
+
+This local Beta5 retains deployed Beta4 (49de3f25). The public update entry stays at 0.6.9.
+
+- **Unified NVIDIA VFX:** enable the matched official 1.3.0.0 Core and Upscale/VSR/VFG/TrueHDR libraries for local testing. Add native upscale selection and final size adaptation, VSR categories and legacy migration, SDR VFG at 2–8x, and per-output-frame TrueHDR processing. Preserve exact HDR parameter input and stepping, with debanding enabled by default. GPU functionality, color, lifetime and performance acceptance remain pending.
+- **Screenshot content:** choose paired original input/final output, output only (default), or input only. Pair captures at a real-frame submission boundary; retain asynchronous handling, session validation and collision-safe partial-save behavior. Independent effect/channel PNG and DDS export remains available.
+- **RTSS:** segmented status layout, independent unlimited Magpie profile initialization, per-operation capability checks and one best-effort restoration. New and unmigrated settings request administrator startup by default, while later user choices are retained. Physical UI, UAC/startup tasks and actual target FPS require separate acceptance.
+- Retain Beta4 manual HDR migration, export/cleanup safeguards, UWP/parameter focus coordination and VRR behavior.
+
+## 来源与验收 / Source and acceptance
+
+功能头：RTSS e830078a、NVIDIA VFX 999e94e2、截图 abfce2ef。原暂停 VRR 分支未纳入。包内 build-manifest.json 记录实际构建选项、提交与逐文件哈希；本轮分支、合并、测试、构建及配置保留证据位于 reports/0610-beta5-20261009。Beta4 完整运行环境保留供回退。
+
+本地功能库验证与软件回归不等同于真实 GPU／WinUI／物理 DPI／游戏／画质及性能验收；本版没有公开发布、推送或改变 RTSS 安装目录 ACL。
