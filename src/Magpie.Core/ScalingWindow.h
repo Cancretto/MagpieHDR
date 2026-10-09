@@ -92,6 +92,9 @@ public:
 	const ScalingOptions& Options() const noexcept {
 		return _options;
 	}
+	void UpdateScreenshotContent(ScreenshotContent content) noexcept {
+		_options.screenshotContent = NormalizeScreenshotContent(static_cast<uint32_t>(content));
+	}
 
 	class SrcTracker& SrcTracker() noexcept {
 		return _srcTracker;

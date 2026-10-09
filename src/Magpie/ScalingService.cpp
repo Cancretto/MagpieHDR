@@ -32,6 +32,10 @@ void ScalingService::MainUIChanged(HWND window) {
 	if (_scalingRuntime) _scalingRuntime->UpdateMainUI(RegisterSessionWindow(window));
 }
 
+void ScalingService::UpdateScreenshotContent(ScreenshotContent content) {
+	if (_scalingRuntime) _scalingRuntime->UpdateScreenshotContent(content);
+}
+
 static ToolbarShortcutLabels GetToolbarShortcutLabels() {
 	const auto& settings = AppSettings::Get();
 	auto label = [&](ShortcutAction action) {
@@ -586,6 +590,7 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 			ScalingService::Get()._SaveToolbarDock(identity, windowed, dock, runId);
 		});
 	};
+	options.screenshotContent = settings.ScreenshotContent();
 	options.screenshotsDir = settings.ScreenshotsDir();
 	if (options.screenshotsDir.empty()) {
 		// 回落到使用当前目录

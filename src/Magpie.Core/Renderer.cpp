@@ -269,6 +269,8 @@ Renderer::Renderer() noexcept :
 
 void Renderer::BeginShutdown() noexcept {
 	_sessionLifetime->RequestStop();
+	if (_sceneScreenshotRequest && _sceneScreenshotRequest->state.load() == SceneScreenshotState::Pending)
+		_FailScreenshotRequest(_sceneScreenshotRequest, "Scaling session stopped before screenshot presentation", ERROR_CANCELLED);
 	// The backend can be waiting for a synchronous DLSSFG presentation while
 	// the frontend thread is destroying this Renderer. Stop issuing new
 	// synchronous sends before waiting for the backend thread to exit.
@@ -658,6 +660,8 @@ winrt::fire_and_forget Renderer::TakeScreenshot(
 }
 
 bool Renderer::_OpenFrontendSharedTextures() noexcept {
+	if (_sceneScreenshotRequest && _sceneScreenshotRequest->state.load() == SceneScreenshotState::Pending)
+		_FailScreenshotRequest(_sceneScreenshotRequest, "Presentation resources rebuilt before screenshot", ERROR_CANCELLED);
 	// Backend rendering may already be running. Hold all publication slots
 	// while opening (or disabling) the optional reference branch.
 	std::scoped_lock slotLocks(_sharedTextureAccessMutexes[0], _sharedTextureAccessMutexes[1],
@@ -858,6 +862,7 @@ Renderer::FrontendBaseResult Renderer::_UpdateFrontendBase(uint32_t sharedTextur
 		_frontendResources.GetD3DDC()->CopyResource(_frontendBaseTexture.get(), source);
 		_frontendCaptureFrameId = _sharedTextureFrameIds[sharedTextureSlot].load(std::memory_order_acquire);
 		_frontendFrameMetadata = _sharedFrameMetadata[sharedTextureSlot];
+		_frontendScreenshotFrame = std::move(_sharedScreenshotFrames[sharedTextureSlot]);
 		FrameTrace::SetFrame(_frontendCaptureFrameId);
 		traceBase.FrameId(_frontendCaptureFrameId);
 		if (!_passThroughFrames.Consume(sharedTextureSlot) && _isPassThroughActive) {
@@ -1162,6 +1167,22 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 			_frontendPresentedFrameMetadata = _frontendFrameMetadata;
 			_frontendPresentedFrameMetadata.stage = HdrFrameStage::PresentedOutput;
 			_passThroughFrames.OnPresented();
+			// Only a successfully submitted real scene may complete an input pair.
+			if (_frontendScreenshotFrame && contentFrame &&
+				_frontendScreenshotFrame->Identity().Matches(
+					{ _frontendPresentedFrameMetadata.frameId,
+						_frontendPresentedFrameMetadata.captureSequence,
+						_frontendPresentedFrameMetadata.resourceGeneration },
+					_frontendPresentedFrameMetadata.generated)) {
+				winrt::com_ptr<ID3D11Device5> device;
+				device.copy_from(_frontendResources.GetD3DDevice());
+				winrt::com_ptr<ID3D11DeviceContext4> context;
+				context.copy_from(d3dDC);
+				_SaveSceneScreenshot(_frontendScreenshotFrame->request, std::move(device),
+					std::move(context), ScalingWindow::Dispatcher(), _frontendPresentedBaseTexture,
+					_frontendPresentedFrameMetadata, _frontendScreenshotFrame);
+				_frontendScreenshotFrame.reset();
+			}
 		}
 		if (!stableBaseOnly) _frontendBaseNeedsPresent = false;
 		if (!uiInIndependentLayer) {
@@ -3002,7 +3023,7 @@ void Renderer::_BackendThreadProc() noexcept {
 			MsgWaitForMultipleObjectsEx(1, &consumed, 50, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
 		} else {
 			stepTimerStatus = _stepTimer.WaitForNextFrame(
-				waitForNewFrame && stepTimerStatus != StepTimerStatus::WaitForFPSLimiter,
+				waitForNewFrame && !_forceNextRender && stepTimerStatus != StepTimerStatus::WaitForFPSLimiter,
 				fpsUpdated, _frameSource->FrameArrivedEvent());
 		}
 
@@ -3505,6 +3526,7 @@ void Renderer::_BackendRender(
 	d3dDC->ClearState();
 
 	_effectsProfiler.OnBeginEffects(d3dDC);
+	_SnapshotScreenshotInput();
 	if (isNewCaptureFrame) {
 		_UpdateHdrEffectBoundaryContexts();
 	}
@@ -4023,6 +4045,11 @@ bool Renderer::_PublishBackendTexture(
 			_sharedTextureTimestamps[sharedTextureSlot].store(
 				_frameSource->CaptureTimestamp100ns(), std::memory_order_release);
 			_sharedFrameMetadata[sharedTextureSlot] = publicationMetadata;
+			_sharedScreenshotFrames[sharedTextureSlot] =
+				_backendScreenshotFrame && _backendScreenshotFrame->Identity().Matches(
+					{ publicationMetadata.frameId, publicationMetadata.captureSequence,
+						publicationMetadata.resourceGeneration }, generatedFrame)
+				? _backendScreenshotFrame : nullptr;
 			_sharedReflexIds[sharedTextureSlot] = { _reflex.CaptureFrameId(), reflexPresentId };
 			hr = ReleasePresentationTextures(mutexes, key);
 			if (SUCCEEDED(hr)) _sharedTextureMutexKeys[sharedTextureSlot].store(key, std::memory_order_release);
@@ -4168,7 +4195,6 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 	uint32_t outputIdx
 ) noexcept {
 	const bool displayed = effectIdx == std::numeric_limits<uint32_t>::max();
-	const bool original = displayed && _isPassThroughActive;
 	// Snapshot session data before the first suspension. No ScalingWindow
 	// state is read during encoding or notification on a background thread.
 	const auto& options = ScalingWindow::Get().Options();
@@ -4177,7 +4203,7 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 	const auto toast = options.showToast;
 	const HWND target = ScalingWindow::Get().SrcTracker().Handle();
 	const auto successMsg = ScalingWindow::Get().GetLocalizedString(L"Message_ScreenshotSaved");
-	const std::string effectName = displayed ? (original ? "Original image" : "Displayed effects")
+	const std::string effectName = displayed ? "Final effects"
 		: _activeEffectDescs[effectIdx]->name;
 	const auto dispatcher = displayed ? ScalingWindow::Dispatcher() : _backendThreadDispatcher;
 	auto fail = [&](ScalingError error, std::string_view stage, uint32_t code = 0) {
@@ -4205,14 +4231,12 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 	const wchar_t* imgFormat;
 
 	if (displayed) {
-		sourceTex = original ? _passThroughFrames.FrontendTexture(true)
-			: (_frontendPresentedBaseValid ? _frontendPresentedBaseTexture.get() : nullptr);
+		sourceTex = _frontendPresentedBaseValid ? _frontendPresentedBaseTexture.get() : nullptr;
 		if (!sourceTex) {
 			fail(ScalingError::ScreenshotReadbackFailed, "No presented scene available");
 			co_return false;
 		}
-		exportColor = original ? _passThroughFrames.PresentedFrameMetadata().color
-			: _frontendPresentedFrameMetadata.color;
+		exportColor = _frontendPresentedFrameMetadata.color;
 		exportHdr = exportColor.transfer == HdrTransferFunction::Linear || exportColor.transfer == HdrTransferFunction::PQ;
 		imgFormat = L"png";
 	} else if (passIdx == std::numeric_limits<uint32_t>::max()) {
@@ -4358,8 +4382,7 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 
 	// Serialize disk naming and writing, not rendering. This also avoids
 	// holding a reference to a destroyed Renderer while scanning the folder.
-	static std::mutex screenshotSaveMutex;
-	std::lock_guard saveLock(screenshotSaveMutex);
+	std::lock_guard saveLock(ScreenshotHelper::SaveMutex());
 	if (!Win32Helper::CreateDir(screenshotsDir.c_str(), true)) {
 		fail(ScalingError::ScreenshotDirectoryFailed, "CreateDir", GetLastError());
 		co_return false;
@@ -4372,7 +4395,7 @@ winrt::IAsyncOperation<bool> Renderer::_TakeScreenshotImpl(
 	const std::wstring fileName = fmt::format(L"Magpie_{:03}.{}", screenshotNum, imgFormat);
 	const auto fullPath = screenshotsDir / fileName;
 	TextureSaveError saveError;
-	if (!TextureHelper::SaveTexture(fullPath.c_str(), desc.Width, desc.Height,
+	if (!TextureHelper::SaveTextureExclusive(fullPath.c_str(), desc.Width, desc.Height,
 		desc.Format, pixelData, mapped.RowPitch, &saveError, exportHdr ? &exportColor : nullptr)) {
 		if (report) report(target, saveError.fileWriteFailed ? ScalingError::ScreenshotWriteFailed
 			: (std::wstring_view(imgFormat) == L"dds" ? ScalingError::ScreenshotIntermediateEncodeFailed

@@ -1950,4 +1950,12 @@
   <data name="Rtss_RateUnknown" xml:space="preserve"><value>配置限帧值未读取。</value></data>
   <data name="Rtss_Reloaded" xml:space="preserve"><value>已请求重载配置。</value></data>
   <data name="Rtss_ProfileSaved" xml:space="preserve"><value>配置已保存。</value></data>
+  <data name="Home_Toolbar_ScreenshotContent.Description" xml:space="preserve"><value>选择工具栏按钮和截图快捷键保存的内容。</value></data>
+  <data name="Home_Toolbar_ScreenshotContent.Header" xml:space="preserve"><value>截图内容</value></data>
+  <data name="Home_Toolbar_ScreenshotContent_InputAndOutput.Content" xml:space="preserve"><value>同时截图原始输入和最终效果</value></data>
+  <data name="Home_Toolbar_ScreenshotContent_InputOnly.Content" xml:space="preserve"><value>只截图原始输入</value></data>
+  <data name="Home_Toolbar_ScreenshotContent_OutputOnly.Content" xml:space="preserve"><value>只截图最终效果</value></data>
+  <data name="Message_ScreenshotBusy" xml:space="preserve"><value>正在保存截图，请完成后重试。</value></data>
+  <data name="Message_ScreenshotPairSaved" xml:space="preserve"><value>已保存截图：{0}、{1}</value></data>
+  <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>已保存 {0}；{1} 保存失败，请查看错误详情。</value></data>
 </root>

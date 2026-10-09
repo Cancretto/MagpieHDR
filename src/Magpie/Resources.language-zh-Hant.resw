@@ -1901,4 +1901,12 @@
   <data name="Rtss_RateUnknown" xml:space="preserve"><value>Profile limit could not be read.</value></data>
   <data name="Rtss_Reloaded" xml:space="preserve"><value>Profile reload requested.</value></data>
   <data name="Rtss_ProfileSaved" xml:space="preserve"><value>Profile saved.</value></data>
+  <data name="Home_Toolbar_ScreenshotContent.Description" xml:space="preserve"><value>選擇工具列按鈕和截圖快捷鍵儲存的內容。</value></data>
+  <data name="Home_Toolbar_ScreenshotContent.Header" xml:space="preserve"><value>截圖內容</value></data>
+  <data name="Home_Toolbar_ScreenshotContent_InputAndOutput.Content" xml:space="preserve"><value>同時截圖原始輸入和最終效果</value></data>
+  <data name="Home_Toolbar_ScreenshotContent_InputOnly.Content" xml:space="preserve"><value>只截圖原始輸入</value></data>
+  <data name="Home_Toolbar_ScreenshotContent_OutputOnly.Content" xml:space="preserve"><value>只截圖最終效果</value></data>
+  <data name="Message_ScreenshotBusy" xml:space="preserve"><value>正在儲存截圖，請完成後重試。</value></data>
+  <data name="Message_ScreenshotPairSaved" xml:space="preserve"><value>已儲存截圖：{0}、{1}</value></data>
+  <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>已儲存 {0}；{1} 儲存失敗，請查看錯誤詳細資訊。</value></data>
 </root>

@@ -8,6 +8,7 @@ struct FrameRefreshSettings;
 struct ToolbarShortcutLabels;
 struct SessionWindowIdentity;
 enum class OverlayAction;
+enum class ScreenshotContent : uint32_t;
 
 enum class ScalingState {
 	Idle,
@@ -34,6 +35,7 @@ public:
 	bool StopForTaskSwitch();
 	void UpdateFrameRefreshSettings(FrameRefreshSettings settings);
 	void UpdateToolbarShortcutLabels(ToolbarShortcutLabels labels);
+	void UpdateScreenshotContent(ScreenshotContent content);
 	void UpdateMainUI(SessionWindowIdentity identity);
 
 	uint32_t RunId() const noexcept;

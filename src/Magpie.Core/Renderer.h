@@ -15,6 +15,7 @@
 #include "FramePresentationTiming.h"
 #include "ScalingOptions.h"
 #include "ScalingSessionLifetime.h"
+#include "SceneScreenshot.h"
 #include "StepTimer.h"
 #include <mutex>
 #include <unordered_map>
@@ -86,9 +87,7 @@ public:
 	void RestoreOverlayState(const OverlaySessionState& state) noexcept;
 	bool IsPassThroughActive() const noexcept { return _isPassThroughActive; }
 	bool SetPassThroughActive(bool value) noexcept;
-	void TakeDisplayedScreenshot() noexcept {
-		TakeScreenshot(std::numeric_limits<uint32_t>::max());
-	}
+	void TakeDisplayedScreenshot() noexcept;
 
 	const RECT& SrcRect() const noexcept;
 
@@ -145,6 +144,26 @@ public:
 	) noexcept;
 
 private:
+	// Frontend-only admission; backend-only request/candidate; per-slot pointers
+	// use the same lock as frame metadata and scene copies.
+	std::shared_ptr<SceneScreenshotRequest> _sceneScreenshotRequest;
+	uint64_t _nextScreenshotRequestId = 0;
+	std::shared_ptr<SceneScreenshotRequest> _backendScreenshotRequest;
+	std::shared_ptr<SceneScreenshotFrame> _backendScreenshotFrame;
+	std::shared_ptr<SceneScreenshotFrame> _frontendScreenshotFrame;
+	void _SnapshotScreenshotInput() noexcept;
+	static void _QueueScreenshotCleanup(std::shared_ptr<SceneScreenshotRequest> request) noexcept;
+	static winrt::fire_and_forget _WatchScreenshotRequest(std::shared_ptr<SceneScreenshotRequest> request);
+	static winrt::fire_and_forget _SaveSceneScreenshot(
+		std::shared_ptr<SceneScreenshotRequest> request,
+		winrt::com_ptr<ID3D11Device5> device,
+		winrt::com_ptr<ID3D11DeviceContext4> context,
+		winrt::DispatcherQueue dispatcher,
+		winrt::com_ptr<ID3D11Texture2D> output,
+		HdrFrameMetadata outputMetadata,
+		std::shared_ptr<SceneScreenshotFrame> input = {});
+	static void _FailScreenshotRequest(const std::shared_ptr<SceneScreenshotRequest>& request,
+		std::string_view stage, uint32_t code = 0) noexcept;
 	bool _frameTraceStarted = false;
 	// Set before starting the backend; immutable for this session.
 	bool _frameSyncEnabled = false;
@@ -301,6 +320,7 @@ private:
 	bool _isPassThroughActive = false;
 
 	static constexpr uint32_t MAX_SHARED_TEXTURE_SLOTS = 4;
+	std::array<std::shared_ptr<SceneScreenshotFrame>, MAX_SHARED_TEXTURE_SLOTS> _sharedScreenshotFrames{};
 	std::array<winrt::com_ptr<ID3D11Texture2D>, MAX_SHARED_TEXTURE_SLOTS>
 		_frontendSharedTextures;
 	std::array<winrt::com_ptr<IDXGIKeyedMutex>, MAX_SHARED_TEXTURE_SLOTS>

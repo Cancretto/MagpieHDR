@@ -10,7 +10,7 @@
 namespace Magpie::ConfigRecovery {
 
 // Increment when the recovery policy changes, independently of release versions.
-inline constexpr uint32_t POLICY_VERSION = 6;
+inline constexpr uint32_t POLICY_VERSION = 7;
 enum class Kind { None, Backup, Partial, Defaults, Repaired };
 struct Plan {
 	rapidjson::Document document;
@@ -112,6 +112,8 @@ inline Plan Prepare(std::string_view source, std::string_view backup,
 	};
 	for (const char* key : { "windowPos", "shortcuts", "hotkeys", "overlay" })
 		check(doc, key, "", object);
+	if (doc.HasMember("overlay"))
+		enumeration(doc["overlay"], "screenshotContent", "/overlay", 3);
 	for (const char* objectKey : { "shortcuts", "hotkeys" }) {
 		if (!doc.HasMember(objectKey)) continue;
 		for (const char* key : { "scale", "windowedModeScale", "toolbar", "overlay",

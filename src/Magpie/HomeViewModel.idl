@@ -28,6 +28,7 @@ namespace Magpie {
 		Int32 FullscreenInitialToolbarState;
 		Int32 WindowedInitialToolbarState;
 		String ScreenshotSaveDirectory { get; };
+		Int32 ScreenshotContent;
 		void OpenScreenshotSaveDirectory();
 		void ChangeScreenshotSaveDirectory();
 

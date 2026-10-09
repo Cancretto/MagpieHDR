@@ -344,6 +344,21 @@ void HomeViewModel::WindowedInitialToolbarState(int value) {
 	RaisePropertyChanged(L"InitialToolbarStateDescription");
 }
 
+int HomeViewModel::ScreenshotContent() const noexcept {
+	return static_cast<int>(AppSettings::Get().ScreenshotContent());
+}
+
+void HomeViewModel::ScreenshotContent(int value) {
+	// ComboBox temporarily clears selection while rebuilding its items.
+	if (value < 0 || value > 2) return;
+	auto& settings = AppSettings::Get();
+	const auto content = NormalizeScreenshotContent(static_cast<uint32_t>(value));
+	if (content == settings.ScreenshotContent()) return;
+	settings.ScreenshotContent(content);
+	ScalingService::Get().UpdateScreenshotContent(content);
+	RaisePropertyChanged(L"ScreenshotContent");
+}
+
 hstring HomeViewModel::ScreenshotSaveDirectory() const noexcept {
 	return hstring(AppSettings::Get().ScreenshotsDir().native());
 }
