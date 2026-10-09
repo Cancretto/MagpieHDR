@@ -2,7 +2,9 @@
 // Native metadata and API endpoints are doubles; no live focus or hook changes.
 #define NOMINMAX
 #include <windows.h>
+#include <psapi.h>
 #include "ForegroundCompatibilityState.h"
+#include "VRRPerformance.h"
 #include <cassert>
 #include <iostream>
 #include <string_view>
@@ -27,8 +29,14 @@ static std::atomic<HWND> fakeForeground = fakeRoot;
 static std::atomic<bool> changeDuringIdentity = false;
 static bool retireDuringRecord = false;
 static thread_local uintptr_t fakeCaller = 0x1010;
-static BOOL FakeIsWindow(HWND window) { return native.contains(window); }
+static thread_local unsigned windowApiCalls = 0;
+static std::atomic<bool> retireDuringIdentity = false;
+static std::atomic<bool> retireDuringFinalForeground = false;
+static thread_local unsigned foregroundReads = 0;
+static void RetireWhileReading();
+static BOOL FakeIsWindow(HWND window) { ++windowApiCalls; return native.contains(window); }
 static DWORD FakeThread(HWND window, DWORD* pid) {
+	++windowApiCalls;
 	const auto it = native.find(window);
 	SetLastError(1234);
 	if (it == native.end()) return 0;
@@ -36,25 +44,51 @@ static DWORD FakeThread(HWND window, DWORD* pid) {
 	return it->second.tid;
 }
 static ULONG_PTR FakeAtom(HWND window, int) {
+	++windowApiCalls;
 	if (window == fakeOutput && changeDuringIdentity.exchange(false)) fakeForeground = other;
+	if (window == fakeOutput && retireDuringIdentity.exchange(false)) RetireWhileReading();
 	return native.at(window).atom;
 }
-static HWND FakeAncestor(HWND window, UINT) { return native.at(window).root; }
-static BOOL FakeVisible(HWND window) { return native.at(window).visible; }
-static BOOL FakeEnabled(HWND window) { return native.at(window).enabled; }
-static BOOL FakeIconic(HWND window) { return native.at(window).iconic; }
-static HWND WINAPI FakeForeground() { SetLastError(73); return fakeForeground.load(); }
+static HWND FakeAncestor(HWND window, UINT) { ++windowApiCalls; return native.at(window).root; }
+static BOOL FakeVisible(HWND window) { ++windowApiCalls; return native.at(window).visible; }
+static BOOL FakeEnabled(HWND window) { ++windowApiCalls; return native.at(window).enabled; }
+static BOOL FakeIconic(HWND window) { ++windowApiCalls; return native.at(window).iconic; }
+static HWND WINAPI FakeForeground() {
+	if (++foregroundReads == 2 && retireDuringFinalForeground.exchange(false)) RetireWhileReading();
+	SetLastError(73); return fakeForeground.load();
+}
 static void* FakeCaller() { return reinterpret_cast<void*>(fakeCaller); }
 static HWND FakeOwner(HWND window, UINT relation) {
 	const auto it = native.find(window);
 	return relation == GW_OWNER && it != native.end() ? it->second.owner : nullptr;
 }
 static std::wstring fakeDiagnostic;
-static DWORD FakeEnvironment(const wchar_t*, wchar_t* buffer, DWORD size) {
-	if (fakeDiagnostic.size() >= size) return DWORD(fakeDiagnostic.size() + 1);
-	std::copy(fakeDiagnostic.begin(), fakeDiagnostic.end(), buffer);
-	buffer[fakeDiagnostic.size()] = 0;
-	return DWORD(fakeDiagnostic.size());
+static bool fakePerformance = false;
+static DWORD FakeEnvironment(const wchar_t* name, wchar_t* buffer, DWORD size) {
+	const std::wstring_view value = std::wstring_view(name) == L"MAGPIE_VRR_PERFORMANCE" ?
+		(fakePerformance ? L"1" : L"") : std::wstring_view(fakeDiagnostic);
+	if (value.size() >= size) return DWORD(value.size() + 1);
+	std::copy(value.begin(), value.end(), buffer);
+	buffer[value.size()] = 0;
+	return DWORD(value.size());
+}
+static std::array<bool, 5> loadedModules{ true, true, true, true, true };
+static std::array<unsigned, 5> moduleLookups{}, moduleInfoReads{};
+static BOOL FakeModuleHandle(DWORD flags, LPCWSTR name, HMODULE* module) {
+	assert(flags == GET_MODULE_HANDLE_EX_FLAG_PIN);
+	static constexpr std::array names{ L"nvwgf2umx.dll", L"nvwgf2um.dll", L"nvldumdx.dll", L"dxgi.dll", L"d3d11.dll" };
+	for (size_t i = 0; i < names.size(); ++i) if (std::wstring_view(name) == names[i]) {
+		++moduleLookups[i];
+		*module = loadedModules[i] ? HMODULE(uintptr_t((i + 1) * 0x1000)) : nullptr;
+		return loadedModules[i];
+	}
+	assert(false); return FALSE;
+}
+static BOOL FakeModuleInformation(HANDLE, HMODULE module, MODULEINFO* info, DWORD size) {
+	assert(size == sizeof(*info));
+	const size_t i = uintptr_t(module) / 0x1000 - 1;
+	assert(i < moduleInfoReads.size()); ++moduleInfoReads[i];
+	info->lpBaseOfDll = module; info->SizeOfImage = 0x100; return TRUE;
 }
 
 #define IsWindow FakeIsWindow
@@ -68,6 +102,8 @@ static DWORD FakeEnvironment(const wchar_t*, wchar_t* buffer, DWORD size) {
 #define GetWindow FakeOwner
 #define GetCurrentProcessId() 77
 #define GetEnvironmentVariableW FakeEnvironment
+#define GetModuleHandleExW FakeModuleHandle
+#define K32GetModuleInformation FakeModuleInformation
 }
 #include "include/SourceWindowRelations.h"
 namespace Magpie {
@@ -77,12 +113,13 @@ using ForegroundFunction = HWND(WINAPI*)();
 static std::atomic<ForegroundFunction> originalForeground = &FakeForeground;
 static thread_local unsigned realQueryDepth = 0;
 static PublishedForegroundState published;
+static void RetireWhileReading() { published.Publish({}); }
 static std::atomic<uint64_t> targetQueries = 0, appliedQueries = 0;
 static std::atomic<ForegroundQueryPhase> queryPhase = ForegroundQueryPhase::Preparing;
 static std::array<std::atomic<uint32_t>, size_t(ForegroundQueryPhase::Count)> observedPhases{};
 /* PRODUCTION_QUERY_RECORDS */
-QuerySlot* RecordCandidate(const ForegroundCompatibilitySnapshot&, uintptr_t, unsigned, HWND) noexcept;
-static QuerySlot* Record(const ForegroundCompatibilitySnapshot& value, uintptr_t caller, unsigned index, HWND real) {
+QuerySlot* RecordCandidate(const ForegroundQuerySnapshot&, uintptr_t, unsigned, HWND) noexcept;
+static QuerySlot* Record(const ForegroundQuerySnapshot& value, uintptr_t caller, unsigned index, HWND real) {
 	if (retireDuringRecord) { published.Publish({}); retireDuringRecord = false; }
 	return RecordCandidate(value, caller, index, real);
 }
@@ -102,9 +139,9 @@ static MH_STATUS MH_EnableHook(void* target) { assert(target == hookTarget && ta
 static MH_STATUS MH_DisableHook(void* target) { assert(target == hookTarget && target); ++disableCalls; return disableResult; }
 static const char* MH_StatusToString(MH_STATUS) { return "fake-status"; }
 /* PRODUCTION_FOREGROUND_CONTROL */
-static void RefreshModules() { control.snapshot.callers[0] = {0x1000, 0x100}; }
 static void DrainRecords() {}
 static void LogState(const char*) {}
+static void LogPerformance(uint64_t, bool) {}
 struct NvidiaForegroundCompatibility {
 	static HWND RealForegroundWindow() noexcept;
 	static void Prepare(const SourceWindowIdentity&, HWND, uint64_t, bool, bool, const SessionWindowIdentity&) noexcept;
@@ -125,6 +162,7 @@ static ForegroundCompatibilitySnapshot Session() {
 	value.epoch = 1;
 	value.mode = ForegroundCompatibilityMode::Query;
 	value.armed = true;
+	value.diagnostics = true;
 	value.source = {uintptr_t(fakeCapture), 10, 11, 101};
 	value.root = {uintptr_t(fakeRoot), 20, 21, 102};
 	value.output = {uintptr_t(fakeOutput), 77, 78, 103};
@@ -153,6 +191,18 @@ int main() {
 	disableResult = MH_OK;
 	NvidiaForegroundCompatibility::FinishRetire(); assert(!hookEnabled && hookCreated);
 	assert(NvidiaForegroundCompatibility::RealForegroundWindow() == fakeRoot);
+	// Cache only pinned exact candidates; retry a missing late-loaded DLL.
+	loadedModules[2] = false;
+	assert(RefreshModules());
+	const auto firstLookups = moduleLookups;
+	assert(!RefreshModules());
+	for (size_t i = 0; i < firstLookups.size(); ++i)
+		assert(moduleLookups[i] == firstLookups[i] + (i == 2 ? 1u : 0u));
+	loadedModules[2] = true;
+	assert(RefreshModules() && control.snapshot.callers[2].size);
+	const auto cachedLookups = moduleLookups;
+	assert(!RefreshModules() && moduleLookups == cachedLookups);
+	for (auto reads : moduleInfoReads) assert(reads == 1);
 	const SourceWindowIdentity source{fakeCapture, fakeRoot, 10, 11, 101, 20, 21, 102};
 	const auto ui = RegisterSessionWindow(fakeMainUI);
 	uint64_t sessionEpoch = 10;
@@ -168,6 +218,7 @@ int main() {
 		ForegroundPresentationPath::XeSSProxy}) for (bool windowed : {false, true}) {
 		start(path, windowed);
 		assert(control.snapshot.armed && control.path == path && control.luidLow == 123 && control.luidHigh == -4);
+		assert(!control.snapshot.diagnostics && !VRRPerformance::Enabled());
 		assert(DetourForegroundWindow() == fakeOutput);
 		assert(NvidiaForegroundCompatibility::BindPresentationWindow(fakeOutput));
 		NvidiaForegroundCompatibility::PresentationState(true, true);
@@ -214,6 +265,21 @@ int main() {
 		NvidiaForegroundCompatibility::PresentationState(true, true);
 		assert(DetourForegroundWindow() == fakeRoot);
 	}
+	fakeDiagnostic = L"profile";
+	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++sessionEpoch, true, false, ui);
+	NvidiaForegroundCompatibility::DeviceInitialized(0x10de, 0, 0, ForegroundPresentationPath::XeSSProxy, 2);
+	NvidiaForegroundCompatibility::PresentationState(true, true);
+	assert(control.snapshot.diagnostics && DetourForegroundWindow() == fakeOutput);
+	assert(!VRRPerformance::Enabled());
+	fakeDiagnostic = L"standard"; fakePerformance = true;
+	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++sessionEpoch, true, false, ui);
+	assert(control.snapshot.mode == ForegroundCompatibilityMode::Off && VRRPerformance::Enabled());
+	assert(DetourForegroundWindow() == fakeRoot);
+	NvidiaForegroundCompatibility::FinishRetire(); assert(!VRRPerformance::Enabled());
+	fakeDiagnostic.clear();
+	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++sessionEpoch, false, false, ui);
+	assert(control.snapshot.mode == ForegroundCompatibilityMode::Off && VRRPerformance::Enabled());
+	NvidiaForegroundCompatibility::FinishRetire(); fakePerformance = false;
 	fakeDiagnostic.clear();
 	NvidiaForegroundCompatibility::Prepare(source, fakeOutput, ++sessionEpoch, false, false, ui);
 	NvidiaForegroundCompatibility::DeviceInitialized(0x10de, 0, 0, ForegroundPresentationPath::DLSSFrontendDXGI, 4);
@@ -234,8 +300,8 @@ int main() {
 	queryPhase = ForegroundQueryPhase::FirstPresent;
 	auto nextPhase = RecordCandidate(value, 0x9000, unknownIndex, fakeRoot);
 	assert(nextPhase); nextPhase->state = 2;
-	for (auto [foreground, role] : {std::pair{fakeRoot, "source"}, {fakeOutput, "output"}, {fakeMainUI, "magpie-main-ui"},
-		{parameter, "parameter-host"}, {fakePopup, "source-popup"}, {other, "external"}, {HWND(nullptr), "none"}})
+	for (auto [foreground, role] : {std::pair{fakeRoot, "source"}, {fakeOutput, "fakeOutput"}, {fakeMainUI, "magpie-main-ui"},
+		{parameter, "parameter-host"}, {fakePopup, "source-fakePopup"}, {other, "external"}, {HWND(nullptr), "none"}})
 		assert(std::string_view(ForegroundRole(value, foreground)) == role);
 	assert(DetourForegroundWindow() == fakeOutput && GetLastError() == 73);
 	assert(NvidiaForegroundCompatibility::RealForegroundWindow() == fakeRoot && GetLastError() == 73);
@@ -280,6 +346,36 @@ int main() {
 	});
 	for (auto& thread : threads) thread.join();
 	assert(appliedQueries == 80000);
+	// Normal mode has no record/counter RMWs. Same native identities are checked
+	// once, while UWP source/fakeRoot identities remain independently validated.
+	value = Session(); value.diagnostics = false; value.outputShown = true;
+	value.source = value.root;
+	published.Publish(value); targetQueries = 0; appliedQueries = 0;
+	for (auto& mask : observedPhases) mask = 0;
+	windowApiCalls = 0;
+	assert(DetourForegroundWindow() == fakeOutput && windowApiCalls == 13 && GetLastError() == 73);
+	assert(targetQueries == 0 && appliedQueries == 0);
+	for (auto& mask : observedPhases) assert(mask == 0);
+	ForegroundCompatibilitySnapshot unchanged; uint64_t unchangedVersion;
+	assert(published.Read(unchanged, unchangedVersion));
+	published.Publish(value);
+	assert(published.Current(unchangedVersion));
+	ForegroundQuerySnapshot query; uint64_t queryVersion; unsigned callerIndex;
+	assert(published.ReadQuery(0x1000, query, queryVersion, callerIndex) && callerIndex == 0);
+	assert(!published.ReadQuery(0x1100, query, queryVersion, callerIndex));
+	fakeCaller = 0x9999; windowApiCalls = 0;
+	assert(DetourForegroundWindow() == fakeRoot && windowApiCalls == 0 && GetLastError() == 73);
+	fakeCaller = 0x1010;
+	retireDuringIdentity = true;
+	assert(DetourForegroundWindow() == fakeRoot);
+	windowApiCalls = 0;
+	assert(DetourForegroundWindow() == fakeRoot && windowApiCalls == 0 && GetLastError() == 73);
+	value = Session(); value.diagnostics = false; value.outputShown = true; published.Publish(value);
+	windowApiCalls = 0;
+	assert(DetourForegroundWindow() == fakeOutput && windowApiCalls == 16);
+	foregroundReads = 0; retireDuringFinalForeground = true;
+	assert(DetourForegroundWindow() == fakeRoot && GetLastError() == 73);
+	static_assert(sizeof(ForegroundQuerySnapshot) <= 192);
 
 	// Exercise the actual publication implementation with concurrent readers.
 	PublishedForegroundState concurrent;
@@ -292,13 +388,20 @@ int main() {
 			if (!concurrent.Read(current, version) || !current.epoch) continue;
 			assert(current.source.window == current.epoch * 3 && current.output.window == current.epoch * 7);
 			assert(current.armed == bool(current.epoch & 1));
+			ForegroundQuerySnapshot hot; uint64_t hotVersion; unsigned index;
+			if (concurrent.ReadQuery(0x1010, hot, hotVersion, index)) {
+				assert(index == 0 && hot.source.window == hot.epoch * 3 && hot.output.window == hot.epoch * 7);
+				assert(hot.armed == bool(hot.epoch & 1));
+			}
 			++accepted;
 		}
 	});
-	for (uint64_t epoch = 1; epoch < 10000; ++epoch) {
+	for (uint64_t sessionEpoch = 1; sessionEpoch < 10000; ++sessionEpoch) {
 		ForegroundCompatibilitySnapshot current;
-		current.epoch = epoch; current.source.window = uintptr_t(epoch * 3); current.output.window = uintptr_t(epoch * 7);
-		current.armed = bool(epoch & 1); concurrent.Publish(current);
+		current.epoch = sessionEpoch; current.source.window = uintptr_t(sessionEpoch * 3); current.output.window = uintptr_t(sessionEpoch * 7);
+		current.armed = bool(sessionEpoch & 1); concurrent.Publish(current);
+		current.mode = ForegroundCompatibilityMode::Query;
+		current.callers[0] = {0x1000, 0x100}; concurrent.Publish(current);
 	}
 	finished = true;
 	for (auto& thread : threads) thread.join();

@@ -106,6 +106,8 @@
     <ClInclude Include="OverlayDrawer.h" />
     <ClInclude Include="PresenterBase.h" />
     <ClInclude Include="ForegroundCompatibilityState.h" />
+    <ClInclude Include="VRRPerformance.h" />
+    <ClInclude Include="VRROutputProbe.h" />
     <ClInclude Include="NvidiaForegroundCompatibility.h" />
     <ClInclude Include="VRRPresentationPolicy.h" />
     <ClInclude Include="Renderer.h" />

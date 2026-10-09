@@ -181,9 +181,11 @@ private:
 		bool paced = false;
 		uint64_t overlayRevision = 0;
 		uint64_t contentKey = 0;
+		uint32_t diagnosticReasons = 0;
 	};
 	std::optional<PendingFrontendFrame> _pendingFrontendFrame;
 	bool _SubmitFrontendFrame() noexcept;
+	uint32_t _FrontendDiagnosticReasons() noexcept;
 	OverlayPresentationClock _overlayPresentationClock;
 	HMONITOR _overlayMonitor = nullptr;
 	uint64_t _overlayActionRevision = 0;

@@ -1934,10 +1934,9 @@ bool ScalingWindow::_UpdateSrcState(
 		return false;
 	}
 	_sourceRectBeforeCheck = _srcTracker.WindowRect();
-	HWND hwndFore = Win32Helper::GetRealForegroundWindow();
 	if (_renderer) _renderer->UpdateParameterInputHost();
-	hwndFore = Win32Helper::GetRealForegroundWindow();
-	NvidiaForegroundCompatibility::FrontendWindows(_renderer ? _renderer->ParameterInputHandle() : nullptr);
+	HWND hwndFore = Win32Helper::GetRealForegroundWindow();
+	NvidiaForegroundCompatibility::FrontendWindows(_renderer ? _renderer->ParameterInputHandle() : nullptr, hwndFore);
 	NvidiaForegroundCompatibility::FrontendSuspended(_renderer &&
 		(_renderer->IsEditingParameters() || _renderer->IsParameterFocusSettling()));
 

@@ -1,6 +1,7 @@
 // Filled with the production helper by prepare_vrr_present_test.py.
 #include "VRRPresentationPolicy.h"
 #include "ForegroundCompatibilityState.h"
+#include "VRRPerformance.h"
 #include <string_view>
 #include <iostream>
 #include <stdexcept>

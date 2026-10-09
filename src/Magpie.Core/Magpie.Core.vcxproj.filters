@@ -196,6 +196,8 @@
       <Filter>Presenter</Filter>
     </ClInclude>
     <ClInclude Include="ForegroundCompatibilityState.h" />
+    <ClInclude Include="VRRPerformance.h" />
+    <ClInclude Include="VRROutputProbe.h" />
     <ClInclude Include="NvidiaForegroundCompatibility.h" />
     <ClInclude Include="VRRPresentationPolicy.h">
       <Filter>Presenter</Filter>
