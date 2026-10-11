@@ -209,6 +209,7 @@ void ScalingModeItem::AddEffect(const hstring& fullName) {
 	if (!effectInfo) return;
 	EffectItem& effect = _Data().effects.emplace_back();
 	effect.name = fullName;
+	NormalizeFrameGenerationParameters(effect);
 	if (fullName == L"DLSSNR\\DLSSNR_AI_Filter")
 		NormalizeDLSSNRDetailParameters(effect.parameters);
 	if (effectInfo->CanScale()) {

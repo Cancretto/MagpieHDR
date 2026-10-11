@@ -39,7 +39,6 @@ template<class Effects> NvidiaVfxExecutionPlan PlanNvidiaVfxExecution(const Effe
 			plan.error = NvidiaVfxPlanError::InvalidSettings; plan.errorIndex = i;
 		}
 		plan.settings.automaticShotDetection = read("automaticShotDetection", 1, 0, 1) != 0;
-		plan.settings.duplicateFrameFiltering = read("duplicateFrameFiltering", 0, 0, 1) != 0;
 	}
 	if (!plan.enabled || plan.error != NvidiaVfxPlanError::None) return plan;
 	if (colors.error != HdrComponentError::None) {

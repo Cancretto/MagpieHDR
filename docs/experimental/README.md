@@ -1,5 +1,7 @@
 # Magpie 实验分支文档索引
 
+- [2026-10-12 FG 设置与空闲重绘源码交接](reviews/20261012-fg-settings-idle-source-handoff.md)：FSR3 默认必选 AMDOF 质量，四类 FG 共用重复检测与空闲重绘。源码完成；本轮未编译部署，原生与 GPU 验收待执行。
+
 帧率与刷新及配置页布局：原 `feature/0610-frame-refresh-rtss-auto` 分支在整页 280 DIP 布局基础上，完成模式外框圆角、10 处单位外置及 RTSS 独立分组。见[第五阶段实施与交接](reviews/20261011-rtss-grouped-units.md)及[TODO R01–R06](todos/20261011-frame-refresh-modes-TODO.md)。最新设计参照为 `profile-rtss-grouped.html`；R06 / S07 / V07 原生视觉与运行验收、产品编译部署交给后续会话。[第四阶段](reviews/20261011-profile-controls-unified.md)、[第三阶段](reviews/20261011-frame-refresh-visual-alignment.md)、[第二阶段](reviews/20261011-frame-refresh-rtss-auto.md)与[第一阶段](reviews/20261011-frame-refresh-modes.md)保留为历史。
 
 当前公开版本为 [Magpie Experimental v0.6.9](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.9-experimental)：[完整中英 Release Note](../RELEASE_NOTES_v0.6.9-experimental.md)、[分发准备记录](reviews/20261002-v0.6.9-release-preparation.md)。默认分支 `experimental` 已同步完整 0.6.9 源码，`version.json` 指向该版本。发布标签及运行包的准确构建提交为 `27c5df91177a29b33be612e98274169f3d2fca49`；后续文档与版本入口更新保留为独立提交。

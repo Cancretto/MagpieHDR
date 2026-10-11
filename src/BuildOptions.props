@@ -80,6 +80,7 @@
     <VFXProxyDir Condition="'$(VFXProxyDir)' == ''">$(VFXSdkDir)\nvvfx\src</VFXProxyDir>
     <!-- Preserve existing local/CI overrides while using the accurate name internally. -->
     <EnableDLSSSR Condition="'$(EnableDLSSSR)' == ''">$(EnableDLSSZeroMV)</EnableDLSSSR>
+    <EnableAmdOpticalFlow Condition="'$(EnableAmdOpticalFlow)' == '' And '$(EnableFSR3FrameGeneration)' == 'true'">$(EnableFSR3FrameGeneration)</EnableAmdOpticalFlow>
     <EnableAmdOpticalFlow Condition="'$(EnableAmdOpticalFlow)' == ''">$(EnableFSR3ZeroMV)</EnableAmdOpticalFlow>
   </PropertyGroup>
 </Project>

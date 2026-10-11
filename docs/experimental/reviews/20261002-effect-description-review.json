@@ -5312,7 +5312,7 @@
       "level": "advanced",
       "source": {
         "path": "src/Effects/DLSSFG/DLSS_FrameGeneration.hlsl",
-        "sha256": "db44221f52db55f0804d480191424f6afc55c66cc081747fcc4c7b0fd79169a7",
+        "sha256": "1cf9e13944026354119f0d97fc528c1e55536fce9288f575ccef6ad7eddd140b",
         "output": {
           "WIDTH": "INPUT_WIDTH",
           "HEIGHT": "INPUT_HEIGHT"
@@ -5326,16 +5326,6 @@
             "default": "2",
             "min": "2",
             "max": "4",
-            "step": "1",
-            "options": []
-          },
-          {
-            "name": "duplicateFrameFiltering",
-            "type": "int",
-            "label": "Duplicate Frame Filtering",
-            "default": "0",
-            "min": "0",
-            "max": "1",
             "step": "1",
             "options": []
           },
@@ -5399,21 +5389,22 @@
           "target-content-image-quality",
           "hardware-performance",
           "native-sdk-runtime"
-        ]
+        ],
+        "settingsRevision": "2026-10-12 FG common filtering and idle redraw; source only, uncompiled"
       },
       "zh-Hans": {
         "name": "DLSS FrameGeneration",
         "subcategory": "补帧",
         "summary": "在真实帧之间生成 2×～4× 显示帧。",
-        "details": "默认使用随附的社区兼容运行库，无需选择库。需要支持相应补帧能力的 NVIDIA 显卡及驱动；可用倍率以实际能力为准，最高 4×。同一效果组只使用一个补帧器。切换渲染显卡后需重启喜鹊。\n\n在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。\n\n补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。",
-        "search": "DLSSFG\\DLSS_FrameGeneration DLSS FrameGeneration 补帧与帧率 补帧 在真实帧之间生成 2×～4× 显示帧。 默认使用随附的社区兼容运行库，无需选择库。需要支持相应补帧能力的 NVIDIA 显卡及驱动；可用倍率以实际能力为准，最高 4×。同一效果组只使用一个补帧器。切换渲染显卡后需重启喜鹊。  在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。  补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。 DLSSFG\\DLSS_FrameGeneration Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality"
+        "details": "默认使用随附的社区兼容运行库，无需选择库。需要支持相应补帧能力的 NVIDIA 显卡及驱动；可用倍率以实际能力为准，最高 4×。同一效果组只使用一个补帧器。切换渲染显卡后需重启喜鹊。\n\n在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。\n\n补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。\n\n重复帧检测统一使用“帧率与刷新”的通用设置。启用空闲持续重绘后，约 0.5 秒没有新内容时按有效重绘率重绘缓存；不会额外插帧，也不增加真实输入帧率。",
+        "search": "DLSSFG\\DLSS_FrameGeneration DLSS FrameGeneration 在真实帧之间生成 2×～4× 显示帧。 默认使用随附的社区兼容运行库，无需选择库。需要支持相应补帧能力的 NVIDIA 显卡及驱动；可用倍率以实际能力为准，最高 4×。同一效果组只使用一个补帧器。切换渲染显卡后需重启喜鹊。  在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。  补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。  重复帧检测统一使用“帧率与刷新”的通用设置。启用空闲持续重绘后，约 0.5 秒没有新内容时按有效重绘率重绘缓存；不会额外插帧，也不增加真实输入帧率。 "
       },
       "en-US": {
         "name": "DLSS FrameGeneration",
         "subcategory": "Frame generation",
         "summary": "Generate 2×–4× displayed frames between real frames.",
-        "details": "Uses the bundled community compatibility runtime automatically; no library selection is needed. Requires a supported NVIDIA GPU and driver; available multipliers depend on actual capabilities, up to 4×. Use one frame generator per group. Restart Magpie after changing the rendering GPU.\n\nSet the content base rate under Frame rate and refresh. The theoretical display rate is base FPS times the multiplier, but capture, processing capacity, and presentation pacing still limit it. Game simulation FPS is unchanged.\n\nRuns after image effects regardless of list position. Check fast motion, occlusion, HUD, cursor, window switching, and HDR colors. Multiplier and optical-flow changes require restarting scaling.",
-        "search": "DLSSFG\\DLSS_FrameGeneration DLSS FrameGeneration Frame generation and frame rate Frame generation Generate 2×–4× displayed frames between real frames. Uses the bundled community compatibility runtime automatically; no library selection is needed. Requires a supported NVIDIA GPU and driver; available multipliers depend on actual capabilities, up to 4×. Use one frame generator per group. Restart Magpie after changing the rendering GPU.  Set the content base rate under Frame rate and refresh. The theoretical display rate is base FPS times the multiplier, but capture, processing capacity, and presentation pacing still limit it. Game simulation FPS is unchanged.  Runs after image effects regardless of list position. Check fast motion, occlusion, HUD, cursor, window switching, and HDR colors. Multiplier and optical-flow changes require restarting scaling. DLSSFG\\DLSS_FrameGeneration Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality"
+        "details": "Uses the bundled community compatibility runtime automatically; no library selection is needed. Requires a supported NVIDIA GPU and driver; available multipliers depend on actual capabilities, up to 4×. Use one frame generator per group. Restart Magpie after changing the rendering GPU.\n\nSet the content base rate under Frame rate and refresh. The theoretical display rate is base FPS times the multiplier, but capture, processing capacity, and presentation pacing still limit it. Game simulation FPS is unchanged.\n\nRuns after image effects regardless of list position. Check fast motion, occlusion, HUD, cursor, window switching, and HDR colors. Multiplier and optical-flow changes require restarting scaling.\n\nDuplicate detection follows the common Frame rate and refresh settings. With idle redraw enabled, about 0.5 seconds without new content starts cached redraws at the effective rate; these do not generate frames or increase real input FPS.",
+        "search": "DLSSFG\\DLSS_FrameGeneration DLSS FrameGeneration Generate 2×–4× displayed frames between real frames. Uses the bundled community compatibility runtime automatically; no library selection is needed. Requires a supported NVIDIA GPU and driver; available multipliers depend on actual capabilities, up to 4×. Use one frame generator per group. Restart Magpie after changing the rendering GPU.  Set the content base rate under Frame rate and refresh. The theoretical display rate is base FPS times the multiplier, but capture, processing capacity, and presentation pacing still limit it. Game simulation FPS is unchanged.  Runs after image effects regardless of list position. Check fast motion, occlusion, HUD, cursor, window switching, and HDR colors. Multiplier and optical-flow changes require restarting scaling.  Duplicate detection follows the common Frame rate and refresh settings. With idle redraw enabled, about 0.5 seconds without new content starts cached redraws at the effective rate; these do not generate frames or increase real input FPS. "
       }
     },
     {
@@ -11398,7 +11389,7 @@
       "level": "advanced",
       "source": {
         "path": "src/Effects/XeSSFG/XeSS_FrameGeneration.hlsl",
-        "sha256": "6cf21592d65050e1a1604b9a6ef932a67abb5cb81ef2eafea4e9a6d6fc6d64fb",
+        "sha256": "6ffb72744c82e43b1106c889cc85c99370b5958db90aaf62fde46ff11f89b8d9",
         "output": {
           "WIDTH": "INPUT_WIDTH",
           "HEIGHT": "INPUT_HEIGHT"
@@ -11412,16 +11403,6 @@
             "default": "2",
             "min": "2",
             "max": "4",
-            "step": "1",
-            "options": []
-          },
-          {
-            "name": "duplicateFrameFiltering",
-            "type": "int",
-            "label": "Duplicate Frame Filtering",
-            "default": "0",
-            "min": "0",
-            "max": "1",
             "step": "1",
             "options": []
           },
@@ -11485,21 +11466,22 @@
           "target-content-image-quality",
           "hardware-performance",
           "native-sdk-runtime"
-        ]
+        ],
+        "settingsRevision": "2026-10-12 FG common filtering and idle redraw; source only, uncompiled"
       },
       "zh-Hans": {
         "name": "XeSS FrameGeneration",
         "subcategory": "补帧",
         "summary": "XeSS 补帧，可选 2×～4×。",
-        "details": "默认 2×、AMD 光流、质量。需要随附的 XeSSFG 运行库和受支持显卡；一个效果组只使用一个补帧器。\n\n非 Intel 显卡的 3×／4× 使用本项目实验兼容路径，需匹配的随附运行库；不代表 Intel 官方多帧支持。3×／4× 可选无光流或 AMD 光流，NVIDIA 光流目前用于 2×。\n\n基础帧率在“帧率与刷新”中设置。补帧在图像处理后执行，列表位置不改变阶段；不会提高游戏逻辑帧率。检查运动、遮挡、HUD、光标和 HDR 颜色。倍率与光流修改需重新缩放。",
-        "search": "XeSSFG\\XeSS_FrameGeneration XeSS_FrameGeneration 补帧与帧率 补帧 XeSS 补帧，可选 2×～4×。 默认 2×、AMD 光流、质量。需要随附的 XeSSFG 运行库和受支持显卡；一个效果组只使用一个补帧器。  非 Intel 显卡的 3×／4× 使用本项目实验兼容路径，需匹配的随附运行库；不代表 Intel 官方多帧支持。3×／4× 可选无光流或 AMD 光流，NVIDIA 光流目前用于 2×。  基础帧率在“帧率与刷新”中设置。补帧在图像处理后执行，列表位置不改变阶段；不会提高游戏逻辑帧率。检查运动、遮挡、HUD、光标和 HDR 颜色。倍率与光流修改需重新缩放。 XeSSFG\\XeSS_FrameGeneration XeSSFG\\XeSS_FrameGeneration_x2_ZeroMV XeSSFG\\XeSS_MultiFrameGeneration_ZeroMV Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality XeSS Frame Generation XeSS FrameGeneration"
+        "details": "默认 2×、AMD 光流、质量。需要随附的 XeSSFG 运行库和受支持显卡；一个效果组只使用一个补帧器。\n\n非 Intel 显卡的 3×／4× 使用本项目实验兼容路径，需匹配的随附运行库；不代表 Intel 官方多帧支持。3×／4× 可选无光流或 AMD 光流，NVIDIA 光流目前用于 2×。\n\n基础帧率在“帧率与刷新”中设置。补帧在图像处理后执行，列表位置不改变阶段；不会提高游戏逻辑帧率。检查运动、遮挡、HUD、光标和 HDR 颜色。倍率与光流修改需重新缩放。\n\n重复帧检测统一使用“帧率与刷新”的通用设置。启用空闲持续重绘后，约 0.5 秒没有新内容时按有效重绘率重绘缓存；不会额外插帧，也不增加真实输入帧率。",
+        "search": "XeSSFG\\XeSS_FrameGeneration XeSS FrameGeneration XeSS 补帧，可选 2×～4×。 默认 2×、AMD 光流、质量。需要随附的 XeSSFG 运行库和受支持显卡；一个效果组只使用一个补帧器。  非 Intel 显卡的 3×／4× 使用本项目实验兼容路径，需匹配的随附运行库；不代表 Intel 官方多帧支持。3×／4× 可选无光流或 AMD 光流，NVIDIA 光流目前用于 2×。  基础帧率在“帧率与刷新”中设置。补帧在图像处理后执行，列表位置不改变阶段；不会提高游戏逻辑帧率。检查运动、遮挡、HUD、光标和 HDR 颜色。倍率与光流修改需重新缩放。  重复帧检测统一使用“帧率与刷新”的通用设置。启用空闲持续重绘后，约 0.5 秒没有新内容时按有效重绘率重绘缓存；不会额外插帧，也不增加真实输入帧率。  XeSSFG\\XeSS_FrameGeneration_x2_ZeroMV XeSSFG\\XeSS_MultiFrameGeneration_ZeroMV XeSS Frame Generation"
       },
       "en-US": {
         "name": "XeSS FrameGeneration",
         "subcategory": "Frame generation",
         "summary": "XeSS frame generation at 2×–4×.",
-        "details": "Defaults to 2× with AMD optical flow at Quality. Requires the bundled XeSSFG runtime and a supported GPU; use one frame generator per group.\n\n3×/4× on non-Intel GPUs uses this project’s experimental compatibility path and matching bundled runtime; it is outside Intel’s official multiframe support. Use no optical flow or AMD optical flow for 3×/4×; NVIDIA optical flow is currently for 2×.\n\nSet base FPS under Frame rate and refresh. Generation runs after image processing regardless of list position and does not raise game simulation FPS. Check motion, occlusion, HUD, cursor, and HDR colors. Multiplier and optical-flow changes require restarting scaling.",
-        "search": "XeSSFG\\XeSS_FrameGeneration XeSS_FrameGeneration Frame generation and frame rate Frame generation XeSS frame generation at 2×–4×. Defaults to 2× with AMD optical flow at Quality. Requires the bundled XeSSFG runtime and a supported GPU; use one frame generator per group.  3×/4× on non-Intel GPUs uses this project’s experimental compatibility path and matching bundled runtime; it is outside Intel’s official multiframe support. Use no optical flow or AMD optical flow for 3×/4×; NVIDIA optical flow is currently for 2×.  Set base FPS under Frame rate and refresh. Generation runs after image processing regardless of list position and does not raise game simulation FPS. Check motion, occlusion, HUD, cursor, and HDR colors. Multiplier and optical-flow changes require restarting scaling. XeSSFG\\XeSS_FrameGeneration XeSSFG\\XeSS_FrameGeneration_x2_ZeroMV XeSSFG\\XeSS_MultiFrameGeneration_ZeroMV Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality XeSS Frame Generation XeSS FrameGeneration"
+        "details": "Defaults to 2× with AMD optical flow at Quality. Requires the bundled XeSSFG runtime and a supported GPU; use one frame generator per group.\n\n3×/4× on non-Intel GPUs uses this project’s experimental compatibility path and matching bundled runtime; it is outside Intel’s official multiframe support. Use no optical flow or AMD optical flow for 3×/4×; NVIDIA optical flow is currently for 2×.\n\nSet base FPS under Frame rate and refresh. Generation runs after image processing regardless of list position and does not raise game simulation FPS. Check motion, occlusion, HUD, cursor, and HDR colors. Multiplier and optical-flow changes require restarting scaling.\n\nDuplicate detection follows the common Frame rate and refresh settings. With idle redraw enabled, about 0.5 seconds without new content starts cached redraws at the effective rate; these do not generate frames or increase real input FPS.",
+        "search": "XeSSFG\\XeSS_FrameGeneration XeSS FrameGeneration XeSS frame generation at 2×–4×. Defaults to 2× with AMD optical flow at Quality. Requires the bundled XeSSFG runtime and a supported GPU; use one frame generator per group.  3×/4× on non-Intel GPUs uses this project’s experimental compatibility path and matching bundled runtime; it is outside Intel’s official multiframe support. Use no optical flow or AMD optical flow for 3×/4×; NVIDIA optical flow is currently for 2×.  Set base FPS under Frame rate and refresh. Generation runs after image processing regardless of list position and does not raise game simulation FPS. Check motion, occlusion, HUD, cursor, and HDR colors. Multiplier and optical-flow changes require restarting scaling.  Duplicate detection follows the common Frame rate and refresh settings. With idle redraw enabled, about 0.5 seconds without new content starts cached redraws at the effective rate; these do not generate frames or increase real input FPS.  XeSSFG\\XeSS_FrameGeneration_x2_ZeroMV XeSSFG\\XeSS_MultiFrameGeneration_ZeroMV XeSS Frame Generation"
       }
     },
     {

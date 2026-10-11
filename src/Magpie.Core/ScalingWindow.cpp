@@ -101,6 +101,10 @@ static std::string DescribeScalingWindowOwner(const char* step, HWND window, HWN
 
 ScalingError ScalingWindow::_StartImpl(HWND hwndSrc, bool& rendererInitializationFailed) noexcept {
 	rendererInitializationFailed = false;
+	for (auto& effect : _options.effects) {
+		if (NormalizeFrameGenerationParameters(effect))
+			Logger::Get().Info("FG input settings normalized: " + effect.name);
+	}
 	if (_options.effects.empty()) return ScalingError::ScalingModeEmpty;
 	if (ValidateFrameGenerationChain(_options.effects).HasConflict()) {
 		Logger::Get().Error("Scaling preflight: keep one frame-generation effect in the group");

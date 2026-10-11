@@ -34,7 +34,9 @@ bool IsEffectParameterVisible(std::string_view effect, std::string_view paramete
 		(parameter == "residualChromaTemporalStrength" ||
 		 DLSSNRParameterPass(parameter) > DLSSNRPassCount(getValue))) return false;
 	if (HasOpticalFlowSelection(effect)) {
-		const float method = getValue("opticalFlowMethod", effect == "XeSSFG\\XeSS_FrameGeneration" ? 1.0f : 0.0f);
+		const float defaultMethod = (effect == "XeSSFG\\XeSS_FrameGeneration" ||
+			effect == "FSR3FG\\FSR3_FrameGeneration") ? 1.0f : 0.0f;
+		const float method = getValue("opticalFlowMethod", defaultMethod);
 		if (parameter == "amdOpticalFlowMode") return method == 1.0f;
 		if (parameter == "nvidiaOpticalFlowQuality") return method == 2.0f;
 	}

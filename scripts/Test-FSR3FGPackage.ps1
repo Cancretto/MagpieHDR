@@ -18,4 +18,23 @@ foreach ($entry in $required.GetEnumerator()) {
         throw "FSR3FG runtime differs from SDK 2.3.0: $($entry.Key). Validate provider/API compatibility before updating the pin."
     }
 }
-'FSR3FG payload matches the pinned SDK pair; this does not validate runtime or GPU behavior.'
+# Protect -SkipBuild from mixing new markers with an older binary/provider policy.
+$marker = Get-Content -LiteralPath (Join-Path $PackageDirectory 'effects/FSR3FG/FSR3_FrameGeneration.hlsl') -Raw
+if ($marker -match '(?m)^//!OPTION 0 None' -or $marker -match 'duplicateFrameFiltering' -or
+    $marker -notmatch '(?s)//!LABEL Optical Flow Method\r?\n//!DEFAULT 1') {
+    throw 'FSR3FG marker does not require AMDOF/NVOF with default AMDOF Quality.'
+}
+$amd = [regex]::Match($marker, '(?s)//!PARAMETER((?:(?!//!PARAMETER).)*)int amdOpticalFlowMode;')
+if (!$amd.Success -or $amd.Groups[1].Value -notmatch '(?m)^//!DEFAULT 1\r?$') {
+    throw 'FSR3FG marker AMDOF default is not Quality.'
+}
+$hasAmdCapability = $false
+foreach ($binary in @('Magpie.exe', 'Magpie.Core.dll')) {
+    $path = Join-Path $PackageDirectory $binary
+    if (Test-Path -LiteralPath $path -PathType Leaf) {
+        $bytes = [System.IO.File]::ReadAllBytes($path)
+        $hasAmdCapability = $hasAmdCapability -or [System.Text.Encoding]::ASCII.GetString($bytes).Contains('AMDOF capability v1: FSR3-FG required input')
+    }
+}
+if (!$hasAmdCapability) { throw 'FSR3FG package has no compiled AMDOF capability marker. Rebuild the matching source with AMDOF enabled.' }
+'FSR3FG payload matches pinned SDK, required AMDOF capability and parameter policy; GPU behavior remains unverified.'

@@ -11,9 +11,11 @@ class FSR3FGPresenter final : public PresenterBase {
 public:
 	struct Impl;
 	struct ImplDeleter { void operator()(Impl* impl) const noexcept; };
-	explicit FSR3FGPresenter(bool useExternalMotion = false);
+	FSR3FGPresenter();
 	~FSR3FGPresenter() noexcept override;
 	bool BeginFrame(winrt::com_ptr<ID3D11Texture2D>& frameTex,
+		winrt::com_ptr<ID3D11RenderTargetView>& frameRtv, POINT& drawOffset) noexcept override;
+	bool BeginIdleFrame(winrt::com_ptr<ID3D11Texture2D>& frameTex,
 		winrt::com_ptr<ID3D11RenderTargetView>& frameRtv, POINT& drawOffset) noexcept override;
 	bool EndFrame(bool waitForGpu = false) noexcept override;
 	bool WaitForFrameCapacity(DWORD timeout) noexcept override;
@@ -34,8 +36,9 @@ public:
 protected:
 	bool _Initialize(HWND hwndAttach) noexcept override;
 private:
+	bool _BeginFrame(winrt::com_ptr<ID3D11Texture2D>& frameTex,
+		winrt::com_ptr<ID3D11RenderTargetView>& frameRtv, POINT& drawOffset, bool idle) noexcept;
 	bool _ResizeOverlaySurface() noexcept;
 	[[maybe_unused]] std::unique_ptr<Impl, ImplDeleter> _impl;
-	[[maybe_unused]] bool _useExternalMotion = false;
 };
 }

@@ -65,6 +65,8 @@ public:
 			FSR3FGTimingSource::CaptureAdmissionEstimate };
 	}
 	void Submitted(FSR3FGSourceSample sample) noexcept { _previous = sample; ++_sdkFrameId; }
+	Decision Replay() const noexcept { return { true, 0, 0, _sdkFrameId }; }
+	void ReplaySubmitted() noexcept { ++_sdkFrameId; }
 	void Reset() noexcept { _previous = {}; /* SDK ID stays monotonic across resize. */ }
 private:
 	FSR3FGSourceSample _previous;
@@ -78,8 +80,8 @@ constexpr bool IsFSR3FGProvider(std::string_view name, bool swapchain) noexcept 
 }
 
 // Until a distortion-field contract exists, external motion is admitted only
-// for known effects preserving rectangular image coordinates. Final-image-only
-// internal optical flow remains available for other SDR effects.
+// for known effects preserving rectangular image coordinates. Other chains
+// must be rejected; internal optical flow alone is not a supported fallback.
 constexpr bool SupportsFSR3FGExternalMotion(std::string_view name) noexcept {
 	return name == "FSR3FG\\FSR3_FrameGeneration" || name == "DLSS\\DLSS_SR" ||
 		name == "FSR2\\FSR2_SR" || name == "FSR3\\FSR3_SR" || name == "FSR4\\FSR4_SR" ||

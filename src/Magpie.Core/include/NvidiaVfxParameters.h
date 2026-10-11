@@ -77,7 +77,6 @@ struct NvidiaVfxFrameGenerationSettings {
 	uint32_t multiplier = 2;
 	uint32_t model = 1;
 	bool automaticShotDetection = true;
-	bool duplicateFrameFiltering = false;
 };
 inline bool NvidiaVfxVfgModelValid(float value) noexcept {
 	return std::isfinite(value) && (value == 0.f || value == 1.f);

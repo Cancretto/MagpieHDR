@@ -4,6 +4,7 @@
 #include <string_view>
 #include <memory>
 #include "EffectParameterPersistence.h"
+#include "FrameGenerationParameters.h"
 #include "FramePacingOptions.h"
 #include "FrameRefreshSettings.h"
 #include "SourceWindowRelations.h"
@@ -212,7 +213,10 @@ struct EffectParameterSessionState {
 
 	explicit EffectParameterSessionState(const std::vector<EffectOption>& effects,
 		FrameRefreshSettings frameRefresh = {}, bool simpleFrameRefresh = false)
-		: _snapshot{ effects, effects, frameRefresh, 1, false, false, simpleFrameRefresh } {}
+		: _snapshot{ effects, effects, frameRefresh, 1, false, false, simpleFrameRefresh } {
+		for (auto& effect : _snapshot.applied) NormalizeFrameGenerationParameters(effect);
+		_snapshot.desired = _snapshot.applied;
+	}
 	// Save receipts survive automatic rebuilds too. The revision is allocated
 	// only by the scaling/UI thread; completion itself is atomic.
 	std::shared_ptr<EffectParametersSaveState> saveState = std::make_shared<EffectParametersSaveState>();
@@ -235,17 +239,20 @@ struct EffectParameterSessionState {
 	void Applied(const std::vector<EffectOption>& effects) {
 		std::scoped_lock lock(_mutex);
 		_snapshot.applied = effects;
+		for (auto& effect : _snapshot.applied) NormalizeFrameGenerationParameters(effect);
 		++_snapshot.revision;
 	}
 	void Desired(const std::vector<EffectOption>& effects) {
 		std::scoped_lock lock(_mutex);
 		_snapshot.desired = effects;
+		for (auto& effect : _snapshot.desired) NormalizeFrameGenerationParameters(effect);
 		++_snapshot.revision;
 	}
 	void Desired(uint32_t effect, const std::string& parameter, float value) {
 		std::scoped_lock lock(_mutex);
 		if (effect >= _snapshot.desired.size()) return;
 		_snapshot.desired[effect].parameters[parameter] = value;
+		NormalizeFrameGenerationParameters(_snapshot.desired[effect]);
 		++_snapshot.revision;
 	}
 	void DesiredFrameRefresh(FrameRefreshSettings value, std::optional<bool> simpleMode = std::nullopt, bool policyChanged = false) {

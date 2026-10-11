@@ -465,6 +465,7 @@ void ScalingRuntime::_ScalingThreadProc() noexcept {
 			// not run at 500 Hz on a lower-refresh display.
 			const nanoseconds timeout = scalingWindow.Renderer().FrontendPollInterval();
 			nanoseconds rest = timeout - (now - lastRenderTime);
+			if (const auto idleWait = scalingWindow.Renderer().TimeUntilIdleRedraw()) rest = std::min(rest, *idleWait);
 
 			// One render attempt per pass. Prefer content, which includes the same
 			// input, over submitting an old background and then the new frame.
@@ -490,6 +491,7 @@ void ScalingRuntime::_ScalingThreadProc() noexcept {
 				continue;
 			}
 			rest = scalingWindow.Renderer().FrontendPollInterval() - (steady_clock::now() - lastRenderTime);
+			if (const auto idleWait = scalingWindow.Renderer().TimeUntilIdleRedraw()) rest = std::min(rest, *idleWait);
 
 			// 值为 1000000
 			constexpr auto ratio = std::ratio_divide<std::milli, std::nano>().num;
