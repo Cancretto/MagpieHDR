@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "FSR3FGPresenter.h"
 #include "FSR3FGPolicy.h"
+#include "FSR3FGMotion.h"
 #include "FramePacingWait.h"
 #include "DeviceResources.h"
 #include "DirectXHelper.h"
@@ -47,8 +48,7 @@ struct FSR3FGPresenter::Impl {
 	winrt::com_ptr<ID3D12DescriptorHeap> clearHeap12, clearCpuHeap12;
 	winrt::com_ptr<ID3D11ComputeShader> motionShader11;
 	winrt::com_ptr<ID3D11Buffer> motionConstants11;
-	winrt::com_ptr<ID3D11ShaderResourceView> sourceMotionSrv11;
-	winrt::com_ptr<ID3D11Texture2D> sourceMotion11;
+	FSR3FGMotionSource sourceMotion;
 	winrt::com_ptr<ID3D11Fence> fence11;
 	winrt::com_ptr<ID3D12Fence> fence12;
 	std::array<uint64_t, BUFFER_COUNT> allocatorFenceValues{};
@@ -80,16 +80,19 @@ struct FSR3FGPresenter::Impl {
 	uint64_t callbackDispatches = 0, interpolations = 0, resetPassThroughs = 0, baseSubmissions = 0;
 	uint64_t invalidMotionSamples = 0;
 	ffxReturnCode_t callbackResult = FFX_API_RETURN_OK;
+	PresenterFailure failure;
 	bool Fail(std::string_view operation, HRESULT result = E_FAIL) noexcept {
-		if (!fatal) Logger::Get().ComError(fmt::format("FSR3FG {}", operation), result);
+		const auto detail = fmt::format("FSR3FG {}", operation);
+		failure.Record(detail, static_cast<uint32_t>(result));
+		Logger::Get().ComError(detail, result);
 		fatal = true;
 		return false;
 	}
 	bool Check(ffxReturnCode_t result, std::string_view operation) noexcept {
 		if (result == FFX_API_RETURN_OK) return true;
-		Logger::Get().Error(fmt::format("FSR3FG {}: AMD result={}", operation, result));
-		fatal = true;
-		return false;
+		// AMD return values are not HRESULTs. Keep the AMD code in the context
+		// and report E_FAIL through the existing system-error field.
+		return Fail(fmt::format("{}: AMD result={}", operation, result));
 	}
 };
 
@@ -509,24 +512,10 @@ static bool CreateFGContext(FSR3FGPresenter::Impl& impl) noexcept {
 	return impl.Check(impl.createContext(&impl.fgContext, &create.header, nullptr), "create pinned FG 3.1.6");
 }
 
-// Pixel-space current-to-previous vectors are resized into the content extent
-// at texture origin. generationRect supplies the offset into the backbuffer.
-// Point sampling avoids averaging opposite motion across disocclusion edges.
-static constexpr std::string_view MOTION_SHADER = R"(
-Texture2D<float2> inputMotion : register(t0);
-RWTexture2D<float2> outputMotion : register(u0);
-cbuffer Constants : register(b0) { uint2 sourceSize; uint2 contentSize; };
-[numthreads(8,8,1)] void Main(uint3 id : SV_DispatchThreadID) {
-    if (any(id.xy >= contentSize)) return;
-    uint2 p = min(uint2((float2(id.xy) + 0.5) * sourceSize / contentSize), sourceSize - 1);
-    float2 mv = inputMotion.Load(int3(p, 0));
-    outputMotion[id.xy] = all(isfinite(mv)) ? mv * float2(contentSize) / sourceSize : 0;
-})";
-
 static bool CreateMotionShader(FSR3FGPresenter::Impl& impl) noexcept {
 	if (!impl.externalMotionEnabled) return true;
 	winrt::com_ptr<ID3DBlob> blob;
-	if (!DirectXHelper::CompileComputeShader(MOTION_SHADER, "Main", blob.put(), "FSR3FGMotion")) return false;
+	if (!DirectXHelper::CompileComputeShader(FSR3FG_MOTION_SHADER, "Main", blob.put(), "FSR3FGMotion")) return false;
 	HRESULT hr = impl.device11->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, impl.motionShader11.put());
 	D3D11_BUFFER_DESC desc{};
 	desc.ByteWidth = 16;
@@ -683,31 +672,20 @@ void FSR3FGPresenter::SetFrameGuidance(ID3D11Texture2D* motion, FrameGuidanceFra
 	impl.externalMotionValid = false;
 	impl.externalMotionReset = impl.externalMotionEnabled;
 	if (!impl.externalMotionEnabled) return; // Internal FSR optical flow still runs.
-	if (!motion || !frameId || frameId != impl.sourceSample.frameId) { ++impl.invalidMotionSamples; return; }
-	D3D11_TEXTURE2D_DESC source{};
-	motion->GetDesc(&source);
-	if (source.Format != DXGI_FORMAT_R16G16_FLOAT || !source.Width || !source.Height || source.SampleDesc.Count != 1) {
-		++impl.invalidMotionSamples; return;
+	const HRESULT hr = impl.sourceMotion.Prepare(impl.device11, motion, frameId, impl.sourceSample.frameId);
+	if (hr == S_FALSE) { ++impl.invalidMotionSamples; return; }
+	if (FAILED(hr)) {
+		const auto& d = impl.sourceMotion.Desc();
+		impl.Fail(fmt::format("validate/create source motion SRV: frame={} source={} session={} generation={} "
+			"size={}x{} format={} mip={} array={} sample={}/{} bind={:#x} usage={} cpu={:#x} misc={:#x} sameDevice={}",
+			frameId, impl.sourceSample.frameId, impl.sourceSample.sequence, impl.sourceSample.generation,
+			d.Width, d.Height, uint32_t(d.Format), d.MipLevels, d.ArraySize, d.SampleDesc.Count,
+			d.SampleDesc.Quality, d.BindFlags, uint32_t(d.Usage), d.CPUAccessFlags, d.MiscFlags,
+			impl.sourceMotion.SameDevice()), hr);
+		return;
 	}
-	if (impl.sourceMotion11.get() != motion) {
-		impl.sourceMotionSrv11 = nullptr;
-		impl.sourceMotion11.copy_from(motion);
-		const HRESULT hr = impl.device11->CreateShaderResourceView(motion, nullptr, impl.sourceMotionSrv11.put());
-		if (FAILED(hr)) { impl.Fail("create source motion SRV", hr); return; }
-	}
-	const uint32_t dimensions[]{ source.Width, source.Height, uint32_t(rect.right - rect.left), uint32_t(rect.bottom - rect.top) };
-	impl.context11->UpdateSubresource(impl.motionConstants11.get(), 0, nullptr, dimensions, 0, 0);
-	ID3D11ShaderResourceView* srv = impl.sourceMotionSrv11.get();
-	ID3D11UnorderedAccessView* uav = impl.motionUav11.get();
-	ID3D11Buffer* constants = impl.motionConstants11.get();
-	impl.context11->CSSetShader(impl.motionShader11.get(), nullptr, 0);
-	impl.context11->CSSetShaderResources(0, 1, &srv);
-	impl.context11->CSSetUnorderedAccessViews(0, 1, &uav, nullptr);
-	impl.context11->CSSetConstantBuffers(0, 1, &constants);
-	impl.context11->Dispatch((dimensions[2] + 7) / 8, (dimensions[3] + 7) / 8, 1);
-	srv = nullptr; uav = nullptr;
-	impl.context11->CSSetShaderResources(0, 1, &srv);
-	impl.context11->CSSetUnorderedAccessViews(0, 1, &uav, nullptr);
+	RemapFSR3FGMotion(impl.context11, impl.motionShader11.get(), impl.motionConstants11.get(),
+		impl.sourceMotion, impl.motionUav11.get(), uint32_t(rect.right - rect.left), uint32_t(rect.bottom - rect.top));
 	impl.externalMotionValid = true;
 	impl.externalMotionReset = requiresHistoryReset;
 }
@@ -740,6 +718,7 @@ bool FSR3FGPresenter::WaitForFrameCapacity(DWORD timeout) noexcept {
 }
 bool FSR3FGPresenter::WasFrameCapacityBusy() const noexcept { return _impl && _impl->capacityBusy; }
 bool FSR3FGPresenter::HasFatalError() const noexcept { return _impl && _impl->fatal; }
+const PresenterFailure* FSR3FGPresenter::GetFailure() const noexcept { return _impl ? &_impl->failure : nullptr; }
 
 bool FSR3FGPresenter::EndFrame(bool waitForGpu) noexcept {
 	if (!_impl || _impl->fatal || !_impl->decision.submit) return false;
@@ -848,7 +827,7 @@ bool FSR3FGPresenter::OnResize() noexcept {
 	if (!impl.Check(impl.destroyContext(&impl.fgContext, nullptr), "destroy FG before resize")) return false;
 	impl.fgContext = nullptr;
 	ReleaseSizeDependentResources(impl);
-	impl.sourceMotion11 = nullptr; impl.sourceMotionSrv11 = nullptr;
+	impl.sourceMotion = {};
 	impl.frameLatencyGate.Reset(); impl.frameLatencyWaitableObject.reset();
 	_RefreshVRREnvironment(true);
 	HRESULT hr = impl.swapChain->ResizeBuffers(BUFFER_COUNT, size.cx, size.cy, COLOR_FORMAT, _vrr.ResizeFlags());
@@ -930,6 +909,7 @@ bool FSR3FGPresenter::EndFrame(bool) noexcept { return false; }
 bool FSR3FGPresenter::WaitForFrameCapacity(DWORD) noexcept { return false; }
 bool FSR3FGPresenter::WasFrameCapacityBusy() const noexcept { return false; }
 bool FSR3FGPresenter::HasFatalError() const noexcept { return false; }
+const PresenterFailure* FSR3FGPresenter::GetFailure() const noexcept { return nullptr; }
 void FSR3FGPresenter::SetSourceTiming(uint64_t, uint64_t, uint64_t, int64_t) noexcept {}
 void FSR3FGPresenter::SetCaptureAdmissionTime(int64_t) noexcept {}
 void FSR3FGPresenter::SetFrameGuidance(ID3D11Texture2D*, FrameGuidanceFrameId, bool, const RECT&) noexcept {}

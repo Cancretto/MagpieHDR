@@ -1,6 +1,6 @@
-# FSR 3 FG（实验性） / FSR 3 FG (Experimental)
+# FSR3 FrameGeneration
 
-状态：源码集成，尚未编译或进行 GPU、游戏画质、性能及显示验收。默认构建开关关闭。
+状态：实验性功能，固定 2×、仅 SDR。Beta7 已包含初版；本次外部运动纹理修复尚未编译或实机验证，游戏画质、性能及显示验收仍待完成。默认构建开关关闭。
 
 ## 使用范围
 
@@ -17,6 +17,8 @@
 ## 实验性输入契约
 
 运动向量来自现有 Frame Guidance，方向为当前帧到前帧，单位为像素。后端先适配到最终效果输出，Presenter 再按内容矩形缩放向量，在辅助纹理左上角写入；`generationRect` 表示内容在整个交换链中的位置。外部运动失效或帧身份不匹配时使用零运动并重置历史。
+
+前端在共享槽事务内复制运动纹理，FSR 的稳定副本带有 `D3D11_BIND_SHADER_RESOURCE` 供重映射采样。帧身份匹配但资源格式、布局、绑定或设备不符时明确报错停止；这类内部契约错误不当作普通的暂缺运动数据处理。
 
 深度为独立生成的正向有限平面深度 1.0，不读取 HDR/SR 的深度清除选项。虚拟相机 near=0.1、far=1000、垂直 FOV=60°、右/上/前为单位轴、位置与 jitter 为零。这不等价于真实游戏深度、相机或运动输入。快速运动、遮挡、文字和 HUD 质量必须实测。
 
@@ -45,11 +47,13 @@ DLL 文件版本不代表算法版本。通过 `ffxQueryDescGetVersions` 获取 
 
 缺少 DLL/provider、HDR/几何条件不满足、设备/资源创建失败会保留步骤与错误码。运行期 SDK 错误、设备移除或宿主等待超时会停止本次缩放，不悄悄展示为 FG 正常。查看日志中的 `FSR3FG` 行。
 
+运行期首个 Presenter 失败的阶段和 HRESULT 会进入错误详情；运动资源错误附带帧、会话、代次和纹理描述。AMD SDK 返回值保留在上下文中，系统错误字段使用 `E_FAIL`，不把 AMD 枚举伪装成 HRESULT。后续清理失败不会覆盖首因。
+
 Prepare、Configure、代理 Present、Resize 和销毁由前端串行执行并保护上下文；固定 SDK 的 FG callback 在 Present 内同步执行，不操作 UI。异步生成计算关闭，但 SDK 仍有异步呈现线程。停止/Resize 先禁用 FG 和回调，等待 SDK 呈现与两侧 GPU 工作，再销毁 FG、交换链及 DLL。若 SDK/GPU 清理无法确认，会保留该会话资源到进程退出并拒绝再次启用 FSR FG；需要完整重启喜鹊。宿主 fence/容量等待有超时诊断，SDK 自身内部等待仍需故障注入实测。
 
 ## English summary
 
-Source implementation only; not yet compiled or GPU tested. No WGC-only restriction: native capture timestamps take priority; missing timestamps use a separately labeled CPU capture-admission estimate, not game render time. Fixed 2x SDR, independent of FSR upscaling. Uses pinned FSR 3.1.6 and swapchain 3.1.7 providers from SDK 2.3.0, with PrepareV2 and synchronous generation compute. Requires an x64 build with `EnableFSR3FrameGeneration=true`; supply `FSR3SdkDir` explicitly.
+Experimental FSR3 FrameGeneration, fixed 2x SDR. Beta7 includes the initial integration; this external-motion resource fix has not yet been compiled or GPU tested. No WGC-only restriction: native capture timestamps take priority; missing timestamps use a separately labeled CPU capture-admission estimate, not game render time. Independent of FSR upscaling. Uses pinned FSR 3.1.6 and swapchain 3.1.7 providers from SDK 2.3.0, with PrepareV2 and synchronous generation compute. Requires an x64 build with `EnableFSR3FrameGeneration=true`; supply `FSR3SdkDir` explicitly.
 
 External motion and duplicate filtering default to off. Internal FSR optical flow remains active. Synthetic flat depth and a virtual camera do not replace real game geometry. Validate occlusion, fast motion, HUD/text, cost and latency. HDR and out-of-window cropping are rejected; unsupported distortion chains require external motion off. Only one frame generator is allowed per group.
 

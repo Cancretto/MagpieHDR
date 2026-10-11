@@ -49,6 +49,7 @@
 #include "XeSSFGPresenter.h"
 #include "FSR3FGPresenter.h"
 #include "FSR3FGPolicy.h"
+#include "FrontendMotionTexture.h"
 #ifdef MP_USE_COMPSWAPCHAIN
 #include "CompSwapchainPresenter.h"
 #else
@@ -934,25 +935,8 @@ Renderer::FrontendBaseResult Renderer::_UpdateFrontendBase(uint32_t sharedTextur
 		}
 		if (ID3D11Texture2D* motionSource =
 			_frontendSharedMotionTextures[sharedTextureSlot].get()) {
-			D3D11_TEXTURE2D_DESC motionDesc{};
-			motionSource->GetDesc(&motionDesc);
-			bool recreateMotion = !_frontendMotionTexture;
-			if (_frontendMotionTexture) {
-				D3D11_TEXTURE2D_DESC stableDesc{};
-				_frontendMotionTexture->GetDesc(&stableDesc);
-				recreateMotion = stableDesc.Width != motionDesc.Width ||
-					stableDesc.Height != motionDesc.Height ||
-					stableDesc.Format != motionDesc.Format;
-			}
-			if (recreateMotion) {
-				motionDesc.Usage = D3D11_USAGE_DEFAULT;
-				motionDesc.BindFlags = 0;
-				motionDesc.CPUAccessFlags = 0;
-				motionDesc.MiscFlags = 0;
-				_frontendMotionTexture = nullptr;
-				hr = _frontendResources.GetD3DDevice()->CreateTexture2D(
-					&motionDesc, nullptr, _frontendMotionTexture.put());
-			}
+			hr = EnsureFrontendMotionTexture(_frontendResources.GetD3DDevice(),
+				motionSource, _isFSR3FrameGenerationActive, _frontendMotionTexture);
 			if (SUCCEEDED(hr)) {
 				_frontendResources.GetD3DDC()->CopyResource(
 					_frontendMotionTexture.get(), motionSource);
@@ -1177,11 +1161,14 @@ bool Renderer::_FrontendRender(
 void Renderer::_ReportPresenterFailure() noexcept {
 	if (!_presenter || !_presenter->HasFatalError() || _presenterFailureReported) return;
 	_presenterFailureReported = true;
-	ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime] {
+	PresenterFailure failure{ "Presentation stopped after a runtime error. See Magpie.log.", 0 };
+	if (const auto* detail = _presenter->GetFailure(); detail && !detail->context.empty()) failure = *detail;
+	// Copy diagnostics before dispatch; the presenter can be destroyed by Stop.
+	ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime, failure = std::move(failure)] {
 		auto& window = ScalingWindow::Get();
 		if (!session->IsCurrent(ScalingWindow::RunId()) || !window) return;
 		if (auto report = window.Options().reportErrorDetails) report(window.SrcTracker().Handle(),
-			ScalingError::PresentationInitFailed, "FSR 3 FG stopped after a runtime error. See the FSR3FG diagnostic in Magpie.log.", 0);
+			ScalingError::PresentationInitFailed, failure.context, failure.code);
 		window.Stop();
 	});
 }

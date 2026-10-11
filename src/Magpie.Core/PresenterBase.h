@@ -1,5 +1,6 @@
 #pragma once
 #include "FrameGuidanceTypes.h"
+#include "PresenterFailure.h"
 #include "VRRPresentationPolicy.h"
 #include "VRROutputProbe.h"
 
@@ -44,6 +45,7 @@ public:
 	virtual bool WasFrameCapacityBusy() const noexcept { return false; }
 	// Fatal SDK/device errors must stop the session instead of retrying forever.
 	virtual bool HasFatalError() const noexcept { return false; }
+	virtual const PresenterFailure* GetFailure() const noexcept { return nullptr; }
 	std::chrono::steady_clock::time_point LastSubmissionTime() const noexcept { return _lastSubmissionTime; }
 	std::optional<uint32_t> LastPresentedFrameCount() const noexcept { return _lastPresentedFrameCount; }
 
