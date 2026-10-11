@@ -24,8 +24,9 @@ int main() {
 #ifdef RTSS_SOURCE_RESOURCES
 			const bool chinese = std::wstring_view(language) == L"zh-Hans";
 			Require(resources.GetString(L"Rtss_InitializeMagpie") == (chinese ? L"初始化" : L"Initialize"), "Short initialization action text");
-			Require(resources.GetString(L"Rtss_Rate_Sync/Content") == (chinese ? L"与内容帧率同步" : L"Sync with content frame rate"), "Sync option wording");
-			Require(resources.GetString(L"Rtss_Status_Written") == (chinese ? L"配置已更新。" : L"Profile updated."), "Written result wording");
+			const bool traditional = std::wstring_view(language) == L"zh-Hant";
+			Require(resources.GetString(L"Rtss_Rate_Sync/Content") == (chinese ? L"同步内容帧率" : traditional ? L"同步內容幀率" : L"Sync content frame rate"), "Sync option wording");
+			Require(resources.GetString(L"Rtss_Status_Written") == (chinese || traditional ? L"RTSS 已就绪" : L"RTSS is ready"), "Written result wording");
 			Require(resources.GetString(L"Rtss_GlobalNotice/Text") == (chinese ? L"使用全局配置的应用共用此上限。" : L"Applications using the global profile share this limit."), "Global factual hint");
 			Require(resources.GetString(L"Rtss_TargetOverridesGlobal") == (chinese ? L"目标使用独立配置。" : L"The target uses its own profile."), "Target factual hint");
 			Require(resources.GetString(L"Rtss_Failure_Set") == (chinese ? L"设置帧率失败。" : L"Could not set the frame rate."), "Setting failure wording");
@@ -51,13 +52,13 @@ int main() {
 			vm.status.rateKnown = true; vm.status.currentRate = 60;
 			vm.status.failureStage = L"Rtss_Failure_Read";
 			const auto segments = vm.RtssStatusSegments();
-			Require(segments.GetAt(0) == L"Global" && segments.GetAt(1) == L"\u00a0-\u00a0RTSS 7.3.5.28314", "Profile and version lead the status");
-			Require(segments.GetAt(3) == hstring(L"\u00a0-\u00a0" + fmt::format(fmt::runtime(std::wstring_view(resources.GetString(L"Rtss_ProfileRate"))), 60.0)) && segments.GetAt(4) == hstring(L"\u00a0-\u00a0" + std::wstring(resources.GetString(L"Rtss_Failure_Read"))), "Rate precedes specific error");
+			Require(segments.GetAt(0) == L"Global" && segments.GetAt(1) == hstring(L"\u00a0-\u00a0" + std::wstring(resources.GetString(L"Rtss_Status_Read"))), "Profile and current state lead the status");
+			Require(segments.GetAt(2) == hstring(L"\u00a0-\u00a0" + fmt::format(fmt::runtime(std::wstring_view(resources.GetString(L"Rtss_ProfileRate"))), 60.0)) && segments.GetAt(3) == hstring(L"\u00a0-\u00a0" + std::wstring(resources.GetString(L"Rtss_Failure_Read"))), "Rate precedes specific error");
 			Require(std::wstring_view(vm.RtssStatusText()).find(L'\n') == std::wstring_view::npos, "Status stays one paragraph");
 			vm.status.profile.clear(); vm.status.rtss.version.clear(); vm.status.rateKnown = false; vm.status.failureStage.clear();
 			vm.data.rtss.scope = RtssScope::Target;
 			Require(vm.RtssStatusSegments().Size() == 1, "Missing object, version and rate are omitted");
-			vm.status.profile = L"Global"; vm.status.rtss.executable.clear();
+			vm.status.profile.clear(); vm.status.rtss.executable.clear();
 			Require(vm.RtssStatusSegments().Size() == 1, "Uninstalled tool does not fabricate an object");
 			vm.status.profile.clear();
 			vm.status.rateKnown = true;
@@ -70,13 +71,13 @@ int main() {
 			vm.status = {}; vm.status.rtss.executable = L"RTSS.exe"; vm.status.profile = L"Renamed Magpie.exe";
 			vm.status.state = RtssState::MagpieInitialized; vm.status.selfInitialization = true; vm.status.rateKnown = true;
 			const auto offlineText = std::wstring(vm.RtssStatusText());
-			Require(offlineText.find(std::wstring(resources.GetString(L"Rtss_Status_NotRunning"))) != offlineText.npos &&
-				offlineText.find(std::wstring(resources.GetString(L"Rtss_Reloaded"))) == offlineText.npos, "Offline saved result identifies stopped RTSS without claiming reload");
+			Require(offlineText.find(std::wstring(resources.GetString(L"Rtss_Status_MagpieInitialized"))) != offlineText.npos &&
+				offlineText.find(std::wstring(resources.GetString(L"Rtss_Reloaded"))) == offlineText.npos, "Self initialization reports its completed action without claiming a reload");
 			vm.status.state = RtssState::Read; vm.status.selfInitialization = false; vm.status.rateKnown = false; vm.status.rateUnavailable = true;
 			Require(std::wstring(vm.RtssStatusText()).find(std::wstring(resources.GetString(L"Rtss_RateUnknown"))) != std::wstring::npos &&
 				std::wstring(vm.RtssStatusText()).find(std::wstring(resources.GetString(L"Rtss_NoLimit"))) == std::wstring::npos, "Unknown field is not rendered as unlimited");
 			vm.status.rtss.running = true; vm.status.rateUnavailable = false; vm.status.reloaded = true;
-			Require(std::wstring(vm.RtssStatusText()).find(std::wstring(resources.GetString(L"Rtss_Reloaded"))) != std::wstring::npos, "Verified reload is a separate content segment");
+			Require(std::wstring(vm.RtssStatusText()).find(std::wstring(resources.GetString(L"Rtss_Reloaded"))) == std::wstring::npos, "Compact status does not repeat a reload suffix");
 			vm.status.reloaded = false; vm.status.profileSaved = true; vm.status.state = RtssState::Failed;
 			vm.status.failureStage = L"Rtss_Failure_Reload";
 			const auto reloadFailureText = std::wstring(vm.RtssStatusText());
@@ -103,21 +104,36 @@ int main() {
 		}
 		RtssService::Get().pending = RtssService::Get().launching = false;
 		StatusViewModel model;
+		model.data.rtss.scope = RtssScope::Target;
 		auto& activeStatus = RtssService::Get().status;
 		activeStatus = {}; activeStatus.state = RtssState::NotRunning;
 		activeStatus.rtss.executable = L"RTSS.exe"; activeStatus.readReady = activeStatus.initializeReady = true;
 		model._rtssPreview.state = RtssState::Read; model._rtssPreview.rateKnown = true; model._rtssPreview.currentRate = 60;
 		model._rtssPreview.profile = L"Global";
-		Require(model._RtssStatus().state == RtssState::Read && model._RtssStatus().rateKnown && model._RtssStatus().currentRate == 60,
-			"Actual status merge retains offline read rather than clearing data");
+		Require(model._RtssStatus().state == RtssState::WaitingTarget && !model._RtssStatus().rateKnown,
+			"Preview read without an active session waits for a target and does not claim a live limit");
+		RtssService::Get().sessionIdentity = model.data.runtimeIdentity;
+		RtssService::Get().sessionGeneration = 7;
+		activeStatus.profileIdentity = model.data.runtimeIdentity;
+		activeStatus.sessionGeneration = 7;
+		activeStatus.state = RtssState::Written;
+		Require(model._RtssStatus().state == RtssState::Written, "Current generation receives the active result");
+		activeStatus.sessionGeneration = 6;
+		Require(model._RtssStatus().state == RtssState::WaitingTarget, "A stale generation cannot replace the current preview");
+		RtssService::Get().sessionIdentity.reset();
+		activeStatus.sessionGeneration = 0;
+		activeStatus.state = RtssState::NotRunning;
+		RtssService::Get().preparing = true;
+		Require(!model.CanInitializeMagpie(), "Automatic preparation blocks conflicting manual initialization");
+		RtssService::Get().preparing = false;
 		Require(model.CanInitializeMagpie(), "Actual button availability permits offline self initialization");
 		Require(model.ShowRtssInitialize(), "Uninitialized profile shows the action");
 		RtssService::Get().initialized = true;
-		Require(!model.ShowRtssInitialize() && !model.CanInitializeMagpie(), "Initialized profile hides and disables the action across profiles");
+		Require(!model.ShowRtssInitialize() && model.CanInitializeMagpie(), "Initialized profile hides the automatic action while manual initialization remains available");
 		RtssService::Get().initialized = false;
 		Require(model.ShowRtssInitialize() && model.CanInitializeMagpie(), "Recheck of changed profile restores the action");
 		RtssService::Get().initializationUnknown = true;
-		Require(!model.ShowRtssInitialize() && !model.CanInitializeMagpie(), "Read failure is unknown and cannot reintroduce initialization");
+		Require(!model.ShowRtssInitialize() && model.CanInitializeMagpie(), "Unknown initialization state hides the automatic action while manual retry uses capability checks");
 		RtssService::Get().initializationUnknown = false;
 		RtssService::Get().launching = true;
 		Require(!model.CanInitializeMagpie(), "Button prevents conflicting launch command");

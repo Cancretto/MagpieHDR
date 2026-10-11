@@ -36,12 +36,23 @@ struct RtssService {
 	RtssStatus status;
 	bool pending = false, launching = false, initialized = false;
 	bool initializationUnknown = false;
+	bool preparing = false;
+	std::weak_ptr<const uint8_t> sessionIdentity;
+	uint64_t sessionGeneration = 0;
 	static RtssService& Get() { static RtssService service; return service; }
 	bool IsInitializingMagpie() const { return pending; }
 	bool IsMagpieInitialized() const { return initialized; }
 	RtssInitializationState MagpieInitialization() const { return initializationUnknown ? RtssInitializationState::Unknown :
 		initialized ? RtssInitializationState::Initialized : RtssInitializationState::Uninitialized; }
 	bool IsLaunching() const { return launching; }
+	bool IsPreparing() const { return preparing; }
+	bool HasSession(std::weak_ptr<const uint8_t> identity) const {
+		const auto owner = identity.lock();
+		return owner && owner == sessionIdentity.lock();
+	}
+	bool IsCurrentStatus(const RtssStatus& candidate, std::weak_ptr<const uint8_t> identity) const {
+		return HasSession(identity) && candidate.sessionGeneration == sessionGeneration && candidate.profileIdentity.lock() == identity.lock();
+	}
 	RtssStatus Status() const { return status; }
 };
 struct ProfileData {
@@ -66,6 +77,10 @@ struct ProfileViewModel {
 };
 struct StatusViewModel {
 	ProfileData data; ProfileData* _data = &data;
+	bool syncAvailable = true;
+	bool IsRtssManaged() const { return data.rtss.scope != RtssScope::None; }
+	bool ShowRtssSyncedRate() const { return IsRtssManaged() && data.rtss.rateMode == RtssRateMode::ContentSync; }
+	bool IsRtssSyncAvailable() const { return syncAvailable; }
 	RtssStatus _rtssPreview;
 	RtssStatus _RtssStatus() const;
 	bool CanInitializeMagpie() const;
