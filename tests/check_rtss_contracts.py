@@ -29,19 +29,24 @@ check([n.get(x+"Uid") for n in uids["Rtss_ExitPolicy_Input"]] == ["Rtss_Exit_Kee
 rate_grid = next(n for n in nodes if uids["Rtss_CustomRate_Input"] in list(n))
 check(rate_grid.get("Visibility") == "{x:Bind ViewModel.ShowRtssCustomRate, Mode=OneWay}", "custom number and unit dependency")
 check("FrameRefresh_Advanced" not in uids and "Rtss_Advanced" not in uids, "no nested advanced group")
-options = next(n for n in nodes if n.get(x+"Name") == "RtssOptionsGrid")
-check(options.get("Visibility") == "{x:Bind ViewModel.ShowRtssOptions, Mode=OneWay}", "dependent options hidden when unmanaged/simple")
-check(options.get("SizeChanged") == "RtssOptionsGrid_SizeChanged", "responsive native layout")
 for uid in ("Rtss_Scope_Input", "Rtss_ExitPolicy_Input"):
-    check(uids[uid].get("Style") == "{StaticResource RtssOptionComboBoxStyle}", "same native option style")
+    row = next(n for n in nodes if uids[uid] in list(n))
+    check(row.tag.endswith("SettingsCard") and row.get("Visibility") == "{x:Bind ViewModel.ShowRtssOptions, Mode=OneWay}", "dependent options use separate shared rows")
+    check(row.get("SizeChanged") == "ProfileCard_SizeChanged", "responsive page layout")
+    check(uids[uid].get("Style") == "{StaticResource ProfileComboBoxStyle}", "same native option style")
 status = next(n for n in nodes if n.get(x+"Name") == "RtssStatusCard")
 check("Visibility" not in status.attrib and "IsEnabled" not in status.attrib, "shared status in both modes")
 check(uids["Rtss_Retry"].get("Click") == "{x:Bind ViewModel.RetryRtss}", "retry current session")
 check(uids["Rtss_Download"].get("NavigateUri").startswith("https://www.guru3d.com/"), "explicit external download link")
-manage = next(n for n in status if n.get(x+"Name") == "RtssManagement")
-check(not any(n.tag.endswith("MenuFlyoutItem") for n in status.iter()), "management stays inline")
-check(len([n for n in manage.iter() if n.tag.endswith("Button")]) == 4, "recheck/self init/tool entries in management details")
-presentation = status[0]
+manage = next(n for n in status.iter() if n.get(x+"Name") == "RtssManagementToggle")
+check(manage.get("Checked") == "RtssManagement_Changed" and manage.get("Unchecked") == "RtssManagement_Changed", "native toggle exposes inline management")
+details = [next(n for n in nodes if n.get(x+"Name") == name) for name in ("RtssProgramCard", "RtssSelfCard", "RtssAfterburnerCard", "RtssResultCard")]
+items = next(n for n in rtss if n.tag.endswith("SettingsExpander.Items"))
+check(status in list(items) and all(n in list(items) for n in details), "status and details share direct native settings rows")
+check(all(n.get("Style") == "{StaticResource ProfileItemStyle}" for n in [status]+details), "continuous group surface")
+check(sum(n.tag.endswith("Button") for row in details for n in row.iter()) == 4, "recheck/self init/tool entries remain available")
+check(status.get(x+"Uid") == "Rtss_Takeover", "fixed feature title independent of current state")
+presentation = status
 texts = {n.get("Text") for n in presentation.iter()}
 check("{x:Bind ViewModel.RtssStatusTitle, Mode=OneWay}" in texts and
       "{x:Bind ViewModel.RtssStatusDescription, Mode=OneWay}" in texts, "independent status title and detail")

@@ -1323,4 +1323,23 @@
   <data name="Rtss_Management_LaunchFailed" xml:space="preserve"><value>RTSS did not start</value></data>
   <data name="Rtss_Management_Started" xml:space="preserve"><value>Started</value></data>
   <data name="Rtss_Detail_RetryReady" xml:space="preserve"><value>RTSS is available. Retry to apply the frame cap.</value></data>
+  <data name="Rtss_Takeover.Header" xml:space="preserve"><value>RTSS configuration management</value></data>
+  <data name="Rtss_ManageText.Text" xml:space="preserve"><value>Manage</value></data>
+  <data name="Rtss_ManagementToggle.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Manage</value></data>
+  <data name="Rtss_OptionalAfterburner.Header" xml:space="preserve"><value>MSI Afterburner</value></data>
+  <data name="Rtss_OptionalAfterburner.Description" xml:space="preserve"><value>Optional tool</value></data>
+  <data name="Rtss_LaunchOptional.Content" xml:space="preserve"><value>Launch</value></data>
+  <data name="Rtss_LaunchOptional.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Launch MSI Afterburner</value></data>
+  <data name="Profile_CropLeftLabel.Text" xml:space="preserve"><value>La gauche</value></data>
+  <data name="Profile_CropLeft_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>La gauche</value></data>
+  <data name="Profile_CropRightLabel.Text" xml:space="preserve"><value>La droite</value></data>
+  <data name="Profile_CropRight_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>La droite</value></data>
+  <data name="Profile_CropTopLabel.Text" xml:space="preserve"><value>Le haut</value></data>
+  <data name="Profile_CropTop_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Le haut</value></data>
+  <data name="Profile_CropBottomLabel.Text" xml:space="preserve"><value>Le bas</value></data>
+  <data name="Profile_CropBottom_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Le bas</value></data>
+  <data name="Rtss_ManagementExpanded" xml:space="preserve"><value>Management details expanded</value></data>
+  <data name="Rtss_ManagementCollapsed" xml:space="preserve"><value>Management details collapsed</value></data>
+  <data name="Profile_InitialScale_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>facteur d'échelle initial</value></data>
+  <data name="Profile_CursorScale_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Facteur de mise à l'échelle</value></data>
 </root>
