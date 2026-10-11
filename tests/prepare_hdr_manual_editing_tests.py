@@ -94,6 +94,7 @@ struct RemovedEvent {
 };
 struct ScalingModeEffectItem : std::enable_shared_from_this<ScalingModeEffectItem> {
  uint32_t _scalingModeIdx=0,_effectIdx=0; const EffectInfo* _effectInfo=nullptr; RemovedEvent Removed;
+ bool _refreshingScalingTypes=false;
  auto get_strong() { return shared_from_this(); }
  auto& _Data() { return ScalingModesService::Get().GetScalingMode(_scalingModeIdx).effects.at(_effectIdx); }
  const auto& _Data() const { return ScalingModesService::Get().GetScalingMode(_scalingModeIdx).effects.at(_effectIdx); }

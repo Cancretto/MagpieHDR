@@ -312,11 +312,11 @@
             "options": [
               {
                 "value": "0",
-                "label": "Low"
+                "label": "Performance"
               },
               {
                 "value": "1",
-                "label": "Medium"
+                "label": "Balanced"
               }
             ],
             "label": "Model",
