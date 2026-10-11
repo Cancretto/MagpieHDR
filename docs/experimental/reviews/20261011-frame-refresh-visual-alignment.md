@@ -1,5 +1,7 @@
 # 帧率与刷新第三阶段：界面结构修复与交接
 
+最新状态：第四阶段已按用户选定的中性分段和整组等宽方案完成整页源码实施与适用检查，覆盖 RTSS、光标、裁剪及原有高级等全部 ProfilePage 控件。见[第四阶段实施与交接](20261011-profile-controls-unified.md)及[TODO S01–S09](../todos/20261011-frame-refresh-modes-TODO.md)。S07 / V07 原生视觉与 RTSS 验收仍未完成；没有产品编译或部署。下文保留第三阶段历史，旧 172 / 352 输入宽度与独立 RTSS 管理面板已由第四阶段替代。
+
 日期：2026-10-11。继续已有 `feature/0610-frame-refresh-rtss-auto` 分支，修复前基线 `21d49cfd`，工作树 `C:/Users/81443/Documents/Magpie enhance/worktrees/0610-frame-refresh-modes`。对应 [TODO V01–V07](../todos/20261011-frame-refresh-modes-TODO.md)。本记录覆盖第二阶段中旧的纵排输入、RTSS 菜单及主状态描述。
 
 本轮完成 V01–V06 的源码与针对性检查，V07 真实原生视觉验收待后续会话。未链接 Magpie 产品、生成新 Release、部署、合并主线或推送；未启动或修改用户安装的 RTSS、Afterburner、Magpie 和用户配置。测试可执行文件、测试 PRI、IDL/XAML 生成文件均在独立 reports 目录。

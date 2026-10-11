@@ -26,11 +26,15 @@ for mode, number in (("FrameRefresh_Content_Input", "FrameRefresh_ContentRate_In
                      ("Rtss_Mode_Input", "Rtss_CustomRate_Input"),
                      ("FrameRefresh_CursorSupplement_Input", "FrameRefresh_CursorRate_Input")):
     pair = next(n for n in group.iter() if uids[mode] in list(n))
-    assert pair.tag == local + "WrapPanel" and uids[number] in list(pair.iter()), "mode and rate must share one wrapping row"
+    assert pair.tag.endswith("Grid") and uids[number] in list(pair.iter()), "mode and rate share one responsive editor"
+    assert pair.get("Loaded") == "PairEditor_Loaded" and pair.get("SizeChanged") == "PairEditor_SizeChanged"
 header_actions = next(n for n in group.iter() if uids["FrameRefresh_Mode_Input"] in list(n))
 assert uids["FrameRefresh_ResetButton"] in list(header_actions), "reset belongs beside mode selection"
 assert "Visibility" not in uids["FrameRefresh_ResetButton"].attrib, "reset is available in both modes"
 assert uids["FrameRefresh_Mode_Input"].tag.endswith("ListBox") and uids["FrameRefresh_Mode_Input"].get("SelectionMode") == "Single"
+mode_style = next(n for n in profile.iter() if n.get(x+"Key") == "FrameRefreshModeItemStyle")
+states = {n.get(x+"Name") for n in mode_style.iter() if n.tag.endswith("VisualState")}
+assert {"Selected", "SelectedUnfocused", "SelectedPointerOver", "SelectedPressed", "Disabled"} <= states
 assert "FrameRefresh_Advanced" not in uids
 assert "FrameRefresh_Mode" not in uids
 assert [c.get(x+"Uid") for c in uids["FrameRefresh_Content_Input"]] == ["FrameRefresh_Source", "FrameRefresh_Custom"]
@@ -43,6 +47,27 @@ assert all(n.get("IsWrapEnabled") == "True" for n in group.iter(local+"SettingsC
 for n in group.iter("{using:Microsoft.UI.Xaml.Controls}NumberBox"):
     assert n.get("Minimum") == "15" and n.get("Maximum") == "360"
     assert n.get("SmallChange") == "1" and "IntegerFormatter" in n.get("NumberFormatter", "")
+# The shared page layout must preserve the original non-refresh controls too.
+page_uids = {n.get(x+"Uid"): n for n in profile.iter() if n.get(x+"Uid")}
+number_style = next(n for n in profile.iter() if n.get(x+"Key") == "ProfileNumberBoxStyle")
+assert any(n.get("Property") == "SpinButtonPlacementMode" and n.get("Value") == "Hidden" for n in number_style)
+numbers = list(profile.iter("{using:Microsoft.UI.Xaml.Controls}NumberBox"))
+assert len(numbers) == 10
+assert all(n.get("Loaded") == "NumberBox_Loaded" and n.get("Style") == "{StaticResource ProfileNumberBoxStyle}" for n in numbers)
+for direction in ("Left", "Right", "Top", "Bottom"):
+    n = page_uids[f"Profile_Crop{direction}_Input"]
+    assert n.get("Value") == f"{{x:Bind ViewModel.Cropping{direction}, Mode=TwoWay}}"
+    assert n.get("Minimum") == "0" and "DoubleFormatter" in n.get("NumberFormatter", "")
+for uid, minimum in (("Profile_InitialScale_Input", "1"), ("Profile_CursorScale_Input", "0.1")):
+    assert page_uids[uid].get("Minimum") == minimum and page_uids[uid].get("Maximum") == "10"
+    assert page_uids[uid].get("SmallChange") == "0.1"
+launch = page_uids["Profile_Advanced_LaunchParameters"]
+assert launch.get("ContentAlignment") == "Vertical" and "IsNotDefaultProfile" in launch.get(x+"Load", "")
+assert page_uids["Profile_SourceWindow_CaptureTitleBar"].get("IsEnabled") == "{x:Bind ViewModel.CanCaptureTitleBar, Mode=OneWay}"
+assert "HasMultipleMonitors" in page_uids["Profile_General_Multimonitor"].get(x+"Load", "")
+page_cpp = read("src/Magpie/ProfilePage.cpp")
+assert "SettingsCardContentMinWidth" not in page_cpp, "scale selection must not restore the old global width"
+assert "ControlHelper::NumberBox_Loaded(sender)" in page_cpp and "ControlHelper::ComboBox_DropDownOpened(sender)" in page_cpp
 home = read("src/Magpie/HomePage.xaml")
 assert "MinFrameRateIndex" not in home and "DefaultFrameRefreshSummary" in home and "EditDefaultFrameRefresh" in home
 assert "Profile_Cursor_Refresh" not in read("src/Magpie/ProfilePage.xaml")
@@ -64,6 +89,8 @@ for file in (repo / "src/Magpie").glob("Resources.language-*.resw"):
     assert len(resources) == len(root.findall("data")), lang
     assert all(k in resources for k in ("FrameRefresh_Mode.Header", "FrameRefresh_Mode.Description", "FrameRefresh_Mode_Simple.Content", "FrameRefresh_Mode_Advanced.Content"))
     resources = fallback | resources
+    for uid in ("Profile_InitialScale_Input", "Profile_CursorScale_Input", "Profile_CropLeft_Input", "Profile_CropRight_Input", "Profile_CropTop_Input", "Profile_CropBottom_Input"):
+        assert resources[uid + ".[using:Windows.UI.Xaml.Automation]AutomationProperties.Name"], (lang, uid)
     for n in group.iter():
         uid = n.get(x + "Uid", "")
         if not uid:
@@ -72,6 +99,8 @@ for file in (repo / "src/Magpie").glob("Resources.language-*.resw"):
             assert resources[uid + ".Header"], (lang, uid)
         elif n.tag.endswith("ToggleSwitch"):
             assert resources[uid + ".OffContent"] and resources[uid + ".OnContent"], (lang, uid)
+            assert resources[uid + ".[using:Windows.UI.Xaml.Automation]AutomationProperties.Name"], (lang, uid)
+        elif n.tag.endswith("ToggleButton"):
             assert resources[uid + ".[using:Windows.UI.Xaml.Automation]AutomationProperties.Name"], (lang, uid)
         elif n.tag.endswith(("NumberBox", "ComboBox", "ListBox")):
             assert resources[uid + "_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" if not uid.endswith("_Input") else uid + ".[using:Windows.UI.Xaml.Automation]AutomationProperties.Name"], (lang, uid)
