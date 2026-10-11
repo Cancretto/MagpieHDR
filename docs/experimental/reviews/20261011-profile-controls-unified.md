@@ -1,5 +1,7 @@
 # 配置页控件统一：源码实现与交接
 
+后续更新：单位位置、模式实际外框和 RTSS 归组已由[第五阶段](20261011-rtss-grouped-units.md)替代；本文件保留第四阶段记录。
+
 日期：2026-10-11。分支 `feature/0610-frame-refresh-rtss-auto`，工作树 `worktrees/0610-frame-refresh-modes`，本阶段开发基线 `5ec7a234`。依据 [第四阶段 TODO S01–S09](../todos/20261011-frame-refresh-modes-TODO.md)，延续用户选定的中性分段及整组等宽方案。
 
 本阶段完成呈现层源码和适用的源码检查。未构建 Magpie 产品、打包或部署 Release、启动外部工具、修改用户配置、合并主线或推送。真实 WinUI 视觉、DPI、交互与 RTSS 运行验收仍是 S07 / V07，未勾选。

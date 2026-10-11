@@ -12,6 +12,7 @@
 		<x:Double x:Key="SettingsCardWrapNoIconThreshold">0</x:Double>
 		<x:Double x:Key="ProfileControlColumnWidth">280</x:Double>
 		<x:Double x:Key="ProfileNumberColumnWidth">116</x:Double>
+		<GridLength x:Key="ProfileUnitColumnWidth">28</GridLength>
 		<x:Double x:Key="ProfileActionWidth">136</x:Double>
 		<x:Double x:Key="ProfileControlGap">8</x:Double>
 		<Style x:Key="ProfileCardStyle" TargetType="local:SettingsCard" BasedOn="{StaticResource DefaultSettingsCardStyle}">
@@ -38,8 +39,6 @@
 			<Setter Property="VerticalAlignment" Value="Center"/>
 			<Setter Property="SpinButtonPlacementMode" Value="Hidden"/>
 			<Setter Property="Padding" Value="8,4,0,4"/>
-			<Setter Property="BorderThickness" Value="0"/>
-			<Setter Property="Background" Value="Transparent"/>
 		</Style>
 		<Style x:Key="ProfileActionStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
 			<Setter Property="Width" Value="{StaticResource ProfileActionWidth}"/>
@@ -253,11 +252,10 @@
 						<Grid Grid.Column="2"
 							x:Name="CustomInitialWindowedScaleFactorEditor"
 							Visibility="Collapsed"
-							Background="{ThemeResource TextControlBackground}"
-							CornerRadius="{ThemeResource ControlCornerRadius}">
+							ColumnSpacing="{StaticResource ProfileControlGap}">
 							<Grid.ColumnDefinitions>
 								<ColumnDefinition Width="*"/>
-								<ColumnDefinition Width="Auto"/>
+								<ColumnDefinition Width="{StaticResource ProfileUnitColumnWidth}"/>
 							</Grid.ColumnDefinitions>
 							<muxc:NumberBox Style="{StaticResource ProfileNumberBoxStyle}"
 								x:Name="CustomInitialWindowedScaleFactorNumberBox"
@@ -268,12 +266,7 @@
 								NumberFormatter="{x:Bind local:App.DoubleFormatter, Mode=OneTime}"
 								SmallChange="0.1"
 								Value="{x:Bind ViewModel.CustomInitialWindowedScaleFactor, Mode=TwoWay}"/>
-							<TextBlock Grid.Column="1" Text="x" Margin="4,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-							<Border BorderBrush="{ThemeResource TextControlBorderBrush}"
-								BorderThickness="1"
-								CornerRadius="{ThemeResource ControlCornerRadius}"
-								Grid.ColumnSpan="2"
-								IsHitTestVisible="False"/>
+							<TextBlock Grid.Column="1" Text="x" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 						</Grid>
 					</Grid>
 				</local:SettingsCard>
@@ -317,27 +310,31 @@
 						TextWrapping="Wrap"
 						AutomationProperties.HeadingLevel="Level2"/>
 					<local:WrapPanel x:Name="FrameRefreshHeaderActions" Grid.Column="1" HorizontalAlignment="Right" HorizontalSpacing="8" VerticalSpacing="8" VerticalAlignment="Center">
-						<ListBox x:Uid="FrameRefresh_Mode_Input"
-							ItemContainerStyle="{StaticResource FrameRefreshModeItemStyle}"
+						<!-- The stock ListBox template does not bind CornerRadius. -->
+						<Border x:Name="FrameRefreshModeBorder"
+							CornerRadius="6" Padding="1" BorderThickness="1"
 							Background="{ThemeResource ControlAltFillColorSecondaryBrush}"
-							BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-							BorderThickness="1"
-							SelectionMode="Single"
-							SelectedIndex="{x:Bind ViewModel.FrameRefreshModeIndex, Mode=TwoWay}"
-							Padding="1"
-							CornerRadius="4"
-							ScrollViewer.HorizontalScrollMode="Disabled"
-							ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-							ScrollViewer.VerticalScrollMode="Disabled"
-							ScrollViewer.VerticalScrollBarVisibility="Disabled">
-							<ListBox.ItemsPanel>
-								<ItemsPanelTemplate>
-									<StackPanel Orientation="Horizontal"/>
-								</ItemsPanelTemplate>
-							</ListBox.ItemsPanel>
-							<ListBoxItem x:Uid="FrameRefresh_Mode_Simple"/>
-							<ListBoxItem x:Uid="FrameRefresh_Mode_Advanced"/>
-						</ListBox>
+							BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+							<ListBox x:Uid="FrameRefresh_Mode_Input"
+								ItemContainerStyle="{StaticResource FrameRefreshModeItemStyle}"
+								Background="Transparent"
+								BorderThickness="0"
+								SelectionMode="Single"
+								SelectedIndex="{x:Bind ViewModel.FrameRefreshModeIndex, Mode=TwoWay}"
+								Padding="0"
+								ScrollViewer.HorizontalScrollMode="Disabled"
+								ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+								ScrollViewer.VerticalScrollMode="Disabled"
+								ScrollViewer.VerticalScrollBarVisibility="Disabled">
+								<ListBox.ItemsPanel>
+									<ItemsPanelTemplate>
+										<StackPanel Orientation="Horizontal"/>
+									</ItemsPanelTemplate>
+								</ListBox.ItemsPanel>
+								<ListBoxItem x:Uid="FrameRefresh_Mode_Simple"/>
+								<ListBoxItem x:Uid="FrameRefresh_Mode_Advanced"/>
+							</ListBox>
+						</Border>
 						<Button x:Uid="FrameRefresh_ResetButton" VerticalAlignment="Center" Click="{x:Bind ViewModel.ResetFrameRefresh}"/>
 					</local:WrapPanel>
 				</Grid>
@@ -375,11 +372,10 @@
 								</ComboBox>
 								<Grid Grid.Column="2"
 									Visibility="{x:Bind ViewModel.ShowContentFrameRate, Mode=OneWay}"
-									Background="{ThemeResource TextControlBackground}"
-									CornerRadius="{ThemeResource ControlCornerRadius}">
+									ColumnSpacing="{StaticResource ProfileControlGap}">
 									<Grid.ColumnDefinitions>
 										<ColumnDefinition Width="*"/>
-										<ColumnDefinition Width="Auto"/>
+										<ColumnDefinition Width="{StaticResource ProfileUnitColumnWidth}"/>
 									</Grid.ColumnDefinitions>
 									<muxc:NumberBox x:Uid="FrameRefresh_ContentRate_Input"
 										Style="{StaticResource ProfileNumberBoxStyle}"
@@ -390,12 +386,7 @@
 										Loaded="NumberBox_Loaded"
 										NumberFormatter="{x:Bind local:App.IntegerFormatter, Mode=OneTime}"
 										Value="{x:Bind ViewModel.ContentFrameRate, Mode=TwoWay}"/>
-									<TextBlock Grid.Column="1" Text="FPS" Margin="4,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-									<Border BorderBrush="{ThemeResource TextControlBorderBrush}"
-										BorderThickness="1"
-										CornerRadius="{ThemeResource ControlCornerRadius}"
-										Grid.ColumnSpan="2"
-										IsHitTestVisible="False"/>
+									<TextBlock Grid.Column="1" Text="FPS" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 								</Grid>
 							</Grid>
 						</local:SettingsCard>
@@ -415,6 +406,18 @@
 								<ComboBoxItem x:Uid="FrameSync_Mode_Reflex"/>
 							</ComboBox>
 						</local:SettingsCard>
+					</local:SettingsExpander.Items>
+				</local:SettingsExpander>
+				<local:SettingsExpander Style="{StaticResource ProfileExpanderStyle}"
+					Loaded="ProfileExpander_Loaded"
+					SizeChanged="ProfileExpander_SizeChanged"
+					x:Uid="Rtss_Takeover"
+					IsExpanded="True"
+					IsWrapEnabled="True">
+					<local:SettingsExpander.HeaderIcon>
+						<FontIcon Glyph="&#xE71B;"/>
+					</local:SettingsExpander.HeaderIcon>
+					<local:SettingsExpander.Items>
 						<local:SettingsCard Style="{StaticResource ProfileItemStyle}"
 							Loaded="ProfileCard_Loaded"
 							SizeChanged="ProfileCard_SizeChanged"
@@ -449,11 +452,10 @@
 								</ComboBox>
 								<Grid Grid.Column="2"
 									Visibility="{x:Bind ViewModel.ShowRtssCustomRate, Mode=OneWay}"
-									Background="{ThemeResource TextControlBackground}"
-									CornerRadius="{ThemeResource ControlCornerRadius}">
+									ColumnSpacing="{StaticResource ProfileControlGap}">
 									<Grid.ColumnDefinitions>
 										<ColumnDefinition Width="*"/>
-										<ColumnDefinition Width="Auto"/>
+										<ColumnDefinition Width="{StaticResource ProfileUnitColumnWidth}"/>
 									</Grid.ColumnDefinitions>
 									<muxc:NumberBox x:Uid="Rtss_CustomRate_Input"
 										Style="{StaticResource ProfileNumberBoxStyle}"
@@ -464,12 +466,7 @@
 										Loaded="NumberBox_Loaded"
 										NumberFormatter="{x:Bind local:App.IntegerFormatter, Mode=OneTime}"
 										Value="{x:Bind ViewModel.RtssCustomRate, Mode=TwoWay}"/>
-									<TextBlock Grid.Column="1" Text="FPS" Margin="4,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-									<Border BorderBrush="{ThemeResource TextControlBorderBrush}"
-										BorderThickness="1"
-										CornerRadius="{ThemeResource ControlCornerRadius}"
-										Grid.ColumnSpan="2"
-										IsHitTestVisible="False"/>
+									<TextBlock Grid.Column="1" Text="FPS" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 								</Grid>
 							</Grid>
 						</local:SettingsCard>
@@ -511,25 +508,23 @@
 							Loaded="ProfileCard_Loaded"
 							SizeChanged="ProfileCard_SizeChanged"
 							x:Name="RtssStatusCard"
-							x:Uid="Rtss_Takeover"
 							Padding="16,8,48,8"
+							Description="{x:Bind ViewModel.RtssStatusDescription, Mode=OneWay}"
+							AutomationProperties.LiveSetting="Polite"
 							IsWrapEnabled="True">
 							<local:SettingsCard.HeaderIcon>
 								<FontIcon Width="20" Height="20" Glyph="{x:Bind ViewModel.RtssStatusGlyph, Mode=OneWay}"/>
 							</local:SettingsCard.HeaderIcon>
-							<local:SettingsCard.Description>
-								<StackPanel Spacing="4" AutomationProperties.LiveSetting="Polite">
-									<Grid>
-										<Grid.ColumnDefinitions>
-											<ColumnDefinition Width="Auto"/>
-											<ColumnDefinition Width="*"/>
-										</Grid.ColumnDefinitions>
-										<ProgressRing Width="20" Height="20" Margin="0,0,8,0" IsActive="{x:Bind ViewModel.IsRtssBusy, Mode=OneWay}" Visibility="{x:Bind ViewModel.IsRtssBusy, Mode=OneWay}"/>
-										<TextBlock Grid.Column="1" Text="{x:Bind ViewModel.RtssStatusTitle, Mode=OneWay}" TextWrapping="Wrap"/>
-									</Grid>
-									<TextBlock Text="{x:Bind ViewModel.RtssStatusDescription, Mode=OneWay}" TextWrapping="Wrap"/>
-								</StackPanel>
-							</local:SettingsCard.Description>
+							<local:SettingsCard.Header>
+								<Grid>
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="Auto"/>
+										<ColumnDefinition Width="*"/>
+									</Grid.ColumnDefinitions>
+									<ProgressRing Width="20" Height="20" Margin="0,0,8,0" IsActive="{x:Bind ViewModel.IsRtssBusy, Mode=OneWay}" Visibility="{x:Bind ViewModel.IsRtssBusy, Mode=OneWay}"/>
+									<TextBlock Grid.Column="1" Text="{x:Bind ViewModel.RtssStatusTitle, Mode=OneWay}" TextWrapping="Wrap"/>
+								</Grid>
+							</local:SettingsCard.Header>
 							<Grid>
 								<local:WrapPanel HorizontalSpacing="8" VerticalSpacing="8" HorizontalAlignment="Right">
 									<HyperlinkButton x:Uid="Rtss_Download"
@@ -690,11 +685,10 @@
 								</ComboBox>
 								<Grid Grid.Column="2"
 									Visibility="{x:Bind ViewModel.ShowIdleRedrawRate, Mode=OneWay}"
-									Background="{ThemeResource TextControlBackground}"
-									CornerRadius="{ThemeResource ControlCornerRadius}">
+									ColumnSpacing="{StaticResource ProfileControlGap}">
 									<Grid.ColumnDefinitions>
 										<ColumnDefinition Width="*"/>
-										<ColumnDefinition Width="Auto"/>
+										<ColumnDefinition Width="{StaticResource ProfileUnitColumnWidth}"/>
 									</Grid.ColumnDefinitions>
 									<muxc:NumberBox x:Uid="FrameRefresh_IdleRate_Input"
 										Style="{StaticResource ProfileNumberBoxStyle}"
@@ -705,12 +699,7 @@
 										Loaded="NumberBox_Loaded"
 										NumberFormatter="{x:Bind local:App.IntegerFormatter, Mode=OneTime}"
 										Value="{x:Bind ViewModel.IdleRedrawRate, Mode=TwoWay}"/>
-									<TextBlock Grid.Column="1" Text="FPS" Margin="4,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-									<Border BorderBrush="{ThemeResource TextControlBorderBrush}"
-										BorderThickness="1"
-										CornerRadius="{ThemeResource ControlCornerRadius}"
-										Grid.ColumnSpan="2"
-										IsHitTestVisible="False"/>
+									<TextBlock Grid.Column="1" Text="FPS" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 								</Grid>
 							</Grid>
 						</local:SettingsCard>
@@ -766,11 +755,10 @@
 								</ComboBox>
 								<Grid Grid.Column="2"
 									Visibility="{x:Bind ViewModel.ShowCursorSupplementRate, Mode=OneWay}"
-									Background="{ThemeResource TextControlBackground}"
-									CornerRadius="{ThemeResource ControlCornerRadius}">
+									ColumnSpacing="{StaticResource ProfileControlGap}">
 									<Grid.ColumnDefinitions>
 										<ColumnDefinition Width="*"/>
-										<ColumnDefinition Width="Auto"/>
+										<ColumnDefinition Width="{StaticResource ProfileUnitColumnWidth}"/>
 									</Grid.ColumnDefinitions>
 									<muxc:NumberBox x:Uid="FrameRefresh_CursorRate_Input"
 										Style="{StaticResource ProfileNumberBoxStyle}"
@@ -781,12 +769,7 @@
 										Loaded="NumberBox_Loaded"
 										NumberFormatter="{x:Bind local:App.IntegerFormatter, Mode=OneTime}"
 										Value="{x:Bind ViewModel.CursorSupplementRate, Mode=TwoWay}"/>
-									<TextBlock Grid.Column="1" Text="FPS" Margin="4,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-									<Border BorderBrush="{ThemeResource TextControlBorderBrush}"
-										BorderThickness="1"
-										CornerRadius="{ThemeResource ControlCornerRadius}"
-										Grid.ColumnSpan="2"
-										IsHitTestVisible="False"/>
+									<TextBlock Grid.Column="1" Text="FPS" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 								</Grid>
 							</Grid>
 						</local:SettingsCard>
@@ -827,10 +810,10 @@
 								<local:WrapPanel HorizontalAlignment="Right" HorizontalSpacing="8" VerticalSpacing="12">
 									<StackPanel Width="{StaticResource ProfileActionWidth}" Spacing="4">
 										<TextBlock x:Name="CropLeftLabel" x:Uid="Profile_CropLeftLabel"/>
-										<Grid Background="{ThemeResource TextControlBackground}" CornerRadius="{ThemeResource ControlCornerRadius}">
+										<Grid ColumnSpacing="{StaticResource ProfileControlGap}">
 											<Grid.ColumnDefinitions>
 												<ColumnDefinition Width="*"/>
-												<ColumnDefinition Width="Auto"/>
+												<ColumnDefinition Width="{StaticResource ProfileUnitColumnWidth}"/>
 											</Grid.ColumnDefinitions>
 											<muxc:NumberBox x:Uid="Profile_CropLeft_Input"
 												LargeChange="10"
@@ -840,20 +823,15 @@
 												SmallChange="1"
 												Style="{StaticResource ProfileNumberBoxStyle}"
 												Value="{x:Bind ViewModel.CroppingLeft, Mode=TwoWay}"/>
-											<TextBlock Grid.Column="1" Text="px" Margin="4,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-											<Border BorderBrush="{ThemeResource TextControlBorderBrush}"
-												BorderThickness="1"
-												CornerRadius="{ThemeResource ControlCornerRadius}"
-												Grid.ColumnSpan="2"
-												IsHitTestVisible="False"/>
+											<TextBlock Grid.Column="1" Text="px" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 										</Grid>
 									</StackPanel>
 									<StackPanel Width="{StaticResource ProfileActionWidth}" Spacing="4">
 										<TextBlock x:Name="CropRightLabel" x:Uid="Profile_CropRightLabel"/>
-										<Grid Background="{ThemeResource TextControlBackground}" CornerRadius="{ThemeResource ControlCornerRadius}">
+										<Grid ColumnSpacing="{StaticResource ProfileControlGap}">
 											<Grid.ColumnDefinitions>
 												<ColumnDefinition Width="*"/>
-												<ColumnDefinition Width="Auto"/>
+												<ColumnDefinition Width="{StaticResource ProfileUnitColumnWidth}"/>
 											</Grid.ColumnDefinitions>
 											<muxc:NumberBox x:Uid="Profile_CropRight_Input"
 												LargeChange="10"
@@ -863,20 +841,15 @@
 												SmallChange="1"
 												Style="{StaticResource ProfileNumberBoxStyle}"
 												Value="{x:Bind ViewModel.CroppingRight, Mode=TwoWay}"/>
-											<TextBlock Grid.Column="1" Text="px" Margin="4,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-											<Border BorderBrush="{ThemeResource TextControlBorderBrush}"
-												BorderThickness="1"
-												CornerRadius="{ThemeResource ControlCornerRadius}"
-												Grid.ColumnSpan="2"
-												IsHitTestVisible="False"/>
+											<TextBlock Grid.Column="1" Text="px" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 										</Grid>
 									</StackPanel>
 									<StackPanel Width="{StaticResource ProfileActionWidth}" Spacing="4">
 										<TextBlock x:Name="CropTopLabel" x:Uid="Profile_CropTopLabel"/>
-										<Grid Background="{ThemeResource TextControlBackground}" CornerRadius="{ThemeResource ControlCornerRadius}">
+										<Grid ColumnSpacing="{StaticResource ProfileControlGap}">
 											<Grid.ColumnDefinitions>
 												<ColumnDefinition Width="*"/>
-												<ColumnDefinition Width="Auto"/>
+												<ColumnDefinition Width="{StaticResource ProfileUnitColumnWidth}"/>
 											</Grid.ColumnDefinitions>
 											<muxc:NumberBox x:Uid="Profile_CropTop_Input"
 												LargeChange="10"
@@ -886,20 +859,15 @@
 												SmallChange="1"
 												Style="{StaticResource ProfileNumberBoxStyle}"
 												Value="{x:Bind ViewModel.CroppingTop, Mode=TwoWay}"/>
-											<TextBlock Grid.Column="1" Text="px" Margin="4,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-											<Border BorderBrush="{ThemeResource TextControlBorderBrush}"
-												BorderThickness="1"
-												CornerRadius="{ThemeResource ControlCornerRadius}"
-												Grid.ColumnSpan="2"
-												IsHitTestVisible="False"/>
+											<TextBlock Grid.Column="1" Text="px" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 										</Grid>
 									</StackPanel>
 									<StackPanel Width="{StaticResource ProfileActionWidth}" Spacing="4">
 										<TextBlock x:Name="CropBottomLabel" x:Uid="Profile_CropBottomLabel"/>
-										<Grid Background="{ThemeResource TextControlBackground}" CornerRadius="{ThemeResource ControlCornerRadius}">
+										<Grid ColumnSpacing="{StaticResource ProfileControlGap}">
 											<Grid.ColumnDefinitions>
 												<ColumnDefinition Width="*"/>
-												<ColumnDefinition Width="Auto"/>
+												<ColumnDefinition Width="{StaticResource ProfileUnitColumnWidth}"/>
 											</Grid.ColumnDefinitions>
 											<muxc:NumberBox x:Uid="Profile_CropBottom_Input"
 												LargeChange="10"
@@ -909,12 +877,7 @@
 												SmallChange="1"
 												Style="{StaticResource ProfileNumberBoxStyle}"
 												Value="{x:Bind ViewModel.CroppingBottom, Mode=TwoWay}"/>
-											<TextBlock Grid.Column="1" Text="px" Margin="4,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-											<Border BorderBrush="{ThemeResource TextControlBorderBrush}"
-												BorderThickness="1"
-												CornerRadius="{ThemeResource ControlCornerRadius}"
-												Grid.ColumnSpan="2"
-												IsHitTestVisible="False"/>
+											<TextBlock Grid.Column="1" Text="px" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 										</Grid>
 									</StackPanel>
 								</local:WrapPanel>
@@ -963,11 +926,10 @@
 							<Grid Grid.Column="2"
 								x:Name="CustomCursorScalingEditor"
 								Visibility="Collapsed"
-								Background="{ThemeResource TextControlBackground}"
-								CornerRadius="{ThemeResource ControlCornerRadius}">
+								ColumnSpacing="{StaticResource ProfileControlGap}">
 								<Grid.ColumnDefinitions>
 									<ColumnDefinition Width="*"/>
-									<ColumnDefinition Width="Auto"/>
+									<ColumnDefinition Width="{StaticResource ProfileUnitColumnWidth}"/>
 								</Grid.ColumnDefinitions>
 								<muxc:NumberBox Style="{StaticResource ProfileNumberBoxStyle}"
 									x:Name="CustomCursorScalingNumberBox"
@@ -978,12 +940,7 @@
 									NumberFormatter="{x:Bind local:App.DoubleFormatter, Mode=OneTime}"
 									SmallChange="0.1"
 									Value="{x:Bind ViewModel.CustomCursorScaling, Mode=TwoWay}"/>
-								<TextBlock Grid.Column="1" Text="x" Margin="4,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-								<Border BorderBrush="{ThemeResource TextControlBorderBrush}"
-									BorderThickness="1"
-									CornerRadius="{ThemeResource ControlCornerRadius}"
-									Grid.ColumnSpan="2"
-									IsHitTestVisible="False"/>
+								<TextBlock Grid.Column="1" Text="x" VerticalAlignment="Center" IsHitTestVisible="False" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 							</Grid>
 						</Grid>
 					</local:SettingsExpander.Content>

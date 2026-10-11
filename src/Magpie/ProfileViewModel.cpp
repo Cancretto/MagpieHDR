@@ -979,8 +979,9 @@ hstring ProfileViewModel::RtssStatusGlyph() const {
 }
 bool ProfileViewModel::IsRtssBusy() const { return RtssBusy(_RtssStatus().state); }
 bool ProfileViewModel::ShowRtssManagement() const {
-	const auto state = _RtssStatus().state;
-	return state != RtssState::Disabled && state != RtssState::WaitingContent;
+	// Tools can be inspected before a fixed target rate or an active session exists.
+	// Individual actions still use their existing capability and busy-state checks.
+	return true;
 }
 bool ProfileViewModel::CanRecheckRtss() const {
 	const auto& service = RtssService::Get();

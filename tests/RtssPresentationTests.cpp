@@ -120,12 +120,12 @@ int main() {
         manual.state = RtssState::MagpieAlreadyUnlimited; manual.rateKnown = true;
         service._Publish(manual);
         Require(vm._RtssStatus().state == RtssState::Disabled, "manual initialization must not replace disabled");
-        Require(vm.RtssStatusTitle() == L"Rtss_Status_Disabled" && !vm.ShowRtssManagement(), "disabled title and management visibility");
+        Require(vm.RtssStatusTitle() == L"Rtss_Status_Disabled" && vm.ShowRtssManagement(), "disabled linkage still allows dependency management");
         Require(!Contains(vm.RtssStatusDescription(), L"Magpie.exe"), "self profile never becomes target description");
         Require(Contains(vm.RtssManagementResult(), L"Rtss_Status_MagpieInitialized"), "manual result remains available separately");
         vm.data.rtss.scope = RtssScope::Target;
         vm.data.rtss.rateMode = RtssRateMode::ContentSync; vm.source = true;
-        Require(vm._RtssStatus().state == RtssState::WaitingContent && !vm.ShowRtssManagement(), "source without session waits for fixed target");
+        Require(vm._RtssStatus().state == RtssState::WaitingContent && vm.ShowRtssManagement(), "source waits for fixed target but keeps management available");
         vm.source = false;
         Require(vm._RtssStatus().state == RtssState::WaitingTarget, "no session waits for start");
         auto session = std::make_shared<RtssService::Session>();

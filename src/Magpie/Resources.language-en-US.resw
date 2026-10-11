@@ -1849,7 +1849,7 @@
   <data name="HdrParameter_PairSource" xml:space="preserve"><value>Restores settings from HDR -&gt; SDR at effect #{}.</value></data>
 
   <data name="Rtss_TargetLimit.Header" xml:space="preserve"><value>Target application frame rate limit</value></data>
-  <data name="Rtss_TargetLimit.Description" xml:space="preserve"><value>Limit application frame rate using RTSS.</value></data>
+  <data name="Rtss_Takeover.Description" xml:space="preserve"><value>Limit application frame rate using RTSS.</value></data>
   <data name="Rtss_Scope_None.Content" xml:space="preserve"><value>Do not manage RTSS profiles</value></data>
   <data name="Rtss_Scope_Global.Content" xml:space="preserve"><value>Modify global profile</value></data>
   <data name="Rtss_Scope_Target.Content" xml:space="preserve"><value>Modify target application profile</value></data>
@@ -1990,7 +1990,7 @@
     <value>Frame rate control</value>
   </data>
   <data name="FrameRefresh_RateGroup.Description" xml:space="preserve">
-    <value>Set content and target application frame rates.</value>
+    <value>Set content frame rate and pacing.</value>
   </data>
   <data name="FrameRefresh_StaticGroup.Header" xml:space="preserve">
     <value>Static content</value>
@@ -2002,7 +2002,7 @@
     <value>Sync target application limit</value>
   </data>
   <data name="Rtss_SimpleSync.Description" xml:space="preserve">
-    <value>Use RTSS to cap the target application at the content frame rate.</value>
+    <value>Match the content frame rate and restore the original configuration when scaling stops.</value>
   </data>
   <data name="Rtss_SimpleSync_Input.OnContent" xml:space="preserve">
     <value>On</value>
@@ -2052,7 +2052,7 @@
   <data name="FrameRefresh_CursorStrategy.Header" xml:space="preserve"><value>Refresh strategy</value></data>
   <data name="Rtss_Management.Header" xml:space="preserve"><value>Manage</value></data>
   <data name="Rtss_Recheck.Content" xml:space="preserve"><value>Check again</value></data>
-  <data name="Rtss_ProgramLabel.Text" xml:space="preserve"><value>RTSS program</value></data>
+  <data name="Rtss_ProgramLabel.Text" xml:space="preserve"><value>RTSS</value></data>
   <data name="Rtss_SelfLabel.Text" xml:space="preserve"><value>Magpie configuration</value></data>
   <data name="Rtss_Title_WaitingContent" xml:space="preserve"><value>Waiting for a fixed content rate</value></data>
   <data name="Rtss_Detail_Disabled" xml:space="preserve"><value>Target frame rate is not managed.</value></data>
