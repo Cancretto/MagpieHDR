@@ -57,7 +57,7 @@ assert all("ViewModel.IsDeveloperMode" in n.get("IsEnabled", "") for n in dev.it
 uid = "Home_Advanced_DeveloperOptions_DuplicateFrameDetection"
 assert not any(n.get(x + "Uid") == uid for n in home.iter())
 profile_ui = ET.fromstring(read("src/Magpie/ProfilePage.xaml"))
-advanced = next(n for n in profile_ui.iter() if n.get(x + "Uid") == "FrameRefresh")
+advanced = next(n for n in profile_ui.iter() if n.get(x + "Name") == "FrameRefreshGroup")
 cards = [n for n in advanced.iter() if n.get(x + "Uid") == uid]
 assert len(cards) == 1
 assert cards[0].get("Visibility") == "{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}"

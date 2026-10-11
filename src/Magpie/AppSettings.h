@@ -56,7 +56,7 @@ struct _AppSettingsData {
 	std::chrono::system_clock::time_point _updateCheckDate;
 
 	DuplicateFrameDetectionMode _duplicateFrameDetectionMode =
-		DuplicateFrameDetectionMode::Dynamic;
+		DuplicateFrameDetectionMode::Never;
 
 	bool _isStopEffectsOnTaskSwitchEnabled = false;
 	bool _isVRREnabled = false;

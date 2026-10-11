@@ -26,6 +26,7 @@ prefix = r'''
 #include <iostream>
 #include <limits>
 namespace Magpie {
+enum class DuplicateFrameDetectionMode { Always, Dynamic, Never };
 struct Profile { FrameRefreshSettings frameRefresh; };
 struct ProfileService {
     struct Changed { unsigned count=0; void Invoke(Profile&) { ++count; } } FrameRefreshChanged;
@@ -38,6 +39,7 @@ struct AppSettings { unsigned saves=0; bool simple=false; void SaveAsync() { ++s
 };
 struct ProfileViewModel {
     Profile* _data;
+    void DuplicateFrameDetectionMode(int32_t) {}
 '''
 suffix = r'''
 }
@@ -88,11 +90,11 @@ int main() {
     vm.FrameRefreshModeIndex(0);
     assert(vm.IsSimpleFrameRefresh() && !vm.IsAdvancedFrameRefresh() && vm.FrameRefreshModeIndex()==0);
     vm.FrameSyncModeIndex(0); vm.CursorSupplementRate(30); vm.IsVRREnabled(false); vm.ResetFrameRefresh();
-    assert(defaults.frameRefresh.pacing==FrameSyncMode::Reflex && defaults.frameRefresh.cursorRate==144 && defaults.frameRefresh.vrrEnabled);
+    assert(defaults.frameRefresh.pacing==FrameSyncMode::Reflex && defaults.frameRefresh.cursorRate==144 && !defaults.frameRefresh.vrrEnabled);
     vm.ContentFrameRateModeIndex(1); vm.ContentFrameRate(90); vm.IdleRedrawRate(45);
     vm.FrameRefreshModeIndex(1);
     assert(vm.IsAdvancedFrameRefresh() && defaults.frameRefresh.contentRate==90 && defaults.frameRefresh.idleRate==45);
-    assert(vm.CursorSupplementRate()==144 && vm.IsVRREnabled());
+    assert(vm.CursorSupplementRate()==144 && !vm.IsVRREnabled());
     ProfileViewModel other{&app};
     other.FrameRefreshModeIndex(0);
     assert(vm.IsSimpleFrameRefresh());

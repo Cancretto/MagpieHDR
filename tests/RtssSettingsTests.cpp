@@ -35,6 +35,17 @@ int main() {
 	for (uint32_t policy = 0; policy < 2; ++policy) for (uint32_t rate : { 15u, 60u, 360u }) {
 		RtssSettings s{ RtssScope(scope), RtssRateMode(mode), rate, RtssExitPolicy(policy) };
 		Check(Read(Write(s)) == s, "Preferences lost on round trip");
+		for (bool enabled : {false, true}) {
+			s.simpleContentSync = enabled;
+			const auto saved = Read(Write(s));
+			Check(saved == s, "Simple intent and advanced preferences round trip independently");
+			const auto simple = EffectiveRtssSettings(saved, true);
+			Check(simple.scope == (enabled ? RtssScope::Target : RtssScope::None) &&
+				simple.rateMode == RtssRateMode::ContentSync && simple.exitPolicy == RtssExitPolicy::RestoreOriginal,
+				"Simple RTSS projection incorrect");
+			Check(EffectiveRtssSettings(saved, false) == s, "Advanced settings overwritten by projection");
+			Check(!simple.ResolveRate(false, 60), "Source unexpectedly synchronizes to guessed target");
+		}
 		if (scope == 0) Check(!s.ResolveRate(true, 60), "Unmanaged settings can resolve an external write");
 		else if (mode == 0) Check(s.ResolveRate(false, 0) == rate, "Manual cap requires a fixed content target");
 		else Check(!s.ResolveRate(false, 60), "Follow-source synchronization guessed a target");

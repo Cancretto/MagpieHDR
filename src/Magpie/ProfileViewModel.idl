@@ -52,6 +52,14 @@ namespace Magpie {
 		Boolean IsSimpleFrameRefresh { get; };
 		Boolean IsAdvancedFrameRefresh { get; };
 		Int32 ContentFrameRateModeIndex;
+		Boolean SimpleRtssSync;
+		Int32 RtssModeIndex;
+		Int32 RtssTargetScopeIndex;
+		Boolean ShowRtssOptions { get; };
+		Boolean ShowContentPacing { get; };
+		Boolean ShowRtssDownload { get; };
+		Boolean CanRetryRtss { get; };
+		void RetryRtss();
 		Int32 RtssScopeIndex;
 		Int32 RtssRateModeIndex;
 		Double RtssCustomRate;

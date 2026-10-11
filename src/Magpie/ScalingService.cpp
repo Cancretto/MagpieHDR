@@ -91,10 +91,16 @@ void ScalingService::Initialize() {
 		if (profile && _scalingRuntime)
 			_scalingRuntime->UpdateFrameRefreshSettings(profile->frameRefresh, settings.IsSimpleFrameRefresh());
 	});
-	_rtssChangedRevoker = ProfileService::Get().RtssSettingsChanged(auto_revoke, [](const Profile& profile) {
-		// Page edits are saved for the next start. Explicitly leaving management
-		// releases the active session using the policy captured when it began.
-		if (profile.rtss.scope == RtssScope::None) RtssService::Get().ReleaseProfile(profile.runtimeIdentity);
+	_rtssChangedRevoker = ProfileService::Get().RtssSettingsChanged(auto_revoke, [this](const Profile& profile) {
+		// Page edits, including disabling management, apply at the next start.
+		if (_activeFrameSyncProfile.lock() == profile.runtimeIdentity && _scalingRuntime)
+			_scalingRuntime->UpdateFrameRefreshSettings(profile.frameRefresh, std::nullopt, true);
+	});
+
+	_duplicateRefreshChangedRevoker = AppSettings::Get().DuplicateFrameDetectionModeChanged(auto_revoke, [this] {
+		auto& settings = AppSettings::Get();
+		const Profile* profile = FindProfileByIdentity(settings.DefaultProfile(), settings.Profiles(), _activeFrameSyncProfile);
+		if (profile && _scalingRuntime) _scalingRuntime->UpdateFrameRefreshSettings(profile->frameRefresh, std::nullopt, true);
 	});
 
 	// 立即检查前台窗口
@@ -670,7 +676,7 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	};
 
 	const auto rtssSession = RtssService::Get().Begin(hWnd, profile.runtimeIdentity,
-		options.isSimpleFrameRefresh ? RtssSettings{} : profile.rtss);
+		EffectiveRtssSettings(profile.rtss, options.isSimpleFrameRefresh));
 	options.contentTargetChanged = [rtssSession](HWND source, bool fixed, double baseRate, bool constrained) {
 		App::Get().Dispatcher().TryEnqueue([rtssSession, source, fixed, baseRate, constrained] {
 			RtssService::Get().ContentTargetChanged(rtssSession, source, fixed, baseRate, constrained);
@@ -871,7 +877,9 @@ void ScalingService::_HandleEffectParametersRequest(
 		return;
 	}
 	request.saveState->Complete(request.revision, EffectParametersSaveError::None);
-	if (sessionOptions.isSimpleFrameRefresh != settings.IsSimpleFrameRefresh()) {
+	EffectParameterSessionState::Snapshot refreshSnapshot;
+	if (sessionOptions.parameterSession) sessionOptions.parameterSession->ReadIfChanged(refreshSnapshot);
+	if (sessionOptions.isSimpleFrameRefresh != settings.IsSimpleFrameRefresh() || refreshSnapshot.refreshPolicyChanged) {
 		// Rebuild all session options, including duplicate detection and the RTSS
 		// lifecycle, instead of reusing the old mode's immutable runtime snapshot.
 		_StartScale(request.hwndSource, *frameSyncProfile, sessionOptions.IsWindowedMode(), true);

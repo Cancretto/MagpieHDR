@@ -1040,10 +1040,10 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 		_updateCheckDate = system_clock::time_point(system_clock::duration(d));
 	}
 	{
-		uint32_t duplicateFrameDetectionMode = (uint32_t)DuplicateFrameDetectionMode::Dynamic;
+		uint32_t duplicateFrameDetectionMode = (uint32_t)DuplicateFrameDetectionMode::Never;
 		JsonHelper::ReadUInt(root, "duplicateFrameDetectionMode", duplicateFrameDetectionMode);
 		if (duplicateFrameDetectionMode > 2) {
-			duplicateFrameDetectionMode = (uint32_t)DuplicateFrameDetectionMode::Dynamic;
+			duplicateFrameDetectionMode = (uint32_t)DuplicateFrameDetectionMode::Never;
 		}
 		_duplicateFrameDetectionMode = (::Magpie::DuplicateFrameDetectionMode)duplicateFrameDetectionMode;
 	}

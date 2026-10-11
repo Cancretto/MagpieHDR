@@ -68,6 +68,11 @@ prefix += "\nstruct AppSettings {\n" + declaration + r'''
 '''
 prefix += accessors + '\nvoid Load(const rapidjson::GenericObject<true, rapidjson::Value>& root) {\n' + load + '}\n};\n'
 prefix += 'std::string Save(const AppSettings& data) { rapidjson::StringBuffer b; rapidjson::Writer<rapidjson::StringBuffer> writer(b); writer.StartObject();\n' + save + '\nwriter.EndObject(); return b.GetString(); }\n'
+duplicate_load = match(r"uint32_t duplicateFrameDetectionMode = .*?_duplicateFrameDetectionMode = .*?;", source)
+read_uint = block(read("src/Magpie/JsonHelper.cpp"), "bool JsonHelper::ReadUInt(")
+prefix = prefix.replace("static bool ReadBool", "static bool ReadUInt(const rapidjson::GenericObject<true, rapidjson::Value>&, const char*, uint32_t&, bool = false) noexcept;\n    static bool ReadBool")
+prefix += read_uint + "\nnamespace Magpie { using ::DuplicateFrameDetectionMode; }\n"
+prefix += "DuplicateFrameDetectionMode ReadDuplicate(const rapidjson::GenericObject<true, rapidjson::Value>& root) { DuplicateFrameDetectionMode _duplicateFrameDetectionMode;\n" + duplicate_load + "\nreturn _duplicateFrameDetectionMode; }\n"
 prefix += r'''
 struct Options {
     FrameRefreshSettings frameRefresh;
@@ -124,20 +129,27 @@ int main() {
         assert(settings.IsSimpleFrameRefresh());
     }
     Profile profile;
-    profile.rtss.scope=RtssScope::Target;
+    profile.rtss.scope=RtssScope::Target; profile.rtss.simpleContentSync=true;
     profile.frameRefresh.vrrEnabled=true;
     profile.frameRefresh.pacing=FrameSyncMode::Reflex;
     profile.frameRefresh.contentRate=90;
     profile.frameRefresh.cursorRate=144;
     const auto saved=profile.frameRefresh;
+    for (const char* json : {"{}", R"({"duplicateFrameDetectionMode":null})", R"({"duplicateFrameDetectionMode":9})"}) {
+        rapidjson::Document d; d.Parse(json); assert(ReadDuplicate(std::as_const(d).GetObj())==DuplicateFrameDetectionMode::Never);
+    }
+    for (unsigned i=0; i<3; ++i) {
+        rapidjson::Document d; d.Parse(("{\"duplicateFrameDetectionMode\":"+std::to_string(i)+"}").c_str());
+        assert(ReadDuplicate(std::as_const(d).GetObj())==DuplicateFrameDetectionMode(i));
+    }
     const auto savedRtss=profile.rtss;
     for (bool simple : {true,false,true,false}) {
         settings.IsSimpleFrameRefresh(simple);
         const auto options=Start(profile);
         assert(options.isSimpleFrameRefresh==simple);
-        assert(options.isVRREnabled==!simple && options.stats==!simple);
+        assert(options.isVRREnabled && options.stats==!simple);
         assert(options.duplicateFrameDetectionMode==(simple ? DuplicateFrameDetectionMode::Never : DuplicateFrameDetectionMode::Always));
-        assert(RtssService::Get().captured.scope==(simple ? RtssScope::None : RtssScope::Target));
+        assert(RtssService::Get().captured.scope==RtssScope::Target);
         assert(options.cursorRefresh.minimumRefreshRate==(simple ? 90 : 144));
         assert(options.frameSyncMode==(simple ? FrameSyncMode::FrontEdge : FrameSyncMode::Reflex));
         settings.IsSimpleFrameRefresh(!simple);
@@ -161,6 +173,9 @@ int main() {
     session.DesiredFrameRefresh(profile.frameRefresh, false);
     assert(session.ReadIfChanged(snapshot) && Pending(profile.frameRefresh, snapshot)==0);
     assert(!session.ReadIfChanged(snapshot));
+    session.DesiredFrameRefresh(snapshot.frameRefresh, std::nullopt, true);
+    assert(session.ReadIfChanged(snapshot) && snapshot.refreshPolicyChanged);
+    assert(Pending(snapshot.frameRefresh, snapshot)==1);
     std::cout << "Production global mode persistence, notifications, runtime/RTSS policy and mode-only restart pending passed\n";
 }
 '''

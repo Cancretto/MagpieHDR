@@ -16,9 +16,9 @@ def read(path):
 
 xaml = ET.fromstring(read("src/Magpie/ProfilePage.xaml"))
 x = "{http://schemas.microsoft.com/winfx/2006/xaml}"
-group = next(node for node in xaml.iter() if node.get(x + "Uid") == "FrameRefresh")
+group = next(node for node in xaml.iter() if node.get(x + "Name") == "FrameRefreshGroup")
 card = next(node for node in group if node.get(x + "Uid") == "FrameRefresh_VRR")
-assert card.get("Visibility") == "{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}"
+assert "Visibility" not in card.attrib, "VRR is shared by both modes"
 assert not any(node.get(x + "Uid") == "FrameRefresh_Advanced" for node in group.iter())
 toggle = next(iter(card))
 assert toggle.get("IsOn") == "{x:Bind ViewModel.IsVRREnabled, Mode=TwoWay}"

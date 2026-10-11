@@ -15,11 +15,12 @@ namespace Magpie {
 enum class RtssState {
 	Checking, NotInstalled, NotRunning, Incompatible, Failed, WaitingTarget, Read, MissingProfile,
 	WaitingContent, Applying, Written, Conflict, Kept, Restored, RestoreFailed, StartingTool, ToolStartFailed,
-	InitializingMagpie, MagpieInitialized, MagpieAlreadyUnlimited
+	InitializingMagpie, MagpieInitialized, MagpieAlreadyUnlimited, Disabled
 };
 
 struct RtssStatus {
 	RtssState state = RtssState::Checking;
+	uint64_t sessionGeneration = 0;
 	RtssToolInfo rtss, afterburner;
 	std::wstring profile;
 	double currentRate = 0;
@@ -50,6 +51,10 @@ public:
 	void End();
 	void ReleaseProfile(std::weak_ptr<const uint8_t> identity);
 	void Recheck(bool retry = true);
+	bool HasSession(std::weak_ptr<const uint8_t> identity) const noexcept;
+	void Retry(std::weak_ptr<const uint8_t> identity);
+	bool IsCurrentStatus(const RtssStatus& status, std::weak_ptr<const uint8_t> identity) const noexcept;
+	bool IsPreparing() const noexcept { return _autoPreparing; }
 	void Launch(bool afterburner);
 	void InitializeMagpie();
 	bool IsInitializingMagpie() const noexcept { return _initializationPending; }
@@ -70,6 +75,10 @@ private:
 	void _Queue(std::function<void()> task);
 	void _Worker();
 	void _Publish(RtssStatus status);
+	bool _PrepareSession(const std::shared_ptr<Session>& session, RtssStatus& status);
+	void _PublishSession(const std::shared_ptr<Session>& session, RtssStatus status);
+	void _StartSessionWatch(const std::shared_ptr<Session>& session);
+	void _CheckSession(const std::shared_ptr<Session>& session);
 	void _TryApply(const std::shared_ptr<Session>& session);
 	void _Finish(const std::shared_ptr<Session>& session);
 	void _InitializeMagpie();
@@ -89,10 +98,12 @@ private:
 	bool _closing = false;
 	bool _exited = false;
 	std::atomic<bool> _notify = false;
+	std::atomic<bool> _autoPreparing = false;
 	std::atomic<RtssInitializationState> _magpieInitialization = RtssInitializationState::Unknown; // worker writes, UI reads
 	bool _launchPending = false; // UI thread
 	bool _initializationPending = false; // UI thread
 	winrt::DispatcherQueueTimer _launchTimer{ nullptr };
+	winrt::DispatcherQueueTimer _sessionTimer{ nullptr };
 };
 
 }

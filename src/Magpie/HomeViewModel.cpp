@@ -548,6 +548,10 @@ hstring HomeViewModel::DefaultFrameRefreshSummary() const {
 	if (s.cursorMode == CursorRefreshMode::Supplement) cursor += s.cursorSupplement == CursorSupplementMode::Auto ?
 		L" (" + std::wstring(loader.GetString(L"FrameRefresh_Auto/Content")) + L")" : fmt::format(L" {} FPS", s.cursorRate);
 	const auto idle = s.idleEnabled ? fmt::format(L"{} FPS", s.idleRate) : std::wstring(loader.GetString(L"FrameRefresh_Off/Content"));
+	if (AppSettings::Get().IsSimpleFrameRefresh()) {
+		const auto vrr = loader.GetString(s.vrrEnabled ? L"FrameRefresh_VRR_Input/OnContent" : L"FrameRefresh_VRR_Input/OffContent");
+		return hstring(fmt::format(fmt::runtime(std::wstring_view(loader.GetString(L"Home_FrameRefresh_SimpleSummary"))), content, idle, std::wstring_view(vrr)));
+	}
 	return hstring(fmt::format(fmt::runtime(std::wstring_view(loader.GetString(L"Home_FrameRefresh_Summary"))), content, cursor, idle));
 }
 void HomeViewModel::EditDefaultFrameRefresh() {

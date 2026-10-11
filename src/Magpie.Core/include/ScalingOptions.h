@@ -204,6 +204,7 @@ struct EffectParameterSessionState {
 		bool applying = false;
 		bool applyFailed = false;
 		bool simpleFrameRefresh = false;
+		bool refreshPolicyChanged = false;
 	};
 
 	explicit EffectParameterSessionState(const std::vector<EffectOption>& effects,
@@ -244,11 +245,12 @@ struct EffectParameterSessionState {
 		_snapshot.desired[effect].parameters[parameter] = value;
 		++_snapshot.revision;
 	}
-	void DesiredFrameRefresh(FrameRefreshSettings value, std::optional<bool> simpleMode = std::nullopt) {
+	void DesiredFrameRefresh(FrameRefreshSettings value, std::optional<bool> simpleMode = std::nullopt, bool policyChanged = false) {
 		std::scoped_lock lock(_mutex);
-		if (_snapshot.frameRefresh == value && (!simpleMode || *simpleMode == _snapshot.simpleFrameRefresh)) return;
+		if (!policyChanged && _snapshot.frameRefresh == value && (!simpleMode || *simpleMode == _snapshot.simpleFrameRefresh)) return;
 		_snapshot.frameRefresh = value;
 		if (simpleMode) _snapshot.simpleFrameRefresh = *simpleMode;
+		_snapshot.refreshPolicyChanged |= policyChanged;
 		++_snapshot.revision;
 	}
 	void Applying(bool applying, bool failed = false) {
@@ -508,7 +510,7 @@ struct ScalingOptions {
 	DestAlignment destAlignment = DestAlignment::Center;
 	CursorInterpolationMode cursorInterpolationMode = CursorInterpolationMode::NearestNeighbor;
 	std::optional<float> autoHideCursorDelay;
-	DuplicateFrameDetectionMode duplicateFrameDetectionMode = DuplicateFrameDetectionMode::Dynamic;
+	DuplicateFrameDetectionMode duplicateFrameDetectionMode = DuplicateFrameDetectionMode::Never;
 	ToolbarState fullscreenInitialToolbarState = ToolbarState::AutoHide;
 	ToolbarState windowedInitialToolbarState = ToolbarState::AutoHide;
 	ToolbarDockSettings toolbarDocks;

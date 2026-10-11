@@ -82,7 +82,7 @@ inline FrameRefreshSettings NormalizeContentFrameRate(FrameRefreshSettings setti
 }
 
 // Saved fields remain the advanced preferences. Simple mode only projects them
-// into runtime values; the two visible content/idle settings remain shared.
+// into runtime values; content, idle and VRR remain shared.
 inline FrameRefreshSettings EffectiveFrameRefreshSettings(
 	FrameRefreshSettings settings, bool simple) noexcept {
 	settings = NormalizeContentFrameRate(settings);
@@ -91,7 +91,6 @@ inline FrameRefreshSettings EffectiveFrameRefreshSettings(
 		settings.cursorMode = CursorRefreshMode::Supplement;
 		settings.cursorSupplement = CursorSupplementMode::Custom;
 		settings.cursorRate = settings.contentMode == ContentFrameRateMode::Custom ? settings.contentRate : 60.0f;
-		settings.vrrEnabled = false;
 		settings.ContentEdited();
 		settings.CursorEdited();
 	}

@@ -13,6 +13,8 @@ struct ProfilePage : ProfilePageT<ProfilePage> {
 
 	void ComboBox_DropDownOpened(IInspectable const& sender, IInspectable const&);
 
+	void RtssOptionsGrid_SizeChanged(IInspectable const& sender, SizeChangedEventArgs const& args);
+
 	void NumberBox_Loaded(IInspectable const& sender, RoutedEventArgs const&);
 
 	void InitialWindowedScaleFactorComboBox_SelectionChanged(IInspectable const&, SelectionChangedEventArgs const&);

@@ -92,6 +92,7 @@ private:
 	Event<winrt::Magpie::ShortcutAction>::EventRevoker _toolbarShortcutsChangedRevoker;
 	Event<Profile&>::EventRevoker _frameSyncChangedRevoker;
 	Event<>::EventRevoker _frameRefreshModeChangedRevoker;
+	Event<>::EventRevoker _duplicateRefreshChangedRevoker;
 	Event<Profile&>::EventRevoker _rtssChangedRevoker;
 	std::weak_ptr<const uint8_t> _activeFrameSyncProfile;
 

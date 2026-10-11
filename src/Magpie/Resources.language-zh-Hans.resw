@@ -1779,14 +1779,14 @@
   <data name="FrameRefresh_Reset.Header" xml:space="preserve"><value>恢复刷新默认设置</value></data>
   <data name="Home_FrameRefresh.Header" xml:space="preserve"><value>默认帧率与刷新</value></data>
   <data name="FrameRefresh.Description" xml:space="preserve"><value>按配置保存，重新启用缩放后生效。</value></data>
-  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>跟随源帧率，或指定 Magpie 内容处理的目标帧率。</value></data>
+  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>设置内容画面的处理帧率。</value></data>
   <data name="FrameRefresh_Pacing.Description" xml:space="preserve"><value>选择内容帧的处理节奏。</value></data>
   <data name="FrameRefresh_ContentRate.Description" xml:space="preserve"><value>设置基础内容处理的目标帧率。</value></data>
-  <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>选择系统光标的刷新方式。</value></data>
+  <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>设置光标的刷新策略。</value></data>
   <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>选择自动或自定义的光标补充刷新率。</value></data>
   <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>设置光标补充刷新的目标最低帧率。</value></data>
   <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>可变刷新率、重复帧检测与空闲重绘。</value></data>
-  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>空闲时重绘当前画面；补帧期间不启用，重绘率受内容目标限制。</value></data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>画面不变时按指定帧率重绘。</value></data>
   <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>设置空闲重绘的目标帧率。</value></data>
   <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>恢复内容 60、光标补充 60、空闲重绘 30 FPS，节奏方式为 Front Edge。</value></data>
   <data name="FrameRefresh_Content_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>内容帧率</value></data>
@@ -1832,7 +1832,7 @@
   </data>
 
   <data name="FrameRefresh_VRR.Header" xml:space="preserve"><value>VRR 可变刷新率</value></data>
-  <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>让显示器刷新率跟随输出帧率，提升画面流畅度。</value></data>
+  <data name="FrameRefresh_VRR.Description" xml:space="preserve"><value>让显示器刷新率跟随输出帧率。</value></data>
   <data name="FrameRefresh_VRR_Input.OffContent" xml:space="preserve"><value>关</value></data>
   <data name="FrameRefresh_VRR_Input.OnContent" xml:space="preserve"><value>开</value></data>
   <data name="FrameRefresh_VRR_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>VRR 可变刷新率</value></data>
@@ -1849,7 +1849,7 @@
   <data name="HdrParameter_PairSource" xml:space="preserve"><value>使用第 {} 个效果器（HDR → SDR）的配对参数恢复。</value></data>
 
   <data name="Rtss_TargetLimit.Header" xml:space="preserve"><value>目标窗口帧率限制</value></data>
-  <data name="Rtss_TargetLimit.Description" xml:space="preserve"><value>开始缩放时应用 RTSS 帧率设置。</value></data>
+  <data name="Rtss_TargetLimit.Description" xml:space="preserve"><value>通过 RTSS 限制程序帧率。</value></data>
   <data name="Rtss_Scope_None.Content" xml:space="preserve"><value>不管理 RTSS 配置</value></data>
   <data name="Rtss_Scope_Global.Content" xml:space="preserve"><value>修改全局配置</value></data>
   <data name="Rtss_Scope_Target.Content" xml:space="preserve"><value>修改目标窗口配置</value></data>
@@ -1859,30 +1859,30 @@
   <data name="Rtss_Recheck.ToolTipService.ToolTip" xml:space="preserve"><value>重新检测 RTSS 并重试当前请求</value></data>
   <data name="Rtss_GlobalNotice.Text" xml:space="preserve"><value>使用全局配置的应用共用此上限。</value></data>
   <data name="Rtss_RateMode.Header" xml:space="preserve"><value>帧率设置</value></data>
-  <data name="Rtss_Rate_Custom.Content" xml:space="preserve"><value>自定义</value></data>
-  <data name="Rtss_Rate_Sync.Content" xml:space="preserve"><value>与内容帧率同步</value></data>
+  <data name="Rtss_Rate_Custom.Content" xml:space="preserve"><value>指定帧率</value></data>
+  <data name="Rtss_Rate_Sync.Content" xml:space="preserve"><value>同步内容帧率</value></data>
   <data name="Rtss_CustomRate.Header" xml:space="preserve"><value>限制帧率</value></data>
   <data name="Rtss_ExitPolicy.Header" xml:space="preserve"><value>停止缩放后的处理</value></data>
   <data name="Rtss_Exit_Keep.Content" xml:space="preserve"><value>保留修改</value></data>
   <data name="Rtss_Exit_Restore.Content" xml:space="preserve"><value>恢复原值</value></data>
   <data name="Rtss_UnmanagedNotice" xml:space="preserve"><value>当前 Magpie 不管理 RTSS 配置。</value></data>
-  <data name="Rtss_Status_Checking" xml:space="preserve"><value>正在检查 RTSS…</value></data>
-  <data name="Rtss_Status_NotInstalled" xml:space="preserve"><value>未找到 RTSS。</value></data>
+  <data name="Rtss_Status_Checking" xml:space="preserve"><value>正在检测 RTSS</value></data>
+  <data name="Rtss_Status_NotInstalled" xml:space="preserve"><value>未安装 RTSS</value></data>
   <data name="Rtss_Status_NotRunning" xml:space="preserve"><value>RTSS 未运行。</value></data>
   <data name="Rtss_Status_Incompatible" xml:space="preserve"><value>所需 RTSS 配置接口不可用。</value></data>
-  <data name="Rtss_Status_Failed" xml:space="preserve"><value>RTSS 操作失败。</value></data>
-  <data name="Rtss_Status_WaitingTarget" xml:space="preserve"><value>开始缩放后读取目标配置。</value></data>
+  <data name="Rtss_Status_Failed" xml:space="preserve"><value>RTSS 联动未完成</value></data>
+  <data name="Rtss_Status_WaitingTarget" xml:space="preserve"><value>等待开始缩放</value></data>
   <data name="Rtss_Status_Read" xml:space="preserve"><value>配置已读取。</value></data>
   <data name="Rtss_Status_MissingProfile" xml:space="preserve"><value>开始缩放时将创建目标配置。</value></data>
-  <data name="Rtss_Status_WaitingContent" xml:space="preserve"><value>等待固定内容帧率。</value></data>
-  <data name="Rtss_Status_Applying" xml:space="preserve"><value>正在读取并应用帧率上限…</value></data>
-  <data name="Rtss_Status_Written" xml:space="preserve"><value>配置已更新。</value></data>
+  <data name="Rtss_Status_WaitingContent" xml:space="preserve"><value>等待固定内容帧率 · 同步限帧暂停</value></data>
+  <data name="Rtss_Status_Applying" xml:space="preserve"><value>正在加载限帧配置</value></data>
+  <data name="Rtss_Status_Written" xml:space="preserve"><value>RTSS 已就绪</value></data>
   <data name="Rtss_Status_Conflict" xml:space="preserve"><value>配置已被外部修改。</value></data>
   <data name="Rtss_Status_Kept" xml:space="preserve"><value>已保留修改。</value></data>
   <data name="Rtss_Status_Restored" xml:space="preserve"><value>已恢复原帧率设置。</value></data>
   <data name="Rtss_Status_RestoreFailed" xml:space="preserve"><value>恢复失败。</value></data>
-  <data name="Rtss_Status_StartingTool" xml:space="preserve"><value>正在启动所选工具…</value></data>
-  <data name="Rtss_Status_ToolStartFailed" xml:space="preserve"><value>所选工具未能启动。</value></data>
+  <data name="Rtss_Status_StartingTool" xml:space="preserve"><value>正在启动 RTSS</value></data>
+  <data name="Rtss_Status_ToolStartFailed" xml:space="preserve"><value>RTSS 联动未完成</value></data>
   <data name="Rtss_DetectionDisabled" xml:space="preserve"><value>RTSS 应用检测已关闭。</value></data>
   <data name="Rtss_TargetOverridesGlobal" xml:space="preserve"><value>目标使用独立配置。</value></data>
   <data name="Rtss_NoLimit" xml:space="preserve"><value>未限制帧率</value></data>
@@ -1927,7 +1927,7 @@
     <value>初始化 Magpie 的 RTSS 配置</value>
   </data>
   <data name="Rtss_Status_InitializingMagpie" xml:space="preserve">
-    <value>正在初始化配置。</value>
+    <value>正在初始化 Magpie</value>
   </data>
   <data name="Rtss_Status_MagpieInitialized" xml:space="preserve">
     <value>配置已初始化。</value>
@@ -1944,7 +1944,7 @@
   <data name="Rtss_Failure_ProfileObject" xml:space="preserve"><value>初始化对象无法确认。</value></data>
   <data name="Rtss_Failure_SelfProfileConflict" xml:space="preserve"><value>目标与 Magpie 共用同名配置。</value></data>
   <data name="Rtss_Failure_InstallationChanged" xml:space="preserve"><value>RTSS 配置目录已变化。</value></data>
-  <data name="Rtss_ProfileRate" xml:space="preserve"><value>配置限帧：{:g} FPS</value></data>
+  <data name="Rtss_ProfileRate" xml:space="preserve"><value>配置限帧：{} FPS</value></data>
   <data name="Rtss_RateUnknown" xml:space="preserve"><value>配置限帧值未读取。</value></data>
   <data name="Rtss_Reloaded" xml:space="preserve"><value>已请求重载配置。</value></data>
   <data name="Rtss_ProfileSaved" xml:space="preserve"><value>配置已保存。</value></data>
@@ -1983,4 +1983,68 @@
   <data name="FrameRefresh_Mode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>设置模式</value></data>
   <data name="FrameRefresh_Mode_Simple.Content" xml:space="preserve"><value>简单</value></data>
   <data name="FrameRefresh_Mode_Advanced.Content" xml:space="preserve"><value>高级</value></data>
+  <data name="FrameRefresh_Title.Text" xml:space="preserve">
+    <value>帧率与刷新</value>
+  </data>
+  <data name="FrameRefresh_RateGroup.Header" xml:space="preserve">
+    <value>帧率控制</value>
+  </data>
+  <data name="FrameRefresh_RateGroup.Description" xml:space="preserve">
+    <value>设置内容帧率与目标程序限帧。</value>
+  </data>
+  <data name="FrameRefresh_StaticGroup.Header" xml:space="preserve">
+    <value>静态画面</value>
+  </data>
+  <data name="FrameRefresh_StaticGroup.Description" xml:space="preserve">
+    <value>设置画面不变时的刷新。</value>
+  </data>
+  <data name="Rtss_SimpleSync.Header" xml:space="preserve">
+    <value>同步限制目标程序</value>
+  </data>
+  <data name="Rtss_SimpleSync.Description" xml:space="preserve">
+    <value>通过 RTSS 将目标程序限制到内容帧率。</value>
+  </data>
+  <data name="Rtss_SimpleSync_Input.OnContent" xml:space="preserve">
+    <value>开</value>
+  </data>
+  <data name="Rtss_SimpleSync_Input.OffContent" xml:space="preserve">
+    <value>关</value>
+  </data>
+  <data name="Rtss_SimpleSync_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>同步限制目标程序</value>
+  </data>
+  <data name="Rtss_Mode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>目标程序限帧方式</value>
+  </data>
+  <data name="Rtss_ScopeLabel.Text" xml:space="preserve">
+    <value>作用范围</value>
+  </data>
+  <data name="Rtss_ExitLabel.Text" xml:space="preserve">
+    <value>停止缩放后</value>
+  </data>
+  <data name="Rtss_Download.Content" xml:space="preserve">
+    <value>获取 RTSS</value>
+  </data>
+  <data name="Rtss_Retry.Content" xml:space="preserve">
+    <value>重试</value>
+  </data>
+  <data name="Rtss_Manage.Content" xml:space="preserve">
+    <value>管理</value>
+  </data>
+  <data name="Rtss_RecheckMenu.Text" xml:space="preserve">
+    <value>重新检测</value>
+  </data>
+  <data name="Rtss_Status_Disabled" xml:space="preserve">
+    <value>RTSS 联动未开启</value>
+  </data>
+  <data name="Rtss_ScalingContinues" xml:space="preserve">
+    <value>缩放继续运行</value>
+  </data>
+  <data name="Rtss_Failure_Launch" xml:space="preserve">
+    <value>启动 RTSS 失败</value>
+  </data>
+  <data name="Home_FrameRefresh_SimpleSummary" xml:space="preserve">
+    <value>内容：{} · 空闲：{} · VRR：{}</value>
+  </data>
+  <data name="Rtss_Failure_ProcessExited" xml:space="preserve"><value>RTSS 进程已退出</value></data>
 </root>

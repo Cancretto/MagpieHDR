@@ -28,6 +28,7 @@ vm = extract("src/Magpie/ProfileViewModel.cpp", [
     "void ProfileViewModel::RtssCustomRate(double value)",
     "double ProfileViewModel::RtssSyncedRate() const noexcept",
     "bool ProfileViewModel::IsRtssManaged() const noexcept",
+    "bool ProfileViewModel::ShowRtssOptions() const noexcept",
     "bool ProfileViewModel::ShowRtssCustomRate() const noexcept",
     "bool ProfileViewModel::ShowRtssSyncedRate() const noexcept",
     "bool ProfileViewModel::IsRtssSyncAvailable() const noexcept",

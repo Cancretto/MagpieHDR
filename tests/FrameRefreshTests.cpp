@@ -169,8 +169,8 @@ int main() {
 		ApplyFrameRefreshSettings(simple, saved, true);
 		ApplyFrameRefreshSettings(advanced, saved, false);
 		Check(saved == original && simple.frameRefresh == original, "Simple projection overwrote advanced preferences");
-		Check(!simple.isVRREnabled && simple.frameSyncMode == FrameSyncMode::FrontEdge && !simple.maxFrameRate,
-			"Simple projection retained hidden VRR/pacing/legacy cap");
+		Check(simple.isVRREnabled && simple.frameSyncMode == FrameSyncMode::FrontEdge && !simple.maxFrameRate,
+			"Simple projection lost shared VRR or retained hidden pacing/legacy cap");
 		Check(simple.cursorRefresh.preferOriginalFrames && simple.cursorRefresh.minimumRefreshEnabled &&
 			!simple.cursorRefresh.automaticRefreshRate && simple.cursorRefresh.minimumRefreshRate ==
 			(contentMode == ContentFrameRateMode::Custom ? contentRate : 60), "Simple cursor target did not follow content or source-60 rule");

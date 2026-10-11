@@ -17,7 +17,8 @@ assert children[0] == card
 assert not any(n.get(x + 'Uid') == 'Profile_General_GraphicsCard' for n in general.iter())
 groups = [n.get(x + 'Uid') for n in root.iter(local + 'SettingsGroup')]
 assert groups.index('Profile_WindowedScaling') + 1 == groups.index('Profile_Performance')
-assert groups.index('Profile_Performance') + 1 == groups.index('FrameRefresh')
+parent = next(n for n in root.iter() if performance in list(n))
+assert list(parent)[list(parent).index(performance)+1].get(x+'Name') == 'FrameRefreshGroup'
 assert {n.get(x + 'Uid') for n in children[1:]} == {'Profile_General_NoGraphicsCard', 'Profile_General_GraphicsCardUnavailable'}
 assert card.get(x + 'Load') is None and card.get('Visibility') is None
 assert card.get('IsWrapEnabled') == 'True'

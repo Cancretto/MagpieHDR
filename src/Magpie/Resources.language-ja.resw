@@ -1105,7 +1105,7 @@
   <data name="HdrParameter_PairSource" xml:space="preserve"><value>Restores settings from HDR -&gt; SDR at effect #{}.</value></data>
 
   <data name="Rtss_TargetLimit.Header" xml:space="preserve"><value>Target application frame rate limit</value></data>
-  <data name="Rtss_TargetLimit.Description" xml:space="preserve"><value>Apply RTSS frame rate settings when scaling starts.</value></data>
+  <data name="Rtss_TargetLimit.Description" xml:space="preserve"><value>Limit application frame rate using RTSS.</value></data>
   <data name="Rtss_Scope_None.Content" xml:space="preserve"><value>Do not manage RTSS profiles</value></data>
   <data name="Rtss_Scope_Global.Content" xml:space="preserve"><value>Modify global profile</value></data>
   <data name="Rtss_Scope_Target.Content" xml:space="preserve"><value>Modify target application profile</value></data>
@@ -1115,30 +1115,30 @@
   <data name="Rtss_Recheck.ToolTipService.ToolTip" xml:space="preserve"><value>Recheck RTSS and retry the current request</value></data>
   <data name="Rtss_GlobalNotice.Text" xml:space="preserve"><value>Applications using the global profile share this limit.</value></data>
   <data name="Rtss_RateMode.Header" xml:space="preserve"><value>Frame rate setting</value></data>
-  <data name="Rtss_Rate_Custom.Content" xml:space="preserve"><value>Custom</value></data>
-  <data name="Rtss_Rate_Sync.Content" xml:space="preserve"><value>Sync with content frame rate</value></data>
+  <data name="Rtss_Rate_Custom.Content" xml:space="preserve"><value>Custom frame rate</value></data>
+  <data name="Rtss_Rate_Sync.Content" xml:space="preserve"><value>Sync content frame rate</value></data>
   <data name="Rtss_CustomRate.Header" xml:space="preserve"><value>Frame rate limit</value></data>
   <data name="Rtss_ExitPolicy.Header" xml:space="preserve"><value>When scaling stops</value></data>
   <data name="Rtss_Exit_Keep.Content" xml:space="preserve"><value>Keep changes</value></data>
   <data name="Rtss_Exit_Restore.Content" xml:space="preserve"><value>Restore original value</value></data>
   <data name="Rtss_UnmanagedNotice" xml:space="preserve"><value>Magpie is not managing RTSS profiles.</value></data>
-  <data name="Rtss_Status_Checking" xml:space="preserve"><value>Checking RTSS…</value></data>
-  <data name="Rtss_Status_NotInstalled" xml:space="preserve"><value>RTSS was not found.</value></data>
+  <data name="Rtss_Status_Checking" xml:space="preserve"><value>Checking RTSS</value></data>
+  <data name="Rtss_Status_NotInstalled" xml:space="preserve"><value>RTSS is not installed</value></data>
   <data name="Rtss_Status_NotRunning" xml:space="preserve"><value>RTSS is not running.</value></data>
   <data name="Rtss_Status_Incompatible" xml:space="preserve"><value>Required RTSS profile interface is unavailable.</value></data>
-  <data name="Rtss_Status_Failed" xml:space="preserve"><value>The RTSS operation failed.</value></data>
-  <data name="Rtss_Status_WaitingTarget" xml:space="preserve"><value>The target profile is read when scaling starts.</value></data>
+  <data name="Rtss_Status_Failed" xml:space="preserve"><value>RTSS integration incomplete</value></data>
+  <data name="Rtss_Status_WaitingTarget" xml:space="preserve"><value>Waiting for scaling to start</value></data>
   <data name="Rtss_Status_Read" xml:space="preserve"><value>Profile read successfully.</value></data>
   <data name="Rtss_Status_MissingProfile" xml:space="preserve"><value>A target profile will be created when scaling starts.</value></data>
-  <data name="Rtss_Status_WaitingContent" xml:space="preserve"><value>Waiting for a fixed content frame rate.</value></data>
-  <data name="Rtss_Status_Applying" xml:space="preserve"><value>Reading and applying the frame rate limit…</value></data>
-  <data name="Rtss_Status_Written" xml:space="preserve"><value>Profile updated.</value></data>
+  <data name="Rtss_Status_WaitingContent" xml:space="preserve"><value>Waiting for a fixed content frame rate · Sync paused</value></data>
+  <data name="Rtss_Status_Applying" xml:space="preserve"><value>Loading frame rate limit</value></data>
+  <data name="Rtss_Status_Written" xml:space="preserve"><value>RTSS is ready</value></data>
   <data name="Rtss_Status_Conflict" xml:space="preserve"><value>The profile was changed externally.</value></data>
   <data name="Rtss_Status_Kept" xml:space="preserve"><value>Changes kept.</value></data>
   <data name="Rtss_Status_Restored" xml:space="preserve"><value>Original frame rate settings restored.</value></data>
   <data name="Rtss_Status_RestoreFailed" xml:space="preserve"><value>Restoration failed.</value></data>
-  <data name="Rtss_Status_StartingTool" xml:space="preserve"><value>Starting the selected tool…</value></data>
-  <data name="Rtss_Status_ToolStartFailed" xml:space="preserve"><value>The selected tool could not be started.</value></data>
+  <data name="Rtss_Status_StartingTool" xml:space="preserve"><value>Starting RTSS</value></data>
+  <data name="Rtss_Status_ToolStartFailed" xml:space="preserve"><value>RTSS integration incomplete</value></data>
   <data name="Rtss_DetectionDisabled" xml:space="preserve"><value>RTSS application detection is disabled.</value></data>
   <data name="Rtss_TargetOverridesGlobal" xml:space="preserve"><value>The target uses its own profile.</value></data>
   <data name="Rtss_NoLimit" xml:space="preserve"><value>No frame rate limit</value></data>
@@ -1183,7 +1183,7 @@
     <value>Initialize the RTSS profile for Magpie</value>
   </data>
   <data name="Rtss_Status_InitializingMagpie" xml:space="preserve">
-    <value>Initializing the profile.</value>
+    <value>Initializing Magpie</value>
   </data>
   <data name="Rtss_Status_MagpieInitialized" xml:space="preserve">
     <value>Profile initialized.</value>
@@ -1200,7 +1200,7 @@
   <data name="Rtss_Failure_ProfileObject" xml:space="preserve"><value>Could not confirm the initialization target.</value></data>
   <data name="Rtss_Failure_SelfProfileConflict" xml:space="preserve"><value>The target and Magpie share the same profile name.</value></data>
   <data name="Rtss_Failure_InstallationChanged" xml:space="preserve"><value>RTSS profile directory has changed.</value></data>
-  <data name="Rtss_ProfileRate" xml:space="preserve"><value>Profile limit: {:g} FPS</value></data>
+  <data name="Rtss_ProfileRate" xml:space="preserve"><value>Configured limit: {} FPS</value></data>
   <data name="Rtss_RateUnknown" xml:space="preserve"><value>Profile limit could not be read.</value></data>
   <data name="Rtss_Reloaded" xml:space="preserve"><value>Profile reload requested.</value></data>
   <data name="Rtss_ProfileSaved" xml:space="preserve"><value>Profile saved.</value></data>
@@ -1217,4 +1217,80 @@
   <data name="FrameRefresh_Mode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>設定モード</value></data>
   <data name="FrameRefresh_Mode_Simple.Content" xml:space="preserve"><value>シンプル</value></data>
   <data name="FrameRefresh_Mode_Advanced.Content" xml:space="preserve"><value>詳細</value></data>
+  <data name="FrameRefresh_Title.Text" xml:space="preserve">
+    <value>Frame rate and refresh</value>
+  </data>
+  <data name="FrameRefresh_RateGroup.Header" xml:space="preserve">
+    <value>Frame rate control</value>
+  </data>
+  <data name="FrameRefresh_RateGroup.Description" xml:space="preserve">
+    <value>Set content and target application frame rates.</value>
+  </data>
+  <data name="FrameRefresh_StaticGroup.Header" xml:space="preserve">
+    <value>Static content</value>
+  </data>
+  <data name="FrameRefresh_StaticGroup.Description" xml:space="preserve">
+    <value>Control refresh when content is unchanged.</value>
+  </data>
+  <data name="Rtss_SimpleSync.Header" xml:space="preserve">
+    <value>Sync target application limit</value>
+  </data>
+  <data name="Rtss_SimpleSync.Description" xml:space="preserve">
+    <value>Use RTSS to cap the target application at the content frame rate.</value>
+  </data>
+  <data name="Rtss_SimpleSync_Input.OnContent" xml:space="preserve">
+    <value>On</value>
+  </data>
+  <data name="Rtss_SimpleSync_Input.OffContent" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="Rtss_SimpleSync_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Sync target application frame rate limit</value>
+  </data>
+  <data name="Rtss_Mode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Target application frame rate limit mode</value>
+  </data>
+  <data name="Rtss_ScopeLabel.Text" xml:space="preserve">
+    <value>Applies to</value>
+  </data>
+  <data name="Rtss_ExitLabel.Text" xml:space="preserve">
+    <value>When scaling stops</value>
+  </data>
+  <data name="Rtss_Download.Content" xml:space="preserve">
+    <value>Get RTSS</value>
+  </data>
+  <data name="Rtss_Retry.Content" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Rtss_Manage.Content" xml:space="preserve">
+    <value>Manage</value>
+  </data>
+  <data name="Rtss_RecheckMenu.Text" xml:space="preserve">
+    <value>Check again</value>
+  </data>
+  <data name="Rtss_Status_Disabled" xml:space="preserve">
+    <value>RTSS integration is off</value>
+  </data>
+  <data name="Rtss_ScalingContinues" xml:space="preserve">
+    <value>Scaling continues</value>
+  </data>
+  <data name="Rtss_Failure_Launch" xml:space="preserve">
+    <value>Could not start RTSS</value>
+  </data>
+  <data name="Home_FrameRefresh_SimpleSummary" xml:space="preserve">
+    <value>Content: {} · Idle: {} · VRR: {}</value>
+  </data>
+  <data name="FrameRefresh_Content.Description" xml:space="preserve">
+    <value>Set the content processing frame rate.</value>
+  </data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve">
+    <value>Redraw unchanged content at the selected frame rate.</value>
+  </data>
+  <data name="FrameRefresh_Cursor.Description" xml:space="preserve">
+    <value>Choose how the cursor refreshes.</value>
+  </data>
+  <data name="FrameRefresh_VRR.Description" xml:space="preserve">
+    <value>Let the display refresh rate follow the output frame rate.</value>
+  </data>
+  <data name="Rtss_Failure_ProcessExited" xml:space="preserve"><value>RTSS has exited</value></data>
 </root>

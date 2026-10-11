@@ -57,6 +57,7 @@ public:
 	bool Apply(const std::string& profile, uint32_t rate, const RtssProfileSnapshot& before,
 		RtssProfileSnapshot& written, bool& saveAttempted, bool& readbackComplete,
 		std::wstring& error, const std::function<bool()>& stillValid);
+	bool ReloadProfiles(std::wstring& error, const std::function<bool()>& stillValid);
 	bool Restore(const std::string& profile, const RtssProfileSnapshot& original,
 		const RtssProfileSnapshot& lastWritten, bool created, bool& conflict, std::wstring& error);
 	bool InitializeUnlimited(const std::string& profile, RtssProfileSnapshot& written,

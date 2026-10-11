@@ -21,65 +21,26 @@ x = "{http://schemas.microsoft.com/winfx/2006/xaml}"
 root = ET.fromstring(read("src/Magpie/ProfilePage.xaml"))
 nodes = list(root.iter())
 uids = {n.get(x + "Uid"): n for n in nodes if n.get(x + "Uid")}
-group = uids["FrameRefresh"]
-children = list(group)
-check(children.index(uids["Rtss_TargetLimit"]) < children.index(uids["FrameRefresh_Content"]), "RTSS placement")
-rtss = uids["Rtss_TargetLimit"]
-scope = uids["Rtss_Scope_Input"]
-check([n.get(x + "Uid") for n in scope] == ["Rtss_Scope_None", "Rtss_Scope_Global", "Rtss_Scope_Target"], "scope order")
-check(uids["Rtss_Rate_Sync"].get("IsEnabled") == "{x:Bind ViewModel.IsRtssSyncAvailable, Mode=OneWay}", "follow-source disables sync")
-check(uids["Rtss_CustomRate_Input"].get("Minimum") == "15" and uids["Rtss_CustomRate_Input"].get("Maximum") == "360", "integer editor range")
-check("IntegerFormatter" in uids["Rtss_CustomRate_Input"].get("NumberFormatter"), "integer formatter")
-check("Rtss_Advanced" not in uids, "no RTSS inner advanced expander")
-check("FrameRefresh_Advanced" not in uids, "old refresh advanced expander removed")
-items = next(n for n in rtss if n.tag.endswith("SettingsExpander.Items"))
-check([n.get(x + "Uid") for n in items] ==
-      ["Rtss_Status", "Rtss_RateMode", "Rtss_CustomRate", "Rtss_ExitPolicy"],
-      "direct item order and stop policy after rate")
-check(rtss.get("IsExpanded") == "True", "RTSS expanded by default")
-for uid in ("Rtss_RateMode", "Rtss_CustomRate", "Rtss_ExitPolicy"):
-    check(uids[uid].get("IsEnabled") == "{x:Bind ViewModel.IsRtssManaged, Mode=OneWay}", uid + " unmanaged state")
-    check("Visibility" not in uids[uid].attrib and x + "Load" not in uids[uid].attrib, uid + " fixed row")
-check("Description" not in uids["Rtss_ExitPolicy"].attrib, "no empty stop explanation")
-check([n.get(x + "Uid") for n in uids["Rtss_ExitPolicy_Input"]] ==
-      ["Rtss_Exit_Keep", "Rtss_Exit_Restore"], "stop policies unchanged")
-for uid in ("Rtss_Scope_Input", "Rtss_RateMode_Input", "Rtss_ExitPolicy_Input"):
-    check(uids[uid].get("Style") == "{StaticResource FrameRefreshComboBoxStyle}", uid + " shared column style")
-manual, synced = uids["Rtss_CustomRate_Input"], uids["Rtss_SyncedRate_Input"]
-for node in (manual, synced):
-    check(node.get("Style") == "{StaticResource FrameRefreshNumberBoxStyle}", "same numeric input style")
-    check(node.get("Loaded") == "NumberBox_Loaded", "existing input helper")
-    check("IntegerFormatter" in node.get("NumberFormatter"), "integer presentation")
-check(manual.get("Visibility") == "{x:Bind ViewModel.ShowRtssCustomRate, Mode=OneWay}", "manual editor only")
-check(synced.get("Visibility") == "{x:Bind ViewModel.ShowRtssSyncedRate, Mode=OneWay}", "sync display only")
-check(synced.get("Value") == "{x:Bind ViewModel.RtssSyncedRate, Mode=OneWay}", "sync has no editing callback")
-check(synced.get("IsEnabled") == "False" and synced.get("PlaceholderText") == "—", "disabled unknown sync display")
-check("Minimum" not in synced.attrib and "Maximum" not in synced.attrib, "no manual range clipping sync")
-rate_grid = next(n for n in uids["Rtss_CustomRate"] if n.tag.endswith("Grid"))
-check(manual in list(rate_grid) and synced in list(rate_grid), "numeric presentations share the same grid cell")
-status = uids["Rtss_Status"]
-check("IsEnabled" not in status.attrib, "status/launcher remain available")
-check(uids["Rtss_Tools"] in list(status.iter()), "launcher in status row")
-check(len([n for n in status.iter() if n.tag.endswith("MenuFlyoutItem")]) == 2, "two distinct launch actions")
-check(all(uids[uid].get("Style") == "{StaticResource RtssActionButtonStyle}" for uid in
-          ("Rtss_InitializeMagpieButton", "Rtss_Recheck")), "shared neutral action style")
-check(uids["Rtss_Tools"].get("Style") == "{StaticResource RtssToolsButtonStyle}", "integrated tools spacing style")
-check("FrameRefreshControlColumnWidth" in ET.tostring(status, encoding="unicode"), "status actions share the standard control column")
-action_style = next(n for n in nodes if n.get(x + "Key") == "RtssActionButtonStyle")
-setters = {n.get("Property"): n.get("Value") for n in action_style}
-check(action_style.get("BasedOn") == "{StaticResource DefaultButtonStyle}" and setters.get("BorderThickness") == "0", "ordinary action template and zero border")
-check(setters.get("MinHeight") == "32" and "FontSize" not in setters and setters.get("Padding") == "6,4" and setters.get("VerticalAlignment") == "Center", "action size/alignment and default button typography")
-buttons = [n for n in status.iter() if n.tag.endswith("Button") and n.get(x + "Uid")]
-check([n.get(x + "Uid") for n in buttons] == ["Rtss_InitializeMagpieButton", "Rtss_Tools", "Rtss_Recheck"], "initialization is left of tools")
-check(uids["Rtss_InitializeMagpieButton"].get("Visibility") == "{x:Bind ViewModel.ShowRtssInitialize, Mode=OneWay}", "initialized self profile collapses the action")
-check(uids["Rtss_Tools"].tag.endswith("Button") and not uids["Rtss_Tools"].tag.endswith("DropDownButton"), "menu uses ordinary button template")
-check(len([n for n in status.iter() if n.get("ResourceKey") == "ControlFillColorDefaultBrush"]) == 2, "neutral fills in light and dark themes")
+group = next(n for n in nodes if n.get(x+"Name") == "FrameRefreshGroup")
+rtss = uids["FrameRefresh_RateGroup"]
+check([n.get(x+"Uid") for n in uids["Rtss_Mode_Input"]] == ["Rtss_Scope_None", "Rtss_Rate_Sync", "Rtss_Rate_Custom"], "combined management/rate selector")
+check([n.get(x+"Uid") for n in uids["Rtss_Scope_Input"]] == ["Rtss_Scope_Global", "Rtss_Scope_Target"], "scope only contains actual scopes")
+check([n.get(x+"Uid") for n in uids["Rtss_ExitPolicy_Input"]] == ["Rtss_Exit_Keep", "Rtss_Exit_Restore"], "exit semantics preserved")
+check(uids["Rtss_CustomRate"].get("Visibility") == "{x:Bind ViewModel.ShowRtssCustomRate, Mode=OneWay}", "custom number dependency")
+check("FrameRefresh_Advanced" not in uids and "Rtss_Advanced" not in uids, "no nested advanced group")
+options = next(n for n in nodes if n.get(x+"Name") == "RtssOptionsGrid")
+check(options.get("Visibility") == "{x:Bind ViewModel.ShowRtssOptions, Mode=OneWay}", "dependent options hidden when unmanaged/simple")
+check(options.get("SizeChanged") == "RtssOptionsGrid_SizeChanged", "responsive native layout")
+for uid in ("Rtss_Scope_Input", "Rtss_ExitPolicy_Input"):
+    check(uids[uid].get("Style") == "{StaticResource RtssOptionComboBoxStyle}", "same native option style")
+status = next(n for n in nodes if n.get(x+"Name") == "RtssStatusCard")
+check("Visibility" not in status.attrib and "IsEnabled" not in status.attrib, "shared status in both modes")
+check(uids["Rtss_Retry"].get("Click") == "{x:Bind ViewModel.RetryRtss}", "retry current session")
+check(uids["Rtss_Download"].get("NavigateUri").startswith("https://www.guru3d.com/"), "explicit external download link")
+check(len([n for n in status.iter() if n.tag.endswith("MenuFlyoutItem")]) == 4, "recheck/self init/tool entries under manage")
 description = next(n for n in status if n.tag.endswith("SettingsCard.Description"))
-description_control = description[0]
-check(description_control.get("ItemsSource") == "{x:Bind ViewModel.RtssStatusSegments, Mode=OneWay}", "description uses separate status units")
-check(any(n.tag.endswith("WrapPanel") for n in description.iter()), "production panel packs whole segments")
-check(any(n.tag.endswith("TextBlock") and n.get("TextWrapping") == "Wrap" and "TextTrimming" not in n.attrib for n in description.iter()), "only overlong segment wraps internally without ellipsis")
-check(all(n.get("IsWrapEnabled") == "True" for n in rtss.iter() if n.tag.endswith("SettingsCard") or n.tag.endswith("SettingsExpander")), "wrap all settings rows")
+check(description[0].get("ItemsSource") == "{x:Bind ViewModel.RtssStatusSegments, Mode=OneWay}", "wrapping status units")
+check(description[0].get("AutomationProperties.LiveSetting") == "Polite", "accessible status updates")
 
 idl = read("src/Magpie/ProfileViewModel.idl")
 header = read("src/Magpie/ProfileViewModel.h")
@@ -119,10 +80,10 @@ for path in sorted((repo / "src/Magpie").glob("Resources.language-*.resw")):
     resource_maps.append(rtss_resources)
 check(all(set(r) == set(resource_maps[0]) for r in resource_maps), "same resource keys in all languages")
 for language, expected in {
-    "zh-Hans": {"Rtss_Rate_Sync.Content": "与内容帧率同步", "Rtss_Status_Written": "配置已更新。",
+    "zh-Hans": {"Rtss_Rate_Sync.Content": "同步内容帧率", "Rtss_Status_Written": "RTSS 已就绪",
                 "Rtss_GlobalNotice.Text": "使用全局配置的应用共用此上限。",
                 "Rtss_TargetOverridesGlobal": "目标使用独立配置。"},
-    "en-US": {"Rtss_Rate_Sync.Content": "Sync with content frame rate", "Rtss_Status_Written": "Profile updated."}
+    "en-US": {"Rtss_Rate_Sync.Content": "Sync content frame rate", "Rtss_Status_Written": "RTSS is ready"}
 }.items():
     resources = {n.get("name"): n.findtext("value") for n in
                  ET.parse(repo / f"src/Magpie/Resources.language-{language}.resw").getroot().findall("data")}
@@ -133,7 +94,7 @@ for resources in resource_maps:
                   ("效果未确认", "缩放可以继续", "修改可能保留", "清理已结束", "本次不再调用",
                    "unconfirmed", "Scaling can continue", "changes may remain", "Cleanup has ended", "no longer called")),
           "no defensive RTSS UI wording")
-for uid in (n.get(x + "Uid") for n in rtss.iter() if n.get(x + "Uid")):
+for uid in (n.get(x + "Uid") for n in rtss.iter() if n.get(x + "Uid", "").startswith("Rtss_")):
     check(any(key.startswith(uid + ".") for key in resource_maps[0]), "resource for " + uid)
 for key in set(re.findall(r'L"(Rtss_[A-Za-z0-9_]+)"', vm + read("src/Magpie/RtssService.cpp"))):
     check(key in resource_maps[0], "dynamic resource " + key)
@@ -178,7 +139,7 @@ check("disk.contents != current.contents" in access, "restore concurrent edit gu
 check("_SetIfChanged(\"AppDetectionLevel\", 1, error," in access, "new profile Low")
 check("before.exists && !NonRateEqual" in access, "existing non-rate preservation check")
 check("std::chrono::milliseconds(750)" in service and "_thread.detach()" in service, "bounded final shutdown")
-check("Recheck(false)" in service and "retry && Status().state != RtssState::Conflict" in service, "launch readiness does not retry failures")
+check("Recheck(false)" in service and "Status().state == RtssState::Conflict" in service, "launch readiness does not retry failures")
 check("session->cancelled = true" in service and "session->finished = true" in service, "stop cancellation and one cleanup")
 sync_rate = service.split("uint32_t RtssService::ContentSyncRate(", 1)[1].split("\n}", 1)[0]
 check("_uiSession" in sync_rate and "identity.lock()" in sync_rate and "session->cancelled" in sync_rate,

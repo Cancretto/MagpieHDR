@@ -59,6 +59,8 @@ struct RtssService {
 	RtssSettings finishedSettings;
 	static RtssService& Get() { static RtssService instance; return instance; }
 	void _Queue(std::function<void()> task) { worker.TryEnqueue(std::move(task)); }
+	struct Timer { void Stop() {} Timer& operator=(std::nullptr_t) { return *this; } explicit operator bool() const { return false; } } _sessionTimer;
+	void _StartSessionWatch(const std::shared_ptr<Session>&) {}
 	void _TryApply(const std::shared_ptr<Session>&) { ++applyCalls; }
 	void _Finish(const std::shared_ptr<Session>& session) { ++finishCalls; finishedSettings = session->settings; }
 	RtssStatus Status() const { return {}; }
@@ -79,6 +81,8 @@ struct ProfileViewModel {
 	unsigned saves = 0, notifications = 0;
 	bool simple = false;
 	bool IsSimpleFrameRefresh() const noexcept { return simple; }
+	bool IsAdvancedFrameRefresh() const noexcept { return !simple; }
+	bool ShowRtssOptions() const noexcept;
 	void _SaveRtss() { ++saves; }
 	void RaisePropertyChanged(const wchar_t*) { ++notifications; }
 	double RtssCustomRate() const noexcept;

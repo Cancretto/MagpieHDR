@@ -1517,7 +1517,8 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	auto frameSyncChangeCount = [&]() noexcept -> uint32_t {
 		const auto& options = ScalingWindow::Get().Options();
 		return uint32_t(_draftFrameRefresh != options.frameRefresh ||
-			_parameterSessionSnapshot.simpleFrameRefresh != options.isSimpleFrameRefresh);
+			_parameterSessionSnapshot.simpleFrameRefresh != options.isSimpleFrameRefresh ||
+			_parameterSessionSnapshot.refreshPolicyChanged);
 	};
 	uint32_t restartChangeCount = frameSyncChangeCount();
 	for (size_t effectIdx = 0; effectIdx < configuredEffectCount; ++effectIdx) {
@@ -1697,7 +1698,8 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	}
 	refreshChoice("##idleMode", L"FrameRefresh_Idle/Header", _draftFrameRefresh.idleEnabled, idleKeys);
 	if (_draftFrameRefresh.idleEnabled) rate("##idleRate", L"FrameRefresh_IdleRate/Header", _draftFrameRefresh.idleRate);
-	ImGui::TextWrapped("%s", _GetResourceString(L"FrameRefresh_Idle/Description").c_str());
+	if (ImGui::Checkbox(_GetResourceString(L"FrameRefresh_VRR/Header").c_str(), &_draftFrameRefresh.vrrEnabled))
+		parameterEdited = needRedraw = true;
 	if (!simpleRefresh) {
 		if (_draftFrameRefresh.legacyContentLimit > 0 || _draftFrameRefresh.legacySourceTarget >= 0 || _draftFrameRefresh.legacyLimiterOnly || _draftFrameRefresh.legacyResponsiveMinimum)
 			ImGui::TextWrapped("%s", _GetResourceString(L"FrameRefresh_LegacyNotice").c_str());
