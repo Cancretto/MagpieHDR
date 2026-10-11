@@ -9,7 +9,7 @@ source = (repo / "src/Magpie/ProfileViewModel.cpp").read_text(encoding="utf-8-si
 names = ("IsSimpleFrameRefresh", "IsAdvancedFrameRefresh", "FrameRefreshModeIndex", "ContentFrameRateModeIndex", "ContentFrameRate", "FrameSyncModeIndex", "IsContentPacingEnabled",
          "ShowContentFrameRate", "CursorRefreshModeIndex", "CursorSupplementModeIndex", "CursorSupplementRate",
          "ShowCursorSupplement", "ShowCursorSupplementRate", "IdleRedrawModeIndex", "IdleRedrawRate",
-         "ShowIdleRedrawRate", "IsVRREnabled", "ResetFrameRefresh", "_SaveFrameRefresh")
+         "ShowIdleRedrawRate", "IsVRREnabled", "ResetFrameRefresh", "_SaveFrameRefresh", "SimpleRtssSync", "_SaveRtss")
 declarations, definitions = [], []
 for name in names:
     for match in re.finditer(r"^(?:bool|double|int32_t|void) ProfileViewModel::" + name + r"\([^\n]+?\{", source, re.M):
@@ -22,14 +22,15 @@ for name in names:
         definitions.append(source[start:end])
 prefix = r'''
 #include "FrameRefreshSettings.h"
+#include "RtssSettings.h"
 #include <cassert>
 #include <iostream>
 #include <limits>
 namespace Magpie {
 enum class DuplicateFrameDetectionMode { Always, Dynamic, Never };
-struct Profile { FrameRefreshSettings frameRefresh; };
+struct Profile { FrameRefreshSettings frameRefresh; RtssSettings rtss; };
 struct ProfileService {
-    struct Changed { unsigned count=0; void Invoke(Profile&) { ++count; } } FrameRefreshChanged;
+    struct Changed { unsigned count=0; void Invoke(Profile&) { ++count; } } FrameRefreshChanged, RtssSettingsChanged;
     static ProfileService& Get() { static ProfileService s; return s; }
 };
 struct AppSettings { unsigned saves=0; bool simple=false; void SaveAsync() { ++saves; }
@@ -39,7 +40,10 @@ struct AppSettings { unsigned saves=0; bool simple=false; void SaveAsync() { ++s
 };
 struct ProfileViewModel {
     Profile* _data;
-    void DuplicateFrameDetectionMode(int32_t) {}
+    int32_t duplicateMode = 1;
+    void DuplicateFrameDetectionMode(int32_t value) { duplicateMode = value; }
+    void _NotifyRtssChanged() {}
+    void _LoadRtssPreview() {}
 '''
 suffix = r'''
 }
@@ -83,6 +87,7 @@ int main() {
     vm.ResetFrameRefresh();
     assert(!vm.IsVRREnabled());
     assert(defaults.frameRefresh==FrameRefreshSettings{} && app.frameRefresh==FrameRefreshSettings{});
+    assert(vm.duplicateMode==int32_t(DuplicateFrameDetectionMode::Never));
     assert(AppSettings::Get().saves==ProfileService::Get().FrameRefreshChanged.count);
     defaults.frameRefresh.pacing=FrameSyncMode::Reflex;
     defaults.frameRefresh.cursorRate=144;
@@ -91,6 +96,33 @@ int main() {
     assert(vm.IsSimpleFrameRefresh() && !vm.IsAdvancedFrameRefresh() && vm.FrameRefreshModeIndex()==0);
     vm.FrameSyncModeIndex(0); vm.CursorSupplementRate(30); vm.IsVRREnabled(false); vm.ResetFrameRefresh();
     assert(defaults.frameRefresh.pacing==FrameSyncMode::Reflex && defaults.frameRefresh.cursorRate==144 && !defaults.frameRefresh.vrrEnabled);
+    defaults.frameRefresh.cursorMode=CursorRefreshMode::OriginalOnly;
+    defaults.frameRefresh.cursorSupplement=CursorSupplementMode::Auto;
+    defaults.frameRefresh.legacyResponsiveMinimum=true;
+    defaults.rtss={RtssScope::Global, RtssRateMode::Custom, 143, RtssExitPolicy::KeepChanges, true};
+    auto expectedRtss=defaults.rtss; expectedRtss.simpleContentSync=false;
+    vm.ContentFrameRate(90); vm.ContentFrameRateModeIndex(0);
+    vm.IdleRedrawRate(45); vm.IdleRedrawModeIndex(0); vm.IsVRREnabled(true);
+    defaults.frameRefresh.legacyContentLimit=20;
+    defaults.frameRefresh.legacySourceTarget=48;
+    vm.duplicateMode=int32_t(DuplicateFrameDetectionMode::Dynamic);
+    const auto appBefore=app;
+    const auto frameEvents=ProfileService::Get().FrameRefreshChanged.count;
+    const auto rtssEvents=ProfileService::Get().RtssSettingsChanged.count;
+    vm.ResetFrameRefresh();
+    assert(vm.IsSimpleFrameRefresh() && vm.ContentFrameRateModeIndex()==1 && vm.ContentFrameRate()==60);
+    assert(vm.IdleRedrawModeIndex()==1 && vm.IdleRedrawRate()==30 && !vm.IsVRREnabled());
+    assert(defaults.rtss==expectedRtss && !vm.SimpleRtssSync());
+    assert(defaults.frameRefresh.pacing==FrameSyncMode::Reflex && defaults.frameRefresh.cursorRate==144);
+    assert(defaults.frameRefresh.cursorMode==CursorRefreshMode::OriginalOnly && defaults.frameRefresh.cursorSupplement==CursorSupplementMode::Auto);
+    assert(defaults.frameRefresh.legacyResponsiveMinimum && vm.duplicateMode==int32_t(DuplicateFrameDetectionMode::Dynamic));
+    assert(defaults.frameRefresh.legacyContentLimit==0 && defaults.frameRefresh.legacySourceTarget==-1 && !defaults.frameRefresh.legacyLimiterOnly);
+    assert(app.frameRefresh==appBefore.frameRefresh && app.rtss==appBefore.rtss);
+    assert(ProfileService::Get().FrameRefreshChanged.count==frameEvents+1 && ProfileService::Get().RtssSettingsChanged.count==rtssEvents+1);
+    const auto once=defaults;
+    vm.ResetFrameRefresh();
+    assert(defaults.frameRefresh==once.frameRefresh && defaults.rtss==once.rtss);
+    assert(ProfileService::Get().RtssSettingsChanged.count==rtssEvents+1);
     vm.ContentFrameRateModeIndex(1); vm.ContentFrameRate(90); vm.IdleRedrawRate(45);
     vm.FrameRefreshModeIndex(1);
     assert(vm.IsAdvancedFrameRefresh() && defaults.frameRefresh.contentRate==90 && defaults.frameRefresh.idleRate==45);
@@ -100,7 +132,7 @@ int main() {
     assert(vm.IsSimpleFrameRefresh());
     other.FrameRefreshModeIndex(-1); other.FrameRefreshModeIndex(2);
     assert(vm.IsSimpleFrameRefresh());
-    std::cout << "Production refresh view model: 72 mode combinations, hidden numeric retention, invalid edits, compatibility release, profile isolation and reset passed\n";
+    std::cout << "Production refresh view model: 72 mode combinations, hidden numeric retention, invalid edits, compatibility release, profile isolation and simple/advanced reset boundaries passed\n";
 }
 '''
 (output / "frame_refresh_vm.cpp").write_text(prefix + "\n".join(declarations) + "\n};\n" +

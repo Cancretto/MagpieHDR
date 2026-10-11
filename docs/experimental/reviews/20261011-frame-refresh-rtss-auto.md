@@ -1,5 +1,7 @@
 # 帧率与刷新第二阶段：实施与编译部署交接
 
+后续更新：第三阶段已修复原生页面与认可预览之间的结构差异；当前交接以[第三阶段记录](20261011-frame-refresh-visual-alignment.md)为准，本文保留第二阶段历史。
+
 日期：2026-10-11。功能分支：`feature/0610-frame-refresh-rtss-auto`，从第一阶段 `16dcf15a` 创建。工作树：`C:/Users/81443/Documents/Magpie enhance/worktrees/0610-frame-refresh-modes`。对应 [TODO 第二阶段 U01–U09](../todos/20261011-frame-refresh-modes-TODO.md)。第一阶段历史不代表当前行为。
 
 本轮完成源码开发、隔离测试、IDL/XAML 生成及 C++ 语法检查。没有链接 Magpie 产品，没有生成新 Release、部署、合入主线或推送，没有操作用户安装的 RTSS 或用户配置。后续产品编译与部署由独立会话处理。

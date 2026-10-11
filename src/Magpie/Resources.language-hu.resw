@@ -598,4 +598,32 @@
   <data name="Rtss_Failure_ProcessExited" xml:space="preserve"><value>RTSS has exited</value></data>
   <data name="Rtss_Status_StartingAfterburner" xml:space="preserve"><value>Starting MSI Afterburner</value></data>
   <data name="Rtss_Status_AfterburnerStartFailed" xml:space="preserve"><value>MSI Afterburner could not start</value></data>
+  <data name="FrameRefresh_CursorStrategy.Header" xml:space="preserve"><value>Refresh strategy</value></data>
+  <data name="Rtss_Management.Header" xml:space="preserve"><value>Manage</value></data>
+  <data name="Rtss_Recheck.Content" xml:space="preserve"><value>Check again</value></data>
+  <data name="Rtss_ProgramLabel.Text" xml:space="preserve"><value>RTSS program</value></data>
+  <data name="Rtss_SelfLabel.Text" xml:space="preserve"><value>Magpie configuration</value></data>
+  <data name="Rtss_Title_WaitingContent" xml:space="preserve"><value>Waiting for a fixed content rate</value></data>
+  <data name="Rtss_Detail_Disabled" xml:space="preserve"><value>Target frame rate is not managed.</value></data>
+  <data name="Rtss_Detail_WaitingContent" xml:space="preserve"><value>Content follows the source; synchronized limiting is paused.</value></data>
+  <data name="Rtss_Detail_WaitingTarget" xml:space="preserve"><value>RTSS is prepared automatically when scaling starts.</value></data>
+  <data name="Rtss_Detail_Checking" xml:space="preserve"><value>Checking the program and configuration interface.</value></data>
+  <data name="Rtss_Detail_Starting" xml:space="preserve"><value>Waiting for RTSS to start.</value></data>
+  <data name="Rtss_Detail_Initializing" xml:space="preserve"><value>Removing the frame cap from Magpie’s own configuration.</value></data>
+  <data name="Rtss_Detail_Applying" xml:space="preserve"><value>Applying the target program’s frame cap.</value></data>
+  <data name="Rtss_Detail_NotInstalled" xml:space="preserve"><value>Install RTSS, then check again.</value></data>
+  <data name="Rtss_Detail_Global" xml:space="preserve"><value>RTSS global configuration</value></data>
+  <data name="Rtss_Detail_Target" xml:space="preserve"><value>Current target program</value></data>
+  <data name="Rtss_Inventory_Checking" xml:space="preserve"><value>Checking</value></data>
+  <data name="Rtss_Inventory_Missing" xml:space="preserve"><value>Not installed</value></data>
+  <data name="Rtss_Inventory_Running" xml:space="preserve"><value>Running</value></data>
+  <data name="Rtss_Inventory_Stopped" xml:space="preserve"><value>Installed, not running</value></data>
+  <data name="Rtss_Inventory_Initializing" xml:space="preserve"><value>Initializing</value></data>
+  <data name="Rtss_Inventory_Unlimited" xml:space="preserve"><value>Unlimited</value></data>
+  <data name="Rtss_Inventory_Uninitialized" xml:space="preserve"><value>Needs initialization</value></data>
+  <data name="Rtss_Inventory_Unknown" xml:space="preserve"><value>Not checked</value></data>
+  <data name="Rtss_Management_Failed" xml:space="preserve"><value>Magpie initialization failed</value></data>
+  <data name="Rtss_Management_LaunchFailed" xml:space="preserve"><value>RTSS did not start</value></data>
+  <data name="Rtss_Management_Started" xml:space="preserve"><value>Started</value></data>
+  <data name="Rtss_Detail_RetryReady" xml:space="preserve"><value>RTSS is available. Retry to apply the frame cap.</value></data>
 </root>

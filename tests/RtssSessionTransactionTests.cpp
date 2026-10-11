@@ -63,6 +63,8 @@ public:
 		status.readReady = _access.CanRead(); status.applyReady = _access.CanApply(); status.initializeReady = _access.CanInitializeUnlimited();
 	}
 	RtssStatus Status() const { return _status; }
+	RtssStatus SessionStatus() const { return _status; }
+	RtssStatus InventoryStatus() const { return _status; }
 	void _CheckSession(const std::shared_ptr<Session>& session);
 	void _TryApply(const std::shared_ptr<Session>& session);
 	bool _PrepareSession(const std::shared_ptr<Session>& session, RtssStatus& status);

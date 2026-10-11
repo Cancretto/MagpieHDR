@@ -21,6 +21,14 @@ $rtssVs = & $rtssVsWhere -latest -products * -requires Microsoft.Component.MSBui
 if (!$rtssVs) { throw 'Visual Studio with C++ tools is required.' }
 Import-Module (Join-Path $rtssVs 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
 Enter-VsDevShell -VsInstallPath $rtssVs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64' | Out-Null
+& python (Join-Path $PSScriptRoot 'prepare_rtss_presentation_tests.py') $rtssOutput
+if ($LASTEXITCODE) { throw 'RTSS presentation extraction failed.' }
+& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX /DNOMINMAX `
+    "/I$rtssOutput" "/I$rtssRepo/src/Magpie" (Join-Path $PSScriptRoot 'RtssPresentationTests.cpp') `
+    "/Fe:$rtssOutput/RtssPresentationTests.exe" "/Fo:$rtssOutput/RtssPresentationTests.obj"
+if ($LASTEXITCODE) { throw 'RTSS presentation test compilation failed.' }
+& (Join-Path $rtssOutput 'RtssPresentationTests.exe')
+if ($LASTEXITCODE) { throw 'RTSS presentation tests failed.' }
 $rtssRapid = Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.conan2/p') -Directory -Filter 'rapid*' |
     Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'p/include/rapidjson/document.h') } | Select-Object -First 1
 if (!$rtssRapid) { throw 'Restore rapidjson before compiling the RTSS settings tests.' }

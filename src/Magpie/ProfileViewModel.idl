@@ -70,6 +70,16 @@ namespace Magpie {
 		Boolean ShowRtssSyncedRate { get; };
 		Boolean IsRtssSyncAvailable { get; };
 		Boolean ShowRtssGlobalNotice { get; };
+		String RtssStatusTitle { get; };
+		String RtssStatusDescription { get; };
+		String RtssStatusGlyph { get; };
+		Boolean IsRtssBusy { get; };
+		Boolean ShowRtssManagement { get; };
+		String RtssProgramStatus { get; };
+		String RtssSelfStatus { get; };
+		String RtssManagementResult { get; };
+		Boolean ShowRtssManagementResult { get; };
+		Boolean CanRecheckRtss { get; };
 		String RtssStatusText { get; };
 		IVector<String> RtssStatusSegments { get; };
 		String RtssSyncText { get; };

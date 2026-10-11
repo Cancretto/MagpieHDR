@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -2063,4 +2063,32 @@
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVIDIA 光流</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高质量（极高开销）</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重复帧过滤</value></data>
+  <data name="FrameRefresh_CursorStrategy.Header" xml:space="preserve"><value>刷新策略</value></data>
+  <data name="Rtss_Management.Header" xml:space="preserve"><value>管理</value></data>
+  <data name="Rtss_Recheck.Content" xml:space="preserve"><value>重新检测</value></data>
+  <data name="Rtss_ProgramLabel.Text" xml:space="preserve"><value>RTSS 程序</value></data>
+  <data name="Rtss_SelfLabel.Text" xml:space="preserve"><value>Magpie 配置</value></data>
+  <data name="Rtss_Title_WaitingContent" xml:space="preserve"><value>等待固定内容帧率</value></data>
+  <data name="Rtss_Detail_Disabled" xml:space="preserve"><value>不接管目标程序帧率。</value></data>
+  <data name="Rtss_Detail_WaitingContent" xml:space="preserve"><value>内容跟随源，同步限帧暂停。</value></data>
+  <data name="Rtss_Detail_WaitingTarget" xml:space="preserve"><value>开始缩放时自动准备 RTSS。</value></data>
+  <data name="Rtss_Detail_Checking" xml:space="preserve"><value>检查程序与配置接口。</value></data>
+  <data name="Rtss_Detail_Starting" xml:space="preserve"><value>等待 RTSS 启动完成。</value></data>
+  <data name="Rtss_Detail_Initializing" xml:space="preserve"><value>将 Magpie 自身配置设为不限帧。</value></data>
+  <data name="Rtss_Detail_Applying" xml:space="preserve"><value>应用目标程序限帧配置。</value></data>
+  <data name="Rtss_Detail_NotInstalled" xml:space="preserve"><value>安装 RTSS 后重新检测。</value></data>
+  <data name="Rtss_Detail_Global" xml:space="preserve"><value>RTSS 全局配置</value></data>
+  <data name="Rtss_Detail_Target" xml:space="preserve"><value>当前目标程序</value></data>
+  <data name="Rtss_Inventory_Checking" xml:space="preserve"><value>检测中</value></data>
+  <data name="Rtss_Inventory_Missing" xml:space="preserve"><value>未安装</value></data>
+  <data name="Rtss_Inventory_Running" xml:space="preserve"><value>运行中</value></data>
+  <data name="Rtss_Inventory_Stopped" xml:space="preserve"><value>已安装，未运行</value></data>
+  <data name="Rtss_Inventory_Initializing" xml:space="preserve"><value>初始化中</value></data>
+  <data name="Rtss_Inventory_Unlimited" xml:space="preserve"><value>已不限帧</value></data>
+  <data name="Rtss_Inventory_Uninitialized" xml:space="preserve"><value>待初始化</value></data>
+  <data name="Rtss_Inventory_Unknown" xml:space="preserve"><value>待检查</value></data>
+  <data name="Rtss_Management_Failed" xml:space="preserve"><value>Magpie 初始化未完成</value></data>
+  <data name="Rtss_Management_LaunchFailed" xml:space="preserve"><value>RTSS 启动失败</value></data>
+  <data name="Rtss_Management_Started" xml:space="preserve"><value>已启动</value></data>
+  <data name="Rtss_Detail_RetryReady" xml:space="preserve"><value>已检测到 RTSS，可重试联动。</value></data>
 </root>

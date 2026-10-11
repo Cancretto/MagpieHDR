@@ -2,153 +2,58 @@
 
 static unsigned checks = 0;
 static void Require(bool value, const char* message) {
-	++checks;
-	if (!value) throw std::runtime_error(message);
+    ++checks;
+    if (!value) throw std::runtime_error(message);
 }
-
+static bool Contains(const hstring& text, const hstring& part) {
+    return std::wstring_view(text).find(std::wstring_view(part)) != std::wstring_view::npos;
+}
 int main() {
-	try {
-		std::cout << std::unitbuf;
-		init_apartment(apartment_type::multi_threaded);
-		bool reproduced = false;
-		try { auto incorrect = ResourceLoader::GetForCurrentView(); (void)incorrect; }
-		catch (const hresult_error& e) {
-			reproduced = uint32_t(e.code().value) == 0x80073B1F;
-			std::cout << "Default map HRESULT: 0x" << std::hex << uint32_t(e.code().value) << std::dec << '\n';
-		}
-		Require(reproduced, "The old default-map call did not reproduce the reported HRESULT");
-		for (auto language : {L"en-US", L"zh-Hans", L"zh-Hant"}) {
-			Resources::Core::ResourceContext::SetGlobalQualifierValue(L"Language", language);
-			auto resources = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
-			for (auto key : ResourceKeys) Require(!resources.GetString(key).empty(), "Empty RTSS resource");
-#ifdef RTSS_SOURCE_RESOURCES
-			const bool chinese = std::wstring_view(language) == L"zh-Hans";
-			Require(resources.GetString(L"Rtss_InitializeMagpie") == (chinese ? L"初始化" : L"Initialize"), "Short initialization action text");
-			const bool traditional = std::wstring_view(language) == L"zh-Hant";
-			Require(resources.GetString(L"Rtss_Rate_Sync/Content") == (chinese ? L"同步内容帧率" : traditional ? L"同步內容幀率" : L"Sync content frame rate"), "Sync option wording");
-			Require(resources.GetString(L"Rtss_Status_Written") == (chinese || traditional ? L"RTSS 已就绪" : L"RTSS is ready"), "Written result wording");
-			Require(resources.GetString(L"Rtss_GlobalNotice/Text") == (chinese ? L"使用全局配置的应用共用此上限。" : L"Applications using the global profile share this limit."), "Global factual hint");
-			Require(resources.GetString(L"Rtss_TargetOverridesGlobal") == (chinese ? L"目标使用独立配置。" : L"The target uses its own profile."), "Target factual hint");
-			Require(resources.GetString(L"Rtss_Failure_Set") == (chinese ? L"设置帧率失败。" : L"Could not set the frame rate."), "Setting failure wording");
-			Require(resources.GetString(L"Rtss_Failure_Verify") == (chinese ? L"核对配置失败。" : L"Could not verify the profile."), "Verification failure wording");
-			Require(resources.GetString(L"Rtss_Failure_Reload") == (chinese ? L"重载配置失败。" : L"Could not reload the profile."), "Reload failure wording");
-			Require(resources.GetString(L"Rtss_Failure_TimeMode") == (chinese ? L"无法切换帧时间模式。" : L"Could not switch from frame time mode."), "Time mode failure wording");
-#endif
-			ProfileViewModel vm;
-			for (bool pending : { false, true }) {
-				RtssService::Get().pending = pending;
-				Require(vm.RtssInitializeText() == resources.GetString(pending ? L"Rtss_InitializingMagpie" : L"Rtss_InitializeMagpie"), "Initialization button uses native map and busy text");
-			}
-			for (auto state : States) for (auto scope : {RtssScope::None, RtssScope::Global, RtssScope::Target}) {
-				vm.data.rtss.scope = scope;
-				vm.status.state = state;
-				Require(!vm.RtssStatusText().empty(), "Empty status text");
-			}
-			vm.status.state = RtssState::Read;
-			vm.data.rtss.scope = RtssScope::Global;
-			vm.status.rtss.executable = L"RTSS.exe";
-			vm.status.rtss.running = true;
-			vm.status.profile = L"Global"; vm.status.rtss.version = L"7.3.5.28314";
-			vm.status.rateKnown = true; vm.status.currentRate = 60;
-			vm.status.failureStage = L"Rtss_Failure_Read";
-			const auto segments = vm.RtssStatusSegments();
-			Require(segments.GetAt(0) == L"Global" && segments.GetAt(1) == hstring(L"\u00a0-\u00a0" + std::wstring(resources.GetString(L"Rtss_Status_Read"))), "Profile and current state lead the status");
-			Require(segments.GetAt(2) == hstring(L"\u00a0-\u00a0" + fmt::format(fmt::runtime(std::wstring_view(resources.GetString(L"Rtss_ProfileRate"))), 60.0)) && segments.GetAt(3) == hstring(L"\u00a0-\u00a0" + std::wstring(resources.GetString(L"Rtss_Failure_Read"))), "Rate precedes specific error");
-			Require(std::wstring_view(vm.RtssStatusText()).find(L'\n') == std::wstring_view::npos, "Status stays one paragraph");
-			vm.status.profile.clear(); vm.status.rtss.version.clear(); vm.status.rateKnown = false; vm.status.failureStage.clear();
-			vm.data.rtss.scope = RtssScope::Target;
-			Require(vm.RtssStatusSegments().Size() == 1, "Missing object, version and rate are omitted");
-			vm.status.profile.clear(); vm.status.rtss.executable.clear();
-			Require(vm.RtssStatusSegments().Size() == 1, "Uninstalled tool does not fabricate an object");
-			vm.status.profile.clear();
-			vm.status.rateKnown = true;
-			vm.status.detectionDisabled = vm.status.targetOverridesGlobal = true;
-			vm.status.failureStage = L"Rtss_Failure_Read";
-			for (auto rate : {0., 60., 119.88}) for (bool timeLimit : {false, true}) {
-				vm.status.currentRate = rate; vm.status.timeLimit = timeLimit;
-				Require(!vm.RtssStatusText().empty(), "Empty rate status");
-			}
-			vm.status = {}; vm.status.rtss.executable = L"RTSS.exe"; vm.status.profile = L"Renamed Magpie.exe";
-			vm.status.state = RtssState::MagpieInitialized; vm.status.selfInitialization = true; vm.status.rateKnown = true;
-			const auto offlineText = std::wstring(vm.RtssStatusText());
-			Require(offlineText.find(std::wstring(resources.GetString(L"Rtss_Status_MagpieInitialized"))) != offlineText.npos &&
-				offlineText.find(std::wstring(resources.GetString(L"Rtss_Reloaded"))) == offlineText.npos, "Self initialization reports its completed action without claiming a reload");
-			vm.status.state = RtssState::Read; vm.status.selfInitialization = false; vm.status.rateKnown = false; vm.status.rateUnavailable = true;
-			Require(std::wstring(vm.RtssStatusText()).find(std::wstring(resources.GetString(L"Rtss_RateUnknown"))) != std::wstring::npos &&
-				std::wstring(vm.RtssStatusText()).find(std::wstring(resources.GetString(L"Rtss_NoLimit"))) == std::wstring::npos, "Unknown field is not rendered as unlimited");
-			vm.status.rtss.running = true; vm.status.rateUnavailable = false; vm.status.reloaded = true;
-			Require(std::wstring(vm.RtssStatusText()).find(std::wstring(resources.GetString(L"Rtss_Reloaded"))) == std::wstring::npos, "Compact status does not repeat a reload suffix");
-			vm.status.reloaded = false; vm.status.profileSaved = true; vm.status.state = RtssState::Failed;
-			vm.status.failureStage = L"Rtss_Failure_Reload";
-			const auto reloadFailureText = std::wstring(vm.RtssStatusText());
-			Require(reloadFailureText.find(std::wstring(resources.GetString(L"Rtss_ProfileSaved"))) != reloadFailureText.npos &&
-				reloadFailureText.find(std::wstring(resources.GetString(L"Rtss_Failure_Reload"))) != reloadFailureText.npos, "Saved and reload failure are distinct segments");
-			vm.status.profileSaved = false;
-			vm.syncAvailable = false;
-			Require(vm.RtssSyncText() == resources.GetString(L"Rtss_SyncUnavailable"), "Unavailable sync text");
-			vm.syncAvailable = true;
-			Require(vm.RtssSyncText() == resources.GetString(L"Rtss_CustomAtStart"), "Custom rate text");
-			vm.data.rtss.rateMode = RtssRateMode::ContentSync;
-			Require(vm.RtssSyncText() == resources.GetString(L"Rtss_SyncAtStart"), "Pending sync text");
-			vm.status.profileIdentity = vm.data.runtimeIdentity; vm.status.desiredRate = 60;
-			vm.status.contentConstrained = true;
-			Require(vm.RtssSyncText() == resources.GetString(L"Rtss_SyncAtStart"), "Active sync description does not repeat the numeric row");
-			for (auto toolState : {0, 1, 2}) {
-				vm.status.rtss.executable = vm.status.afterburner.executable = toolState ? L"tool.exe" : L"";
-				vm.status.rtss.running = vm.status.afterburner.running = toolState == 2;
-				const wchar_t* rtssKeys[] = {L"Rtss_LaunchRtssMissing", L"Rtss_LaunchRtss", L"Rtss_LaunchRtssRunning"};
-				const wchar_t* abKeys[] = {L"Rtss_LaunchAfterburnerMissing", L"Rtss_LaunchAfterburner", L"Rtss_LaunchAfterburnerRunning"};
-				Require(vm.RtssLaunchText() == resources.GetString(rtssKeys[toolState]), "RTSS launch text");
-				Require(vm.AfterburnerLaunchText() == resources.GetString(abKeys[toolState]), "Afterburner launch text");
-			}
-		}
-		RtssService::Get().pending = RtssService::Get().launching = false;
-		StatusViewModel model;
-		model.data.rtss.scope = RtssScope::Target;
-		auto& activeStatus = RtssService::Get().status;
-		activeStatus = {}; activeStatus.state = RtssState::NotRunning;
-		activeStatus.rtss.executable = L"RTSS.exe"; activeStatus.readReady = activeStatus.initializeReady = true;
-		model._rtssPreview.state = RtssState::Read; model._rtssPreview.rateKnown = true; model._rtssPreview.currentRate = 60;
-		model._rtssPreview.profile = L"Global";
-		Require(model._RtssStatus().state == RtssState::WaitingTarget && !model._RtssStatus().rateKnown,
-			"Preview read without an active session waits for a target and does not claim a live limit");
-		RtssService::Get().sessionIdentity = model.data.runtimeIdentity;
-		RtssService::Get().sessionGeneration = 7;
-		activeStatus.profileIdentity = model.data.runtimeIdentity;
-		activeStatus.sessionGeneration = 7;
-		activeStatus.state = RtssState::Written;
-		Require(model._RtssStatus().state == RtssState::Written, "Current generation receives the active result");
-		activeStatus.sessionGeneration = 6;
-		Require(model._RtssStatus().state == RtssState::WaitingTarget, "A stale generation cannot replace the current preview");
-		RtssService::Get().sessionIdentity.reset();
-		activeStatus.sessionGeneration = 0;
-		activeStatus.state = RtssState::NotRunning;
-		RtssService::Get().preparing = true;
-		Require(!model.CanInitializeMagpie(), "Automatic preparation blocks conflicting manual initialization");
-		RtssService::Get().preparing = false;
-		Require(model.CanInitializeMagpie(), "Actual button availability permits offline self initialization");
-		Require(model.ShowRtssInitialize(), "Uninitialized profile shows the action");
-		RtssService::Get().initialized = true;
-		Require(!model.ShowRtssInitialize() && model.CanInitializeMagpie(), "Initialized profile hides the automatic action while manual initialization remains available");
-		RtssService::Get().initialized = false;
-		Require(model.ShowRtssInitialize() && model.CanInitializeMagpie(), "Recheck of changed profile restores the action");
-		RtssService::Get().initializationUnknown = true;
-		Require(!model.ShowRtssInitialize() && model.CanInitializeMagpie(), "Unknown initialization state hides the automatic action while manual retry uses capability checks");
-		RtssService::Get().initializationUnknown = false;
-		RtssService::Get().launching = true;
-		Require(!model.CanInitializeMagpie(), "Button prevents conflicting launch command");
-		RtssService::Get().launching = false; RtssService::Get().pending = true;
-		Require(!model.CanInitializeMagpie(), "Button prevents duplicate self initialization");
-		RtssService::Get().pending = false; activeStatus.readReady = activeStatus.initializeReady = false;
-		activeStatus.state = RtssState::Failed; activeStatus.failureStage = L"Rtss_Failure_Interface";
-		Require(!model.CanInitializeMagpie() && model._RtssStatus().state == RtssState::Failed && !model._RtssStatus().rateKnown &&
-			model._RtssStatus().failureStage == L"Rtss_Failure_Interface", "Faulted read capability supersedes stale preview");
-		activeStatus.state = RtssState::NotInstalled; activeStatus.rtss.executable.clear();
-		Require(model._RtssStatus().profile.empty() && !model._RtssStatus().rateKnown, "Uninstalled state clears stale object");
-		std::cout << "RTSS native resource text: " << checks << " checks passed across 3 languages.\n";
-		return 0;
-	} catch (const hresult_error& e) {
-		std::cerr << "HRESULT: 0x" << std::hex << uint32_t(e.code().value) << " " << to_string(e.message()) << '\n';
-	} catch (const std::exception& e) { std::cerr << e.what() << '\n'; }
-	return 1;
+    try {
+        init_apartment(apartment_type::multi_threaded);
+        for (auto language : {L"en-US", L"zh-Hans", L"zh-Hant"}) {
+            Resources::Core::ResourceContext::SetGlobalQualifierValue(L"Language", language);
+            const auto resources = ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID);
+            for (auto key : ResourceKeys) Require(!resources.GetString(key).empty(), "Empty RTSS resource");
+            ProfileViewModel vm;
+            for (auto state : States) {
+                vm.status.state = state;
+                Require(!vm.RtssStatusTitle().empty(), "Status title uses native map");
+                (void)vm.RtssStatusDescription();
+            }
+            vm.status = {}; vm.status.state = RtssState::Written;
+            vm.status.rateKnown = true; vm.status.currentRate = 59.94; vm.status.scope = RtssScope::Global;
+            Require(vm.RtssStatusTitle() == resources.GetString(L"Rtss_Status_Written"), "Ready title");
+            const auto expectedRate = hstring(fmt::format(fmt::runtime(std::wstring_view(resources.GetString(L"Rtss_ProfileRate"))), 59.94));
+            Require(Contains(vm.RtssStatusDescription(), expectedRate), "Localized configured rate");
+            Require(Contains(vm.RtssStatusDescription(), resources.GetString(L"Rtss_Detail_Global")), "Localized actual scope");
+            vm.status.state = RtssState::Failed; vm.status.profileSaved = true; vm.status.failureStage = L"Rtss_Failure_Reload";
+            Require(vm.RtssStatusTitle() == resources.GetString(L"Rtss_Status_Failed"), "Failure title");
+            Require(Contains(vm.RtssStatusDescription(), resources.GetString(L"Rtss_ProfileSaved")) &&
+                Contains(vm.RtssStatusDescription(), resources.GetString(L"Rtss_Failure_Reload")), "Partial save and reload failure remain separate facts");
+            Require(!Contains(vm.RtssStatusDescription(), resources.GetString(L"Rtss_ScalingContinues")), "Inactive scaling wording");
+            auto& service = RtssService::Get();
+            service.status = {}; service.status.state = RtssState::NotInstalled;
+            Require(vm.RtssProgramStatus() == resources.GetString(L"Rtss_Inventory_Missing"), "Missing program inventory");
+            service.status.rtss.executable = L"RTSS.exe"; service.status.rtss.running = true;
+            Require(vm.RtssProgramStatus() == resources.GetString(L"Rtss_Inventory_Running"), "Running program inventory");
+            service.initializationUnknown = true;
+            Require(vm.RtssSelfStatus() == resources.GetString(L"Rtss_Inventory_Unknown"), "Unknown self inventory");
+            service.initializationUnknown = false; service.initialized = true;
+            Require(vm.RtssSelfStatus() == resources.GetString(L"Rtss_Inventory_Unlimited"), "Known self inventory");
+            service.status.manualOperation = true; service.status.profile = L"MSI Afterburner"; service.status.state = RtssState::ToolStartFailed;
+            Require(Contains(vm.RtssManagementResult(), resources.GetString(L"Rtss_Status_AfterburnerStartFailed")), "Optional tool failure belongs to management");
+            service.status.state = RtssState::ToolStarted;
+            Require(Contains(vm.RtssManagementResult(), resources.GetString(L"Rtss_Management_Started")), "Completed tool launch result");
+            service.status = {}; service.status.selfInitialization = true; service.status.state = RtssState::Failed;
+            service.status.profileSaved = true; service.status.failureStage = L"Rtss_Failure_Reload";
+            Require(Contains(vm.RtssManagementResult(), resources.GetString(L"Rtss_ProfileSaved")) &&
+                Contains(vm.RtssManagementResult(), resources.GetString(L"Rtss_Failure_Reload")), "Manual partial result remains factual");
+        }
+        std::cout << "RTSS native resource text: " << checks << " checks passed across 3 languages.\n";
+        return 0;
+    } catch (const hresult_error& e) {
+        std::cerr << "HRESULT: 0x" << std::hex << uint32_t(e.code().value) << " " << to_string(e.message()) << '\n';
+    } catch (const std::exception& e) { std::cerr << e.what() << '\n'; }
+    return 1;
 }

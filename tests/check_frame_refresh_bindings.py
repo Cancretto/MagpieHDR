@@ -19,12 +19,24 @@ sections = [n for n in group if n.tag in (local+"SettingsExpander", local+"Setti
 assert [n.get(x+"Uid") for n in sections] == ["FrameRefresh_RateGroup", "FrameRefresh_StaticGroup", "FrameRefresh_Cursor", "FrameRefresh_VRR"]
 assert sections[2].get("Visibility") == "{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}"
 assert "Visibility" not in sections[3].attrib
+for section in sections:
+    assert any(n.tag.endswith(".HeaderIcon") and len(n) == 1 for n in section), "group icon missing"
+for mode, number in (("FrameRefresh_Content_Input", "FrameRefresh_ContentRate_Input"),
+                     ("FrameRefresh_Idle_Input", "FrameRefresh_IdleRate_Input"),
+                     ("Rtss_Mode_Input", "Rtss_CustomRate_Input"),
+                     ("FrameRefresh_CursorSupplement_Input", "FrameRefresh_CursorRate_Input")):
+    pair = next(n for n in group.iter() if uids[mode] in list(n))
+    assert pair.tag == local + "WrapPanel" and uids[number] in list(pair.iter()), "mode and rate must share one wrapping row"
+header_actions = next(n for n in group.iter() if uids["FrameRefresh_Mode_Input"] in list(n))
+assert uids["FrameRefresh_ResetButton"] in list(header_actions), "reset belongs beside mode selection"
+assert "Visibility" not in uids["FrameRefresh_ResetButton"].attrib, "reset is available in both modes"
+assert uids["FrameRefresh_Mode_Input"].tag.endswith("ListBox") and uids["FrameRefresh_Mode_Input"].get("SelectionMode") == "Single"
 assert "FrameRefresh_Advanced" not in uids
 assert "FrameRefresh_Mode" not in uids
 assert [c.get(x+"Uid") for c in uids["FrameRefresh_Content_Input"]] == ["FrameRefresh_Source", "FrameRefresh_Custom"]
-for uid, prop in {"FrameRefresh_Pacing":"ShowContentPacing", "FrameRefresh_CursorSupplement":"ShowCursorSupplement", "FrameRefresh_CursorRate":"ShowCursorSupplementRate"}.items():
+for uid, prop in {"FrameRefresh_Pacing":"ShowContentPacing", "FrameRefresh_CursorSupplement":"ShowCursorSupplement"}.items():
     assert uids[uid].get("Visibility") == f"{{x:Bind ViewModel.{prop}, Mode=OneWay}}"
-for uid, prop in {"FrameRefresh_ContentRate_Input":"ShowContentFrameRate", "FrameRefresh_IdleRate_Input":"ShowIdleRedrawRate"}.items():
+for uid, prop in {"FrameRefresh_ContentRate_Input":"ShowContentFrameRate", "FrameRefresh_IdleRate_Input":"ShowIdleRedrawRate", "FrameRefresh_CursorRate_Input":"ShowCursorSupplementRate", "Rtss_CustomRate_Input":"ShowRtssCustomRate"}.items():
     parent = next(n for n in group.iter() if uids[uid] in list(n))
     assert parent.get("Visibility") == f"{{x:Bind ViewModel.{prop}, Mode=OneWay}}"
 assert all(n.get("IsWrapEnabled") == "True" for n in group.iter(local+"SettingsCard"))
@@ -61,10 +73,10 @@ for file in (repo / "src/Magpie").glob("Resources.language-*.resw"):
         elif n.tag.endswith("ToggleSwitch"):
             assert resources[uid + ".OffContent"] and resources[uid + ".OnContent"], (lang, uid)
             assert resources[uid + ".[using:Windows.UI.Xaml.Automation]AutomationProperties.Name"], (lang, uid)
-        elif n.tag.endswith(("NumberBox", "ComboBox")):
+        elif n.tag.endswith(("NumberBox", "ComboBox", "ListBox")):
             assert resources[uid + "_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" if not uid.endswith("_Input") else uid + ".[using:Windows.UI.Xaml.Automation]AutomationProperties.Name"], (lang, uid)
         else:
-            assert resources.get(uid + ".Content") or resources.get(uid + ".Text"), (lang, uid)
+            assert resources.get(uid + ".Content") or resources.get(uid + ".Text") or resources.get(uid + ".Header"), (lang, uid)
     for name in ("Home_FrameRefresh_Summary", "Home_FrameRefresh_Edit.Content", "FrameRefresh_RestartNotice", "FrameRefresh_LegacyNotice"):
         assert resources[name], (lang, name)
 renderer = read("src/Magpie.Core/Renderer.cpp")

@@ -18,7 +18,7 @@ if ($LASTEXITCODE) { throw 'Unified refresh test compilation failed.' }
 if ($LASTEXITCODE) { throw 'Unified refresh tests failed.' }
 & python "$PSScriptRoot/prepare_frame_refresh_vm_test.py" $refreshOutput
 if ($LASTEXITCODE) { throw 'Production refresh view-model extraction failed.' }
-& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX "/I$refreshRepo/src/Magpie.Core/include" `
+& cl.exe /nologo /std:c++20 /EHsc /utf-8 /MT /O2 /W4 /WX "/I$refreshRepo/src/Magpie.Core/include" "/I$refreshRepo/src/Magpie" `
     "$refreshOutput/frame_refresh_vm.cpp" "/Fe:$refreshOutput/FrameRefreshViewModelTests.exe" "/Fo:$refreshOutput/FrameRefreshViewModelTests.obj"
 if ($LASTEXITCODE) { throw 'Production refresh view-model compilation failed.' }
 & "$refreshOutput/FrameRefreshViewModelTests.exe"

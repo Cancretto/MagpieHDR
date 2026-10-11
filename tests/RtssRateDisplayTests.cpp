@@ -27,6 +27,9 @@ static auto ResolveTarget(HWND source) {
 enum class RtssState { Failed };
 struct RtssStatus {
 	bool selfInitialization = false, rateKnown = false, reloaded = false, profileSaved = false, rateUnavailable = false;
+	bool manualOperation = false;
+	uint64_t sessionGeneration = 0;
+	RtssScope scope = RtssScope::None;
 	std::wstring profile;
 	std::weak_ptr<const uint8_t> profileIdentity;
 	RtssState state{};
@@ -64,6 +67,7 @@ struct RtssService {
 	void _TryApply(const std::shared_ptr<Session>&) { ++applyCalls; }
 	void _Finish(const std::shared_ptr<Session>& session) { ++finishCalls; finishedSettings = session->settings; }
 	RtssStatus Status() const { return {}; }
+	RtssStatus SessionStatus() const { return {}; }
 	void _Publish(RtssStatus) { StatusChanged.Invoke(); }
 	uint64_t Begin(HWND target, std::weak_ptr<const uint8_t> identity, RtssSettings settings);
 	void ContentTargetChanged(uint64_t session, HWND source, bool fixed, double baseRate, bool constrained);

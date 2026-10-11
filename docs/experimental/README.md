@@ -1,6 +1,6 @@
 # Magpie 实验分支文档索引
 
-帧率与刷新第二阶段：已在 `feature/0610-frame-refresh-rtss-auto` 完成 [TODO U01–U09](todos/20261011-frame-refresh-modes-TODO.md) 的源码开发与适用检查。简单三块/高级四块、共享 VRR、重复检测默认关闭，RTSS 自动准备、准确状态与当前会话重试。产品编译、部署、真实 UI/RTSS/GPU 验收交给后续会话，见[实施与交接记录](reviews/20261011-frame-refresh-rtss-auto.md)。[第一阶段历史](reviews/20261011-frame-refresh-modes.md)保留。
+帧率与刷新第三阶段：在原 `feature/0610-frame-refresh-rtss-auto` 分支完成 [TODO V01–V06](todos/20261011-frame-refresh-modes-TODO.md) 的源码与适用检查：四处帧率同行、四组图标、顶部模式/恢复入口，以及 RTSS 独立状态、行内管理和只读重新检测。V07 原生视觉/RTSS 验收、产品编译与部署交给后续会话，见[第三阶段修复与交接记录](reviews/20261011-frame-refresh-visual-alignment.md)。[第二阶段](reviews/20261011-frame-refresh-rtss-auto.md)与[第一阶段](reviews/20261011-frame-refresh-modes.md)保留为历史。
 
 当前公开版本为 [Magpie Experimental v0.6.9](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.9-experimental)：[完整中英 Release Note](../RELEASE_NOTES_v0.6.9-experimental.md)、[分发准备记录](reviews/20261002-v0.6.9-release-preparation.md)。默认分支 `experimental` 已同步完整 0.6.9 源码，`version.json` 指向该版本。发布标签及运行包的准确构建提交为 `27c5df91177a29b33be612e98274169f3d2fca49`；后续文档与版本入口更新保留为独立提交。
 

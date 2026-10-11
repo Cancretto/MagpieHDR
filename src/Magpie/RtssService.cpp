@@ -214,10 +214,40 @@ RtssStatus RtssService::Status() const {
 	std::lock_guard lock(_mutex); return _status;
 }
 
+RtssStatus RtssService::InventoryStatus() const {
+	std::lock_guard lock(_mutex); return _inventoryStatus;
+}
+
+RtssStatus RtssService::SessionStatus() const {
+	std::lock_guard lock(_mutex); return _sessionStatus;
+}
+RtssStatus RtssService::ManagementStatus() const {
+	std::lock_guard lock(_mutex); return _managementStatus;
+}
+bool RtssService::IsLatestStatus(const RtssStatus& status, std::weak_ptr<const uint8_t> identity) const noexcept {
+	const auto owner = identity.lock();
+	return owner && status.sessionGeneration == _generation && status.profileIdentity.lock() == owner;
+}
+RtssStatus RtssService::CurrentSessionStatus(std::weak_ptr<const uint8_t> identity) const {
+	auto status = SessionStatus();
+	if (!HasSession(identity) || IsCurrentStatus(status, identity)) return status;
+	// Begin has queued work but has not yet published. Do not show the previous
+	// session or project pending UI edits onto the captured running policy.
+	status = {};
+	status.sessionGeneration = _uiSession->generation;
+	status.profileIdentity = _uiSession->identity;
+	status.scope = _uiSession->settings.scope;
+	return status;
+}
+
 void RtssService::_Publish(RtssStatus status) {
 	SetAccessStatus(_access, status);
 	{
-		std::lock_guard lock(_mutex); _status = std::move(status);
+		std::lock_guard lock(_mutex);
+		if (status.inventoryKnown) _inventoryStatus = status;
+		if (status.sessionGeneration && !status.manualOperation && !status.selfInitialization) _sessionStatus = status;
+		if (status.manualOperation || status.selfInitialization) _managementStatus = status;
+		_status = std::move(status);
 	}
 	if (_notify) _dispatcher.TryEnqueue([this] { if (_notify) StatusChanged.Invoke(); });
 }
@@ -226,6 +256,7 @@ bool RtssService::_Prepare(RtssStatus& status) {
 	status.readReady = status.applyReady = status.initializeReady = false;
 	status.rtss = RtssProfileAccess::DetectTool(false);
 	status.afterburner = RtssProfileAccess::DetectTool(true);
+	status.inventoryKnown = true;
 	if (status.rtss.executable.empty()) { status.state = RtssState::NotInstalled; return false; }
 	std::wstring error;
 	if (!_access.Initialize(status.rtss, error)) {
@@ -266,9 +297,10 @@ void RtssService::ContentTargetChanged(uint64_t sessionId, HWND source, bool fix
 		const auto rebound = ResolveTarget(source);
 		if (!rebound || !session->initialTarget || !rebound->SameProcess(*session->initialTarget)) {
 			End();
-			_Queue([this, identity = session->identity] {
-				auto status = Status(); status.profileIdentity = identity;
-				status.selfInitialization = false;
+			_Queue([this, session] {
+				auto status = SessionStatus(); status.profileIdentity = session->identity;
+				status.sessionGeneration = session->generation; status.scope = session->settings.scope;
+				status.selfInitialization = status.manualOperation = false;
 				status.reloaded = status.profileSaved = status.rateUnavailable = false;
 				status.profile.clear(); status.rateKnown = false;
 				status.state = RtssState::Failed; status.failureStage = L"Rtss_Failure_Target";
@@ -336,7 +368,8 @@ void RtssService::_StartSessionWatch(const std::shared_ptr<Session>& session) {
 void RtssService::_CheckSession(const std::shared_ptr<Session>& session) {
 	if (session->cancelled || session->finished || session->suspended || !session->prepared || !session->modified || _workerSession != session) return;
 	const auto target = session->target.load();
-	auto status = Status();
+	auto status = SessionStatus();
+	status.afterburner = InventoryStatus().afterburner;
 	status.rtss = RtssProfileAccess::DetectTool(false);
 	if (!target || !target->Valid()) {
 		status.state = RtssState::Failed; status.failureStage = L"Rtss_Failure_Target";
@@ -452,8 +485,10 @@ void RtssService::_Finish(const std::shared_ptr<Session>& session) {
 	if (session->finished) return;
 	session->finished = true;
 	if (!session->modified) return;
-	auto status = Status();
-	status.selfInitialization = false;
+	auto status = SessionStatus();
+	status.selfInitialization = status.manualOperation = false;
+	status.sessionGeneration = session->generation;
+	status.scope = session->settings.scope;
 	status.rateKnown = false;
 	status.timeLimit = false;
 	status.targetOverridesGlobal = false;
@@ -503,24 +538,33 @@ void RtssService::Retry(std::weak_ptr<const uint8_t> identity) {
 	if (!HasSession(identity) || _autoPreparing) return;
 	const auto session = _uiSession;
 	_Queue([this, session] {
-		if (session->cancelled || _workerSession != session || session->finished || Status().state == RtssState::Conflict) return;
+		if (session->cancelled || _workerSession != session || session->finished || SessionStatus().state == RtssState::Conflict) return;
 		session->suspended = false; session->prepared = false;
 		_TryApply(session);
 	});
 }
 
 void RtssService::Recheck(bool retry) {
-	const auto session = _uiSession;
-	if (session) {
-		if (retry) Retry(session->identity);
-		return;
-	}
+	if (retry && _uiSession) { Retry(_uiSession->identity); return; }
+	if (_recheckPending || !_notify) return;
+	_recheckPending = true;
+	StatusChanged.Invoke();
 	_Queue([this] {
-		if (_workerSession && !_workerSession->cancelled) return;
+		// Inventory only: never launch, initialize or apply a target profile.
 		RtssStatus status;
-		_Prepare(status);
-		_RefreshMagpieInitialization(status);
-		_Publish(std::move(status));
+		try {
+			_Prepare(status);
+			_RefreshMagpieInitialization(status);
+			_Publish(std::move(status));
+			if (_workerSession) _CheckSession(_workerSession);
+		} catch (...) {
+			status.state = RtssState::Failed; status.failureStage = L"Rtss_Failure_Access";
+			_Publish(std::move(status));
+		}
+		if (_notify) _dispatcher.TryEnqueue([this] {
+			_recheckPending = false;
+			if (_notify) StatusChanged.Invoke();
+		});
 	});
 }
 
@@ -528,6 +572,8 @@ void RtssService::_PublishSession(const std::shared_ptr<Session>& session, RtssS
 	if (session->cancelled || session->finished || session->identity.expired() || _workerSession != session) return;
 	status.profileIdentity = session->identity;
 	status.sessionGeneration = session->generation;
+	status.scope = session->settings.scope;
+	status.selfInitialization = status.manualOperation = false;
 	_Publish(std::move(status));
 }
 
@@ -614,8 +660,8 @@ void RtssService::Launch(bool afterburner) {
 	if (_launchPending || _initializationPending || _autoPreparing) return;
 	_launchPending = true;
 	_Queue([this, afterburner] {
-		auto status = Status(); status.state = RtssState::StartingTool;
-		status.selfInitialization = false; status.rateKnown = false;
+		auto status = InventoryStatus(); status.state = RtssState::StartingTool;
+		status.selfInitialization = false; status.manualOperation = true; status.rateKnown = false;
 		status.reloaded = status.profileSaved = status.rateUnavailable = false;
 		status.detectionDisabled = status.targetOverridesGlobal = false;
 		status.profileIdentity.reset(); status.sessionGeneration = 0;
@@ -634,21 +680,34 @@ void RtssService::Launch(bool afterburner) {
 				const auto s = Status();
 				const bool selectedRunning = afterburner ? s.afterburner.running : s.rtss.running;
 				const bool timeout = ++attempts >= 20;
-				if (!_notify || (selectedRunning && s.rtss.running) || timeout) {
+				if (!_notify || selectedRunning || timeout) {
 					timer.Stop(); _launchPending = false;
 					StatusChanged.Invoke();
+				}
+				if (_notify && selectedRunning) {
+					_Queue([this, afterburner] {
+						RtssStatus status;
+						_Prepare(status);
+						status.manualOperation = true;
+						status.profile = afterburner ? L"MSI Afterburner" : L"RTSS";
+						status.state = RtssState::ToolStarted;
+						status.failureStage.clear();
+						_Publish(std::move(status));
+					});
+					return;
 				}
 				if (_notify && timeout && !selectedRunning) {
 					_Queue([this, afterburner] {
 						const auto tool = RtssProfileAccess::DetectTool(afterburner);
-						if (tool.running) { Recheck(false); return; }
-						auto status = Status(); status.state = RtssState::ToolStartFailed;
-						status.selfInitialization = false; status.rateKnown = false;
+						auto status = InventoryStatus();
+						status.state = tool.running ? RtssState::ToolStarted : RtssState::ToolStartFailed;
+						if (afterburner) status.afterburner = tool; else status.rtss = tool;
+						status.selfInitialization = false; status.manualOperation = true; status.rateKnown = false;
 						status.reloaded = status.profileSaved = status.rateUnavailable = false;
 						status.detectionDisabled = status.targetOverridesGlobal = false;
 						status.profileIdentity.reset(); status.sessionGeneration = 0;
 						status.profile = afterburner ? L"MSI Afterburner" : L"RTSS";
-						status.failureStage = L"Rtss_Failure_StartTimeout";
+						status.failureStage = tool.running ? L"" : L"Rtss_Failure_StartTimeout";
 						_Publish(std::move(status));
 					});
 					return;
@@ -665,18 +724,7 @@ void RtssService::InitializeMagpie() {
 	_initializationPending = true;
 	StatusChanged.Invoke();
 	_Queue([this] {
-		const auto previous = Status();
 		_InitializeMagpie();
-		if (_workerSession && !_workerSession->cancelled) {
-			auto result = Status();
-			if (result.state == RtssState::MagpieInitialized || result.state == RtssState::MagpieAlreadyUnlimited) {
-				// Keep the current target result, including a retryable target failure.
-				if (previous.sessionGeneration == _workerSession->generation) _PublishSession(_workerSession, previous);
-			} else {
-				result.selfInitialization = false;
-				_PublishSession(_workerSession, std::move(result));
-			}
-		}
 		if (_notify) _dispatcher.TryEnqueue([this] {
 			_initializationPending = false;
 			if (_notify) StatusChanged.Invoke();
@@ -720,6 +768,7 @@ void RtssService::_InitializeMagpie() {
 		status.state = RtssState::Failed; status.failureStage = L"Rtss_Failure_Write";
 		LogProfileFailure("initialize Magpie", L"WriteException", _access.Failure());
 	}
+	_RefreshMagpieInitialization(status);
 	_Publish(std::move(status));
 }
 
@@ -763,6 +812,9 @@ void RtssService::Preview(RtssSettings settings, std::wstring executable, std::f
 		}
 		if (!status.readReady) _magpieInitialization = RtssInitializationState::Unknown;
 		SetAccessStatus(_access, status);
+		{
+			std::lock_guard lock(_mutex); _inventoryStatus = status;
+		}
 		if (_notify) _dispatcher.TryEnqueue([this, status = std::move(status), completed] {
 			if (_notify) completed(status);
 		});

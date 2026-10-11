@@ -15,7 +15,7 @@ namespace Magpie {
 enum class RtssState {
 	Checking, NotInstalled, NotRunning, Incompatible, Failed, WaitingTarget, Read, MissingProfile,
 	WaitingContent, Applying, Written, Conflict, Kept, Restored, RestoreFailed, StartingTool, ToolStartFailed,
-	InitializingMagpie, MagpieInitialized, MagpieAlreadyUnlimited, Disabled
+	InitializingMagpie, MagpieInitialized, MagpieAlreadyUnlimited, Disabled, ToolStarted
 };
 
 struct RtssStatus {
@@ -33,6 +33,9 @@ struct RtssStatus {
 	bool readReady = false, applyReady = false, initializeReady = false;
 	bool reloaded = false, profileSaved = false, rateUnavailable = false;
 	bool selfInitialization = false;
+	bool manualOperation = false;
+	bool inventoryKnown = false;
+	RtssScope scope = RtssScope::None;
 	std::weak_ptr<const uint8_t> profileIdentity;
 	std::wstring failureStage;
 };
@@ -64,6 +67,13 @@ public:
 	void Preview(RtssSettings settings, std::wstring executable,
 		std::function<void(RtssStatus)> completed);
 	RtssStatus Status() const;
+	RtssStatus InventoryStatus() const;
+	RtssStatus SessionStatus() const;
+	RtssStatus ManagementStatus() const;
+	// UI thread: snapshot of the actual running policy, including queued startup.
+	RtssStatus CurrentSessionStatus(std::weak_ptr<const uint8_t> identity) const;
+	bool IsLatestStatus(const RtssStatus& status, std::weak_ptr<const uint8_t> identity) const noexcept;
+	bool IsRechecking() const noexcept { return _recheckPending; }
 	// UI thread only; the current session's resolved sync target, or 0 if unknown.
 	uint32_t ContentSyncRate(std::weak_ptr<const uint8_t> identity) const noexcept;
 	Event<> StatusChanged;
@@ -94,6 +104,7 @@ private:
 	std::condition_variable _done;
 	std::deque<std::function<void()>> _tasks;
 	RtssStatus _status;
+	RtssStatus _sessionStatus, _managementStatus, _inventoryStatus;
 	uint64_t _generation = 0;
 	bool _closing = false;
 	bool _exited = false;
@@ -102,6 +113,7 @@ private:
 	std::atomic<RtssInitializationState> _magpieInitialization = RtssInitializationState::Unknown; // worker writes, UI reads
 	bool _launchPending = false; // UI thread
 	bool _initializationPending = false; // UI thread
+	bool _recheckPending = false; // UI thread
 	winrt::DispatcherQueueTimer _launchTimer{ nullptr };
 	winrt::DispatcherQueueTimer _sessionTimer{ nullptr };
 };
