@@ -1980,4 +1980,6 @@
     <value>內容：{} · 空闲：{} · VRR：{}</value>
   </data>
   <data name="Rtss_Failure_ProcessExited" xml:space="preserve"><value>RTSS 程序已結束</value></data>
+  <data name="Rtss_Status_StartingAfterburner" xml:space="preserve"><value>正在啟動 MSI Afterburner</value></data>
+  <data name="Rtss_Status_AfterburnerStartFailed" xml:space="preserve"><value>MSI Afterburner 啟動失敗</value></data>
 </root>

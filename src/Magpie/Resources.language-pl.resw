@@ -1192,4 +1192,6 @@
     <value>Let the display refresh rate follow the output frame rate.</value>
   </data>
   <data name="Rtss_Failure_ProcessExited" xml:space="preserve"><value>RTSS has exited</value></data>
+  <data name="Rtss_Status_StartingAfterburner" xml:space="preserve"><value>Starting MSI Afterburner</value></data>
+  <data name="Rtss_Status_AfterburnerStartFailed" xml:space="preserve"><value>MSI Afterburner could not start</value></data>
 </root>

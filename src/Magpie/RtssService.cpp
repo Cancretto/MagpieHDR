@@ -619,7 +619,7 @@ void RtssService::Launch(bool afterburner) {
 		status.reloaded = status.profileSaved = status.rateUnavailable = false;
 		status.detectionDisabled = status.targetOverridesGlobal = false;
 		status.profileIdentity.reset(); status.sessionGeneration = 0;
-		status.profile.clear(); status.failureStage.clear(); _Publish(status);
+		status.profile = afterburner ? L"MSI Afterburner" : L"RTSS"; status.failureStage.clear(); _Publish(status);
 		std::wstring error;
 		const auto tool = RtssProfileAccess::DetectTool(afterburner);
 		const bool success = RtssProfileAccess::LaunchTool(tool, error);

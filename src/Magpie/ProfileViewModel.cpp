@@ -835,7 +835,7 @@ bool ProfileViewModel::ShowContentPacing() const noexcept { return IsAdvancedFra
 bool ProfileViewModel::ShowRtssDownload() const noexcept { return IsRtssManaged() && _RtssStatus().state == RtssState::NotInstalled; }
 bool ProfileViewModel::CanRetryRtss() const noexcept {
 	const auto s = _RtssStatus();
-	return RtssService::Get().HasSession(_data->runtimeIdentity) &&
+	return s.profile != L"MSI Afterburner" && RtssService::Get().HasSession(_data->runtimeIdentity) &&
 		(s.state == RtssState::Failed || s.state == RtssState::ToolStartFailed ||
 		 s.state == RtssState::NotInstalled || s.state == RtssState::Incompatible || s.state == RtssState::NotRunning);
 }
@@ -904,8 +904,8 @@ IVector<hstring> ProfileViewModel::RtssStatusSegments() const {
 	case RtssState::Kept: key = L"Rtss_Status_Kept"; break;
 	case RtssState::Restored: key = L"Rtss_Status_Restored"; break;
 	case RtssState::RestoreFailed: key = L"Rtss_Status_RestoreFailed"; break;
-	case RtssState::StartingTool: key = L"Rtss_Status_StartingTool"; break;
-	case RtssState::ToolStartFailed: key = L"Rtss_Status_ToolStartFailed"; break;
+	case RtssState::StartingTool: key = s.profile == L"MSI Afterburner" ? L"Rtss_Status_StartingAfterburner" : L"Rtss_Status_StartingTool"; break;
+	case RtssState::ToolStartFailed: key = s.profile == L"MSI Afterburner" ? L"Rtss_Status_AfterburnerStartFailed" : L"Rtss_Status_ToolStartFailed"; break;
 	case RtssState::InitializingMagpie: key = L"Rtss_Status_InitializingMagpie"; break;
 	case RtssState::MagpieInitialized: key = L"Rtss_Status_MagpieInitialized"; break;
 	case RtssState::MagpieAlreadyUnlimited: key = L"Rtss_Status_MagpieAlreadyUnlimited"; break;
@@ -925,7 +925,7 @@ IVector<hstring> ProfileViewModel::RtssStatusSegments() const {
 	if (!s.failureStage.empty()) add(std::wstring(loader.GetString(s.failureStage)));
 	if (s.detectionDisabled) add(std::wstring(loader.GetString(L"Rtss_DetectionDisabled")));
 	if (s.targetOverridesGlobal) add(std::wstring(loader.GetString(L"Rtss_TargetOverridesGlobal")));
-	if (RtssService::Get().HasSession(_data->runtimeIdentity) &&
+	if (s.profile != L"MSI Afterburner" && RtssService::Get().HasSession(_data->runtimeIdentity) &&
 		(s.state == RtssState::Failed || s.state == RtssState::ToolStartFailed || s.state == RtssState::Incompatible ||
 		 s.state == RtssState::NotInstalled || s.state == RtssState::NotRunning || s.state == RtssState::Conflict))
 		add(std::wstring(loader.GetString(L"Rtss_ScalingContinues")));

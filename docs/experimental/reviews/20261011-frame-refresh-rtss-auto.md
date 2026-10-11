@@ -31,7 +31,7 @@
 | `Run-FrameRefreshTests.ps1` | 1,972 项模型检查，72 组生产 ViewModel 组合；全局模式读写、默认重复检测及显式值保留、共享 VRR、策略变化待重启 |
 | `Run-RtssTests.ps1 -Compile` | 设置 576、数值显示 54、配置事务 309、会话事务 190、自身初始化 87、布局/启动 22；自动启动/复用、缺少依赖、取消、失败不自动重试、部分保存重载恢复、旧结果隔离、进程退出 |
 | `Run-CursorRefreshTests.ps1` | 光标策略 181、配置复制 195、输入采样 15 |
-| 资源与源码合同 | RTSS 355 项/20 语言；刷新、GPU 原有位置、VRR 与 NVIDIA 前台策略边界；XML/IDL/绑定一致性 |
+| 资源与源码合同 | RTSS 357 项/20 语言；刷新、GPU 原有位置、VRR 与 NVIDIA 前台策略边界；XML/IDL/绑定一致性 |
 | 当前 IDL 与 XAML | 生成当前 `App.winmd`、C++/WinRT 投影与 Home/Profile XAML 绑定；没有产品链接或 PRI/包输出 |
 | MSVC `/Zs` | AppSettings、ProfileViewModel、ProfilePage、HomeViewModel、ScalingService、RtssService；Core 的 OverlayDrawer、ScalingOptions、ScalingRuntime；启用 warnings as errors |
 | 交互草图 | 高级重复检测默认关闭；两个下拉框在 736 px 视口等宽等高、320 px 纵排且无横向溢出；控制台无警告/错误 |
