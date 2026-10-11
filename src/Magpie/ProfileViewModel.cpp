@@ -1241,9 +1241,21 @@ hstring ProfileViewModel::FrameRefreshNotice() const noexcept {
 	return hstring(text);
 }
 void ProfileViewModel::ResetFrameRefresh() {
-	if (IsSimpleFrameRefresh()) return;
-	_data->frameRefresh = {};
-	DuplicateFrameDetectionMode(int32_t(::Magpie::DuplicateFrameDetectionMode::Never));
+	if (IsSimpleFrameRefresh()) {
+		// Reset the exposed settings without discarding hidden advanced preferences.
+		const FrameRefreshSettings defaults;
+		auto& settings = _data->frameRefresh;
+		settings.contentMode = defaults.contentMode;
+		settings.contentRate = defaults.contentRate;
+		settings.ContentEdited();
+		settings.idleEnabled = defaults.idleEnabled;
+		settings.idleRate = defaults.idleRate;
+		settings.vrrEnabled = defaults.vrrEnabled;
+		SimpleRtssSync(RtssSettings{}.simpleContentSync);
+	} else {
+		_data->frameRefresh = {};
+		DuplicateFrameDetectionMode(int32_t(::Magpie::DuplicateFrameDetectionMode::Never));
+	}
 	_SaveFrameRefresh();
 }
 

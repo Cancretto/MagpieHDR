@@ -29,6 +29,7 @@ for mode, number in (("FrameRefresh_Content_Input", "FrameRefresh_ContentRate_In
     assert pair.tag == local + "WrapPanel" and uids[number] in list(pair.iter()), "mode and rate must share one wrapping row"
 header_actions = next(n for n in group.iter() if uids["FrameRefresh_Mode_Input"] in list(n))
 assert uids["FrameRefresh_ResetButton"] in list(header_actions), "reset belongs beside mode selection"
+assert "Visibility" not in uids["FrameRefresh_ResetButton"].attrib, "reset is available in both modes"
 assert uids["FrameRefresh_Mode_Input"].tag.endswith("ListBox") and uids["FrameRefresh_Mode_Input"].get("SelectionMode") == "Single"
 assert "FrameRefresh_Advanced" not in uids
 assert "FrameRefresh_Mode" not in uids

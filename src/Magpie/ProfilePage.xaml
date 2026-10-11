@@ -199,7 +199,7 @@
 							<ListBoxItem x:Uid="FrameRefresh_Mode_Simple"/>
 							<ListBoxItem x:Uid="FrameRefresh_Mode_Advanced"/>
 						</ListBox>
-						<Button x:Uid="FrameRefresh_ResetButton" VerticalAlignment="Center" Visibility="{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}" Click="{x:Bind ViewModel.ResetFrameRefresh}"/>
+						<Button x:Uid="FrameRefresh_ResetButton" VerticalAlignment="Center" Click="{x:Bind ViewModel.ResetFrameRefresh}"/>
 					</local:WrapPanel>
 				</Grid>
 				<local:SettingsExpander x:Uid="FrameRefresh_RateGroup" IsExpanded="True" IsWrapEnabled="True">
