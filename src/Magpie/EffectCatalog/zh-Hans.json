@@ -1610,10 +1610,10 @@
         "frame"
       ],
       "summary": "在真实帧之间生成 2×～4× 显示帧。",
-      "details": "需要支持相应补帧能力的 NVIDIA 显卡、驱动与随附运行库；可用倍率由实际能力决定。同一效果组只使用一个补帧器。\n\n在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。\n\n补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。",
+      "details": "默认使用随附的社区兼容运行库，无需选择库。需要支持相应补帧能力的 NVIDIA 显卡及驱动；可用倍率以实际能力为准，最高 4×。同一效果组只使用一个补帧器。切换渲染显卡后需重启喜鹊。\n\n在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。\n\n补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。",
       "level": "advanced",
       "recommendation": "进阶／实验",
-      "search": "DLSSFG\\DLSS_FrameGeneration DLSS FrameGeneration 补帧与帧率 补帧 在真实帧之间生成 2×～4× 显示帧。 需要支持相应补帧能力的 NVIDIA 显卡、驱动与随附运行库；可用倍率由实际能力决定。同一效果组只使用一个补帧器。  在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。  补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。 DLSSFG\\DLSS_FrameGeneration Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality",
+      "search": "DLSSFG\\DLSS_FrameGeneration DLSS FrameGeneration 补帧与帧率 补帧 在真实帧之间生成 2×～4× 显示帧。 默认使用随附的社区兼容运行库，无需选择库。需要支持相应补帧能力的 NVIDIA 显卡及驱动；可用倍率以实际能力为准，最高 4×。同一效果组只使用一个补帧器。切换渲染显卡后需重启喜鹊。  在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。  补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。 DLSSFG\\DLSS_FrameGeneration Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality",
       "family": null,
       "subfamily": null
     },

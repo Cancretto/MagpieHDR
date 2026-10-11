@@ -138,6 +138,8 @@
     <ClInclude Include="YasHelper.h" />
     <ClInclude Include="DLSSSRUpscaler.h" />
     <ClInclude Include="DLSSFrameGenerator.h" />
+    <ClInclude Include="include\DlssgSm86Runtime.h" />
+    <ClInclude Include="include\DlssgSm86Policy.h" />
     <ClInclude Include="NvidiaVfxRuntime.h" />
     <ClInclude Include="NvidiaVfxImageBackend.h" />
     <ClInclude Include="include\NvidiaVfxTrueHdrParameters.h" />
@@ -263,6 +265,7 @@
     <ClCompile Include="WindowHelper.cpp" />
     <ClCompile Include="DLSSSRUpscaler.cpp" />
     <ClCompile Include="DLSSFrameGenerator.cpp" />
+    <ClCompile Include="DlssgSm86Runtime.cpp" />
     <ClCompile Include="DLSSNRFilter.cpp" />
     <ClCompile Include="DLSSNRTemporal.cpp" />
     <ClCompile Include="FrameGuidanceService.cpp" />
