@@ -3235,7 +3235,7 @@
     },
     {
       "id": "XeSSFG\\XeSS_FrameGeneration",
-      "name": "XeSS_FrameGeneration",
+      "name": "XeSS FrameGeneration",
       "category": "frame",
       "subcategory": "Frame generation",
       "purposes": [
@@ -3245,7 +3245,7 @@
       "details": "Defaults to 2× with AMD optical flow at Quality. Requires the bundled XeSSFG runtime and a supported GPU; use one frame generator per group.\n\n3×/4× on non-Intel GPUs uses this project’s experimental compatibility path and matching bundled runtime; it is outside Intel’s official multiframe support. Use no optical flow or AMD optical flow for 3×/4×; NVIDIA optical flow is currently for 2×.\n\nSet base FPS under Frame rate and refresh. Generation runs after image processing regardless of list position and does not raise game simulation FPS. Check motion, occlusion, HUD, cursor, and HDR colors. Multiplier and optical-flow changes require restarting scaling.",
       "level": "advanced",
       "recommendation": "Advanced / experimental",
-      "search": "XeSSFG\\XeSS_FrameGeneration XeSS_FrameGeneration Frame generation and frame rate Frame generation XeSS frame generation at 2×–4×. Defaults to 2× with AMD optical flow at Quality. Requires the bundled XeSSFG runtime and a supported GPU; use one frame generator per group.  3×/4× on non-Intel GPUs uses this project’s experimental compatibility path and matching bundled runtime; it is outside Intel’s official multiframe support. Use no optical flow or AMD optical flow for 3×/4×; NVIDIA optical flow is currently for 2×.  Set base FPS under Frame rate and refresh. Generation runs after image processing regardless of list position and does not raise game simulation FPS. Check motion, occlusion, HUD, cursor, and HDR colors. Multiplier and optical-flow changes require restarting scaling. XeSSFG\\XeSS_FrameGeneration XeSSFG\\XeSS_FrameGeneration_x2_ZeroMV XeSSFG\\XeSS_MultiFrameGeneration_ZeroMV Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality XeSS Frame Generation",
+      "search": "XeSSFG\\XeSS_FrameGeneration XeSS_FrameGeneration Frame generation and frame rate Frame generation XeSS frame generation at 2×–4×. Defaults to 2× with AMD optical flow at Quality. Requires the bundled XeSSFG runtime and a supported GPU; use one frame generator per group.  3×/4× on non-Intel GPUs uses this project’s experimental compatibility path and matching bundled runtime; it is outside Intel’s official multiframe support. Use no optical flow or AMD optical flow for 3×/4×; NVIDIA optical flow is currently for 2×.  Set base FPS under Frame rate and refresh. Generation runs after image processing regardless of list position and does not raise game simulation FPS. Check motion, occlusion, HUD, cursor, and HDR colors. Multiplier and optical-flow changes require restarting scaling. XeSSFG\\XeSS_FrameGeneration XeSSFG\\XeSS_FrameGeneration_x2_ZeroMV XeSSFG\\XeSS_MultiFrameGeneration_ZeroMV Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality XeSS Frame Generation XeSS FrameGeneration",
       "family": {
         "id": "xessfg",
         "name": "XeSS Frame Generation",
@@ -3368,7 +3368,7 @@
     },
     {
       "id": "FSR3FG\\FSR3_FrameGeneration",
-      "name": "FSR 3 FG (Experimental)",
+      "name": "FSR3 FrameGeneration",
       "category": "frame",
       "subcategory": "Frame generation",
       "purposes": [
@@ -3378,7 +3378,7 @@
       "details": "Generates frames after final image processing at fixed 2x. It can be used independently of FSR upscaling. Use one frame generator per group. WGC is not required; missing native timestamps use a capture-admission interval estimate. Requires a build with FSR FG, matching AMD runtimes and a compatible GPU.\n\nExternal motion estimation and duplicate filtering default to off; FSR internal optical flow remains active. AMD or NVIDIA external motion can be tested with supported rectangular scaling chains. Select None for CRT, distortion or unverified effects. Optical-flow changes require restarting scaling.\n\nThis experimental capture-based integration lacks real game depth and motion. Game HUD, occlusion and fast motion may show artifacts. HDR and cropping outside the output window are not supported. Validate quality and cost first. Set base FPS under Frame rate and refresh. Generation does not increase game simulation FPS or establish lower input latency.",
       "level": "advanced",
       "recommendation": "Advanced / experimental",
-      "search": "FSR3FG FSR 3 FG FSR3_FrameGeneration AMD FidelityFX frame generation interpolation fixed 2x SDR experimental AMDOF NVOF",
+      "search": "FSR3FG FSR 3 FG FSR3_FrameGeneration AMD FidelityFX frame generation interpolation fixed 2x SDR experimental AMDOF NVOF FSR3 FrameGeneration",
       "family": null,
       "subfamily": null
     }

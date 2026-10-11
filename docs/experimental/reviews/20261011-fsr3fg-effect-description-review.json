@@ -94,18 +94,18 @@
         ]
       },
       "zh-Hans": {
-        "name": "FSR 3 FG（实验性）",
+        "name": "FSR3 FrameGeneration",
         "subcategory": "补帧",
         "summary": "实验性 FSR 3 补帧，固定 2×，目前仅支持 SDR。",
         "details": "在最终图像处理完成后补帧，固定 2×，不必搭配 FSR 超分。一条效果链只使用一个补帧效果器。不限定 WGC；缺少捕获时间戳时使用捕获接收间隔估计。需要包含 FSR FG 的程序构建、配套 AMD 运行库和满足要求的显卡。\n\n默认关闭外部运动估计和重复帧过滤，FSR 内部光流仍运行。可试验 AMD 或 NVIDIA 外部光流；仅支持已列出的矩形缩放效果链，CRT、几何变形和未验证效果请将光流方法设为无。光流变更需重启缩放。\n\n这是基于捕获图像的实验性接入，缺少游戏真实深度和运动信息。游戏 HUD、遮挡及快速运动可能出现伪影；当前不支持 HDR 和超出输出窗口的裁剪。请先验证画质与开销。基础帧率在“帧率与刷新”中设置，补帧不提高游戏逻辑帧率，也不代表输入延迟降低。",
-        "search": "FSR3FG FSR 3 FG FSR3_FrameGeneration AMD FidelityFX 补帧 帧生成 插帧 2x 2× SDR 实验性 AMDOF NVOF"
+        "search": "FSR3FG FSR 3 FG FSR3_FrameGeneration AMD FidelityFX 补帧 帧生成 插帧 2x 2× SDR 实验性 AMDOF NVOF FSR3 FrameGeneration"
       },
       "en-US": {
-        "name": "FSR 3 FG (Experimental)",
+        "name": "FSR3 FrameGeneration",
         "subcategory": "Frame generation",
         "summary": "Experimental FSR 3 frame generation at fixed 2x, currently SDR only.",
         "details": "Generates frames after final image processing at fixed 2x. It can be used independently of FSR upscaling. Use one frame generator per group. WGC is not required; missing native timestamps use a capture-admission interval estimate. Requires a build with FSR FG, matching AMD runtimes and a compatible GPU.\n\nExternal motion estimation and duplicate filtering default to off; FSR internal optical flow remains active. AMD or NVIDIA external motion can be tested with supported rectangular scaling chains. Select None for CRT, distortion or unverified effects. Optical-flow changes require restarting scaling.\n\nThis experimental capture-based integration lacks real game depth and motion. Game HUD, occlusion and fast motion may show artifacts. HDR and cropping outside the output window are not supported. Validate quality and cost first. Set base FPS under Frame rate and refresh. Generation does not increase game simulation FPS or establish lower input latency.",
-        "search": "FSR3FG FSR 3 FG FSR3_FrameGeneration AMD FidelityFX frame generation interpolation fixed 2x SDR experimental AMDOF NVOF"
+        "search": "FSR3FG FSR 3 FG FSR3_FrameGeneration AMD FidelityFX frame generation interpolation fixed 2x SDR experimental AMDOF NVOF FSR3 FrameGeneration"
       }
     }
   ]

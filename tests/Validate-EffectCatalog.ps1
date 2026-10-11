@@ -83,6 +83,30 @@ foreach ($item in @(@('NvidiaVFX\Upscale','Nvidia VFX Upscale'), @('NvidiaVFX\VF
     if (($catalog.effects | Where-Object id -eq $item[0]).name -ne $item[1]) { throw "VFX suite name regression: $($item[0])" }
 }
 if (@($catalog.effects | Where-Object { $_.id -like 'XeSSFG\*' -and $_.name -like '*ZeroMV*' }).Count) { throw 'XeSS display alias regression' }
+$fgNames = @{
+    'DLSSFG\DLSS_FrameGeneration' = 'DLSS FrameGeneration'
+    'XeSSFG\XeSS_FrameGeneration' = 'XeSS FrameGeneration'
+    'FSR3FG\FSR3_FrameGeneration' = 'FSR3 FrameGeneration'
+}
+$helper = Get-Content -LiteralPath (Join-Path $repoRoot 'src/Magpie/EffectHelper.h') -Raw
+foreach ($id in $fgNames.Keys) {
+    $mapping = 'if (fullName == L"' + $id.Replace('\', '\\') + '") return L"' + $fgNames[$id] + '";'
+    if (!$helper.Contains($mapping)) { throw "FG helper/catalog name mismatch: $id" }
+    foreach ($languageCatalog in @($catalog, $englishCatalog)) {
+        $entry = $languageCatalog.effects | Where-Object id -eq $id
+        if ($entry.name -cne $fgNames[$id]) { throw "FG display name mismatch: $id" }
+        if (!$entry.search.Contains($entry.name)) { throw "Missing current FG display name in search: $id" }
+        if (!$entry.search.Contains(($id -split '\\')[-1])) { throw "Missing legacy FG filename search alias: $id" }
+    }
+}
+foreach ($languageCatalog in @($catalog, $englishCatalog)) {
+    $fsr = $languageCatalog.effects | Where-Object id -eq 'FSR3FG\FSR3_FrameGeneration'
+    foreach ($alias in @('FSR3FG', 'FSR 3 FG', 'FSR3_FrameGeneration')) {
+        if (!$fsr.search.Contains($alias)) { throw "Missing legacy FSR search alias: $alias" }
+    }
+    if ($fsr.summary -notmatch 'SDR' -or $fsr.summary -notmatch '2[×x]' -or
+        $fsr.summary -notmatch '实验性|Experimental') { throw 'FSR limitations must remain in the summary.' }
+}
 $cunny = @($catalog.effects | Where-Object { $_.family.id -eq 'cunny' })
 if ($cunny.Count -ne 29 -or @($cunny.subfamily.id | Sort-Object -Unique).Count -ne 2) { throw 'CuNNy generation grouping regression' }
 if (@($cunny | Where-Object level -ne 'situational').Count) { throw 'Network cost is being labeled experimental again.' }

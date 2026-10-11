@@ -82,6 +82,23 @@ renderer = read("src/Magpie.Core/Renderer.cpp")
 check("_proxyMotionRequest" in renderer and "_xessMotionRequest" not in renderer, "shared guidance collection/publication routing")
 check("_HasSoftwareFrameGenerator() || _HasProxyFrameGenerator()" in renderer, "stale capture guard covers proxy FG")
 check("_ReportPresenterFailure();" in renderer and "HasFatalError()" in renderer, "fatal presenter errors stop scaling")
+stable = read("src/Magpie.Core/FrontendMotionTexture.h")
+# Wiring only; the native resource test exercises these production helpers on
+# real D3D resources. Passing this audit is NOT evidence that the SRV runs.
+check("EnsureFrontendMotionTexture(_frontendResources.GetD3DDevice(),\n\t\t\t\tmotionSource, _isFSR3FrameGenerationActive" in renderer,
+      "FSR renderer requests a shader-readable stable copy")
+check("shaderReadable ? D3D11_BIND_SHADER_RESOURCE : 0" in stable and
+      "current.BindFlags == required.BindFlags" in stable, "stable texture binding participates in recreation")
+check("sourceMotion.Prepare(" in cpp and "RemapFSR3FGMotion(" in cpp and "FSR3FG_MOTION_SHADER" in cpp,
+      "presenter uses resource-tested motion helpers")
+check("failure.context, failure.code" in renderer and "failure = std::move(failure)" in renderer,
+      "runtime report owns a copy of the original error")
+check(cpp.count("FSR3FGPresenter::GetFailure()") == 2, "diagnostics exist with and without SDK")
+for header in ("FSR3FGMotion.h", "FrontendMotionTexture.h", "PresenterFailure.h"):
+    check(any(n.get("Include") == header for n in core.findall(".//m:ClInclude", ns)), f"resource helper registered: {header}")
+resource_test = read("tests/FSR3FGMotionResourceTests.cpp")
+for helper in ("EnsureFrontendMotionTexture", "FSR3FGMotionSource", "FSR3FG_MOTION_SHADER", "RemapFSR3FGMotion"):
+    check(helper in resource_test, f"native resource regression uses production helper: {helper}")
 check("FSR 3 FG requires Graphics Capture" not in renderer, "capture selection is not restricted to WGC")
 check("SetCaptureAdmissionTime(sourceMetadata.captureAdmissionTime100ns)" in renderer and
       "_lastCapturedFrameTime.time_since_epoch()" in renderer, "capture admission clock crosses the shared frame metadata")

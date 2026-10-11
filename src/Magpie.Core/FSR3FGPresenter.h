@@ -19,6 +19,7 @@ public:
 	bool WaitForFrameCapacity(DWORD timeout) noexcept override;
 	bool WasFrameCapacityBusy() const noexcept override;
 	bool HasFatalError() const noexcept override;
+	const PresenterFailure* GetFailure() const noexcept override;
 	void SetSourceTiming(uint64_t frameId, uint64_t sequence, uint64_t generation,
 		int64_t timestamp100ns) noexcept override;
 	void SetCaptureAdmissionTime(int64_t timestamp100ns) noexcept override;
