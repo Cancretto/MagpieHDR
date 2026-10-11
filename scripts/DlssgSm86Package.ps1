@@ -1,4 +1,7 @@
 # The C++ package table is authoritative for restore, packaging and both hosts.
+# MSBuild may launch Windows PowerShell with an inherited PowerShell 7 module path.
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1') -ErrorAction Stop
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
 function Get-DlssgSm86Contract {
     $header = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../src/Shared/DlssgSm86Package.h') -Raw
     $revision = [regex]::Match($header, 'Revision\[\] = "([a-f0-9]{40})"').Groups[1].Value

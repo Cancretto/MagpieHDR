@@ -15,12 +15,82 @@ namespace Magpie::DlssgSm86Runtime {
 namespace {
 
 std::mutex runtimeMutex;
-bool attempted = false;
+enum class Stage { Unprepared, Preparing, ProxyMapped, BundleVerified, Failed };
+Stage stage = Stage::Unprepared;
+std::string failure;
 HMODULE proxy = nullptr;
+HMODULE runtime = nullptr;
+HMODULE backend = nullptr;
+std::filesystem::path featureDirectory;
 LUID physicalAdapter{};
 // Intentionally retained until process exit. Unloading the proxy is not safe.
 HANDLE proxyFile = INVALID_HANDLE_VALUE;
 HANDLE configFile = INVALID_HANDLE_VALUE;
+HANDLE runtimeFile = INVALID_HANDLE_VALUE;
+HANDLE backendFile = INVALID_HANDLE_VALUE;
+
+bool Fail(std::string_view reason) {
+	stage = Stage::Failed;
+	failure = reason;
+	Logger::Get().Error(fmt::format("DLSSFG preparation failed: {}; restart Magpie after correcting this condition. No native fallback", reason));
+	return false;
+}
+
+std::filesystem::path ModulePath(HMODULE module) {
+	std::wstring path(32768, L'\0');
+	const DWORD length = GetModuleFileNameW(module, path.data(), static_cast<DWORD>(path.size()));
+	if (!length || length >= path.size()) return {};
+	path.resize(length);
+	return path;
+}
+
+bool SamePath(const std::filesystem::path& a, const std::filesystem::path& b) {
+	// Cache constants contain forward slashes; Win32 module paths use backslashes.
+	return !a.empty() && !b.empty() && _wcsicmp(a.lexically_normal().make_preferred().c_str(),
+		b.lexically_normal().make_preferred().c_str()) == 0;
+}
+
+// Must only be called with runtimeMutex held. Both modules must come from the
+// returned runtime's bundle, with exactly one FG runtime and one backend mapped.
+bool VerifyPairImpl() {
+	const auto actualRuntime = ModulePath(runtime);
+	if (actualRuntime.empty() || !SamePath(actualRuntime.parent_path(), featureDirectory))
+		return Fail("redirected runtime mapping changed");
+	std::array<HMODULE, 1024> modules{};
+	DWORD needed = 0;
+	if (!K32EnumProcessModules(GetCurrentProcess(), modules.data(),
+		static_cast<DWORD>(sizeof(modules)), &needed) || needed > sizeof(modules))
+		return Fail("cannot enumerate the runtime/backend mappings");
+	bool foundRuntime = false, foundBackend = false;
+	for (size_t i = 0; i < needed / sizeof(HMODULE); ++i) {
+		const auto path = ModulePath(modules[i]);
+		if (path.empty()) return Fail("cannot identify a loaded module");
+		const auto name = path.filename().wstring();
+		const bool isRuntime = _wcsnicmp(name.c_str(), L"nvngx_dlssg", 11) == 0;
+		const bool isBackend = _wcsnicmp(name.c_str(), L"sm86_backend", 12) == 0;
+		if (!isRuntime && !isBackend) continue;
+		const auto& expected = isRuntime ? DlssgSm86Package::Runtime : DlssgSm86Package::Backend;
+		if (!SamePath(path.parent_path(), featureDirectory) || _wcsicmp(name.c_str(), expected.name) != 0 ||
+			(isRuntime && (modules[i] != runtime || foundRuntime)) ||
+			(isBackend && (foundBackend || (backend && backend != modules[i]))))
+			return Fail("unexpected or duplicate FG runtime/backend mapping");
+		HANDLE& file = isRuntime ? runtimeFile : backendFile;
+		if (file == INVALID_HANDLE_VALUE) file = PinnedFile::Open(path);
+		if (!PinnedFile::Verify(file, expected.size, expected.sha256))
+			return Fail("bundled runtime/backend cannot be locked or its checksum is incorrect");
+		if (isRuntime) {
+			foundRuntime = true;
+		} else {
+			// Pin the backend without calling any undocumented upstream ABI.
+			if (!backend && !GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+				GET_MODULE_HANDLE_EX_FLAG_PIN, reinterpret_cast<LPCWSTR>(modules[i]), &backend))
+				return Fail("cannot retain the bundled backend mapping");
+			foundBackend = true;
+		}
+	}
+	if (!foundRuntime || !foundBackend) return Fail("bundled runtime/backend pair is not loaded");
+	return true;
+}
 
 bool QueryArchitecture(const LUID& wanted, int& major, int& minor, int& driver) {
 	// Load only the installed driver. No CUDA context, SDK runtime or toolkit
@@ -70,10 +140,16 @@ bool CacheFile(const std::filesystem::path& source, const std::filesystem::path&
 
 bool PrepareImpl(IDXGIAdapter* adapter) {
 	DXGI_ADAPTER_DESC desc{};
-	if (!adapter || FAILED(adapter->GetDesc(&desc)) || desc.VendorId != 0x10de) return false;
+	if (!adapter || FAILED(adapter->GetDesc(&desc)) || desc.VendorId != 0x10de) {
+		Logger::Get().Error("DLSSFG requires an identifiable NVIDIA rendering adapter");
+		return false;
+	}
 	std::lock_guard lock(runtimeMutex);
-	if (attempted) {
-		if (!proxy) return false;
+	if (stage != Stage::Unprepared) {
+		if (stage != Stage::BundleVerified) {
+			Logger::Get().Error(fmt::format("DLSSFG preparation previously failed: {}; restart Magpie to retry", failure));
+			return false;
+		}
 		if (desc.AdapterLuid.HighPart == physicalAdapter.HighPart &&
 			desc.AdapterLuid.LowPart == physicalAdapter.LowPart) return true;
 		Logger::Get().Error("DLSSFG rendering adapter changed after process-wide proxy load; restart Magpie before using DLSSFG");
@@ -89,28 +165,30 @@ bool PrepareImpl(IDXGIAdapter* adapter) {
 		Logger::Get().Warn(fmt::format("DLSSFG has no validated routing policy for physical SM {}.{}", major, minor));
 		return false;
 	}
-	attempted = true;
+	stage = Stage::Preparing;
 	physicalAdapter = desc.AdapterLuid;
 	std::array<HMODULE, 1024> loaded{};
 	DWORD needed = 0;
 	if (!K32EnumProcessModules(GetCurrentProcess(), loaded.data(), static_cast<DWORD>(sizeof(loaded)), &needed) ||
-		needed > sizeof(loaded)) return false;
+		needed > sizeof(loaded)) return Fail("cannot inspect existing modules before proxy load");
 	for (size_t i = 0; i < needed / sizeof(HMODULE); ++i) {
-		if (GetProcAddress(loaded[i], "DlssgProxy_Name")) {
-			Logger::Get().Error("Another DLSSG proxy loaded before the managed runtime; refusing ambiguous configuration");
-			return false;
-		}
+		const auto path = ModulePath(loaded[i]);
+		if (path.empty()) return Fail("cannot identify an existing module before proxy load");
+		const auto name = path.filename().wstring();
+		if (GetProcAddress(loaded[i], "DlssgProxy_Name") ||
+			_wcsnicmp(name.c_str(), L"nvngx_dlssg", 11) == 0 ||
+			_wcsnicmp(name.c_str(), L"sm86_backend", 12) == 0)
+			return Fail("another FG proxy/runtime/backend was loaded before managed preparation");
 	}
 	const auto root = Win32Helper::GetExePath().parent_path();
 	if (!DlssgSm86Package::Verify(root)) {
-		Logger::Get().Error("DLSSFG community package missing or checksum mismatch; reinstall the complete matching package");
-		return false;
+		return Fail("community package missing or checksum mismatch; reinstall the complete matching package");
 	}
 	wil::unique_cotaskmem_string local;
 	const HRESULT localResult = SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, nullptr, local.put());
 	if (FAILED(localResult)) {
 		Logger::Get().ComError("DLSSFG cache directory unavailable", localResult);
-		return false;
+		return Fail("local application cache directory unavailable");
 	}
 	const bool forward = route == DlssgSm86Policy::Route::ForwardJit;
 	// Include proxy + configuration identities. An update never edits loaded
@@ -123,22 +201,32 @@ bool PrepareImpl(IDXGIAdapter* adapter) {
 	const auto source = root / DlssgSm86Package::Directory;
 	if (!CacheFile(source / binary.name, cache / binary.name, binary) ||
 		!CacheFile(source / ini.name, cache / L"dlssg_sm86.ini", ini)) {
-		Logger::Get().Error("DLSSFG cache copy/integrity check failed; cached proxy was not loaded");
-		return false;
+		return Fail("cache copy/integrity check failed; cached proxy was not loaded");
 	}
 	proxyFile = PinnedFile::Open(cache / binary.name);
 	configFile = PinnedFile::Open(cache / L"dlssg_sm86.ini");
 	if (!PinnedFile::Verify(proxyFile, binary.size, binary.sha256) ||
 		!PinnedFile::Verify(configFile, ini.size, ini.sha256)) {
-		Logger::Get().Error("DLSSFG cache cannot be locked and verified before loading");
-		return false;
+		return Fail("cache cannot be locked and verified before loading");
 	}
+	// An empty private directory provides an explicit load request, not an on-disk
+	// fallback. CreateDirectory must create it (an existing directory is rejected).
+	const auto triggerDirectory = cache / (L"request-" + std::to_wstring(GetCurrentProcessId()) +
+		L"-" + std::to_wstring(GetTickCount64()));
+	if (!CreateDirectoryW(triggerDirectory.c_str(), nullptr)) return Fail("cannot create private FG load-request directory");
+	const auto trigger = triggerDirectory / DlssgSm86Package::Runtime.name;
+	WIN32_FILE_ATTRIBUTE_DATA attributes{};
+	if (GetFileAttributesExW(trigger.c_str(), GetFileExInfoStandard, &attributes) || GetLastError() != ERROR_FILE_NOT_FOUND)
+		return Fail("private FG load-request path is occupied or inaccessible");
 	proxy = LoadLibraryExW((cache / binary.name).c_str(), nullptr,
 		LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
 	if (!proxy) {
 		Logger::Get().Win32Error("DLSSFG community proxy load failed; no native FG fallback");
-		return false;
+		return Fail("community proxy LoadLibraryEx failed");
 	}
+	stage = Stage::ProxyMapped;
+	if (!SamePath(ModulePath(proxy), cache / binary.name) || !GetProcAddress(proxy, "DlssgProxy_Name"))
+		return Fail("proxy mapped from an unexpected path or lacks its identity export");
 	Logger::Get().Info(fmt::format(
 		"DLSSFG proxy loaded: package={} revision={} sha256={} PCI={:04x}:{:04x} "
 		"LUID={:08x}:{:08x} physicalSM={}.{} cudaDriverApi={} policy={} "
@@ -148,6 +236,30 @@ bool PrepareImpl(IDXGIAdapter* adapter) {
 		desc.VendorId, desc.DeviceId, static_cast<uint32_t>(desc.AdapterLuid.HighPart), desc.AdapterLuid.LowPart,
 		major, minor, driver, forward ? "forward-PTX" : "native-family",
 		StrHelper::UTF16ToUTF8(cache.wstring())));
+	// The pinned proxy is lazy: mapping version.dll alone does not activate its
+	// embedded FG runtime. This standard Windows request triggers Bundled mode.
+	runtime = LoadLibraryExW(trigger.c_str(), nullptr,
+		LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
+	if (!runtime) {
+		Logger::Get().Win32Error("DLSSFG explicit bundled runtime request failed");
+		return Fail("bundled runtime request did not return a module");
+	}
+	const auto actualRuntime = ModulePath(runtime);
+	if (actualRuntime.empty() || SamePath(actualRuntime.parent_path(), triggerDirectory) ||
+		_wcsicmp(actualRuntime.filename().c_str(), DlssgSm86Package::Runtime.name) != 0)
+		return Fail("FG load did not redirect to a named bundled runtime");
+	if (GetFileAttributesExW(trigger.c_str(), GetFileExInfoStandard, &attributes) || GetLastError() != ERROR_FILE_NOT_FOUND)
+		return Fail("private FG request path changed during load; refusing ambiguous fallback");
+	featureDirectory = actualRuntime.parent_path();
+	if (!VerifyPairImpl()) return false;
+	stage = Stage::BundleVerified;
+	// Empty and owned by this invocation; never recursively delete this path.
+	RemoveDirectoryW(triggerDirectory.c_str());
+	Logger::Get().Info(fmt::format(
+		"DLSSFG stage=BundleVerified runtime={} runtimeSha256={} backendSha256={}; "
+		"NGX discovery, capability, Feature creation and kernel execution remain separate stages",
+		StrHelper::UTF16ToUTF8(actualRuntime.wstring()), DlssgSm86Package::Runtime.sha256,
+		DlssgSm86Package::Backend.sha256));
 	return true;
 }
 
@@ -156,48 +268,33 @@ bool PrepareImpl(IDXGIAdapter* adapter) {
 bool Prepare(IDXGIAdapter* adapter) noexcept {
 	try { return PrepareImpl(adapter); }
 	catch (...) {
-		Logger::Get().Error("DLSSFG community proxy preparation failed; restart after repairing the package/cache");
-		return false;
+		std::lock_guard lock(runtimeMutex);
+		return Fail("exception during community runtime preparation");
 	}
+}
+
+bool GetFeatureDirectory(std::filesystem::path& directory) noexcept {
+	try {
+		std::lock_guard lock(runtimeMutex);
+		directory.clear();
+		if (stage != Stage::BundleVerified) return false;
+		directory = featureDirectory;
+		return true;
+	} catch (...) { return false; }
 }
 
 bool VerifyLoadedPair() noexcept {
 	try {
 		std::lock_guard lock(runtimeMutex);
-		if (!proxy) return false;
-		std::array<HMODULE, 1024> modules{};
-		DWORD needed = 0;
-		if (!K32EnumProcessModules(GetCurrentProcess(), modules.data(),
-			static_cast<DWORD>(sizeof(modules)), &needed) || needed > sizeof(modules)) return false;
-		bool foundRuntime = false, foundBackend = false;
-		for (size_t i = 0; i < needed / sizeof(HMODULE); ++i) {
-			std::wstring path(32768, L'\0');
-			const DWORD length = GetModuleFileNameW(modules[i], path.data(), static_cast<DWORD>(path.size()));
-			if (!length || length >= path.size()) continue;
-			path.resize(length);
-			const auto name = std::filesystem::path(path).filename().wstring();
-			const bool isRuntime = _wcsnicmp(name.c_str(), L"nvngx_dlssg", 11) == 0;
-			const bool isBackend = _wcsnicmp(name.c_str(), L"sm86_backend", 12) == 0;
-			if (!isRuntime && !isBackend) continue;
-			const auto& expected = isRuntime ? DlssgSm86Package::Runtime : DlssgSm86Package::Backend;
-			if (!PinnedFile::Verify(path, expected.size, expected.sha256)) {
-				Logger::Get().Error(fmt::format("DLSSFG loaded an unexpected runtime/backend: {}", StrHelper::UTF16ToUTF8(path)));
-				return false;
-			}
-			foundRuntime |= isRuntime;
-			foundBackend |= isBackend;
-			Logger::Get().Info(fmt::format("DLSSFG module identity verified: path={} sha256={}",
-				StrHelper::UTF16ToUTF8(path), expected.sha256));
-		}
-		if (!foundRuntime || !foundBackend) {
-			Logger::Get().Error("DLSSFG bundled runtime/backend pair not loaded; refusing unverified/native fallback");
-			return false;
-		}
-		return true;
-	} catch (...) { return false; }
+		return stage == Stage::BundleVerified && VerifyPairImpl();
+	} catch (...) {
+		std::lock_guard lock(runtimeMutex);
+		return Fail("exception while verifying loaded runtime/backend");
+	}
 }
 #else
 bool Prepare(IDXGIAdapter*) noexcept { return false; }
+bool GetFeatureDirectory(std::filesystem::path& directory) noexcept { directory.clear(); return false; }
 bool VerifyLoadedPair() noexcept { return false; }
 #endif
 

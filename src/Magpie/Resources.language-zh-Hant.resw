@@ -1295,7 +1295,7 @@
   <data name="Message_EffectCompileFailed" xml:space="preserve"><value>效果器編譯失敗。請在詳細資料中查看名稱，從對應發行套件還原該效果器，或將其移出效果組後重試。具體編譯錯誤請見記錄。</value></data>
   <data name="Message_EffectResourceFailed" xml:space="preserve"><value>效果器無法建立紋理或算繪資源。請嘗試降低輸出尺寸、減少效果器數量，並檢查詳細資料所列效果器的檔案。</value></data>
   <data name="Message_NativeEffectInitFailed" xml:space="preserve"><value>下方效果器未能啟動。請開啟詳細資料查看本次初始化的失敗步驟，再依所列檔案或錯誤碼排查；也可開啟效果組，先替換該效果器以繼續使用。原因不明確時，請複製詳細資料並附上記錄。</value></data>
-  <data name="Message_FrameGenerationInitFailed" xml:space="preserve"><value>補幀尚未啟動。請開啟詳細資料查看失敗步驟；可在下方效果組中關閉補幀效果器的光流，或在倍率可調時降低倍率後重試。也可先使用不含補幀的效果組。</value></data>
+  <data name="Message_FrameGenerationInitFailed" xml:space="preserve"><value>補幀尚未啟動。請開啟詳細資料依失敗步驟處理；若提示執行階段程式庫缺失、驗證失敗或需要重新啟動，請先還原完整安裝套件並重新啟動喜鵲。也可先使用不含補幀的效果組。</value></data>
   <data name="Message_OverlayInitFailed" xml:space="preserve"><value>工具列或游標疊加層初始化失敗。請重新解壓縮完整發行套件後再次啟用效果組；若仍失敗，請提供詳細資料與記錄。</value></data>
   <data name="Message_SharedTextureOpenFailed" xml:space="preserve"><value>圖形裝置無法共用輸出畫面。請嘗試讓擷取與輸出使用同一顯示卡，或關閉補幀；若仍失敗，請更新顯示卡驅動程式。</value></data>
   <data name="Message_DlssNrUnavailable" xml:space="preserve"><value>DLSSNR 尚未參與影像處理，畫面會繼續顯示，其他效果依原順序處理。請開啟詳細資料查看 DLSSNR 的失敗步驟，處理後重新啟用效果組；恢復前，DLSSNR 參數暫時無法調整。</value></data>

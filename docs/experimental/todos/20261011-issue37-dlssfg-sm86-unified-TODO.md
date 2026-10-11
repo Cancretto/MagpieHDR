@@ -2,6 +2,8 @@
 
 日期：2026-10-11（Asia/Shanghai）。需求来源：[Magpie Issue 37](https://github.com/SAOG0721/Magpie/issues/37) 及本次需求对齐。
 
+后续实机发现：Beta7 在 RTX 5070 Ti 上启用失败，NGX 返回 `FeatureNotFound`。已确认代理映射与配套库准备是不同阶段；优先执行 [启动失败修复 TODO](20261011-issue37-dlssfg-sm86-startup-failure-TODO.md)，再继续原硬件验收。
+
 状态：已在 `feature/dlssfg-sm86-unified` 写入源码候选和脚本回归；按用户要求未编译、未部署。原 P0 运行继续条件及实机验收仍未通过。逐项源码进展与后续会话要求见 [开发交接](../reviews/20261011-issue37-dlssfg-sm86-implementation.md)。下面未勾选的项目保留原验收含义，不用源码接线替代运行验证。
 
 目标：将喜鹊现有 DLSSFG 默认升级为 dlssg_for_sm86 社区兼容实现。受支持用户更新后通过原入口使用新实现，无需选择库、安装额外兼容包或手动编辑 INI。最高倍率仍为 4×。

@@ -139,6 +139,7 @@
     <ClInclude Include="DLSSSRUpscaler.h" />
     <ClInclude Include="DLSSFrameGenerator.h" />
     <ClInclude Include="include\DlssgSm86Runtime.h" />
+    <ClInclude Include="NgxFeatureDiscovery.h" />
     <ClInclude Include="include\DlssgSm86Policy.h" />
     <ClInclude Include="NvidiaVfxRuntime.h" />
     <ClInclude Include="NvidiaVfxImageBackend.h" />
