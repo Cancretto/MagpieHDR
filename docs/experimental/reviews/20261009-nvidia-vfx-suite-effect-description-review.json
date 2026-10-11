@@ -277,19 +277,19 @@
         "name": "Nvidia VFX VFG",
         "subcategory": "",
         "summary": "SDR 2–8× 补帧，可逐帧接入 TrueHDR。",
-        "details": "Windows x64 需要 Ada／Blackwell 渲染 GPU。性能（Low）／均衡（Medium）两档，默认 2×、均衡、自动场切和重复帧过滤开启。旧 High 设置迁移为均衡。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。",
-        "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR 2–8× 补帧，可逐帧接入 TrueHDR。 Windows x64 需要 Ada／Blackwell 渲染 GPU。性能（Low）／均衡（Medium）两档，默认 2×、均衡、自动场切和重复帧过滤开启。旧 High 设置迁移为均衡。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。 "
+        "details": "Windows x64 需要 Ada／Blackwell 渲染 GPU。性能（Low）／均衡（Medium）两档，默认 2×、均衡、自动场切开启、重复帧过滤关闭。旧 High 设置迁移为均衡。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。",
+        "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR 2–8× 补帧，可逐帧接入 TrueHDR。 Windows x64 需要 Ada／Blackwell 渲染 GPU。性能（Low）／均衡（Medium）两档，默认 2×、均衡、自动场切开启、重复帧过滤关闭。旧 High 设置迁移为均衡。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。 "
       },
       "en-US": {
         "name": "Nvidia VFX VFG",
         "subcategory": "",
         "summary": "SDR interpolation at 2–8x, with per-output TrueHDR.",
-        "details": "Windows x64 requires an Ada/Blackwell rendering GPU. Performance (Low) or Balanced (Medium). Defaults: 2x, Balanced, automatic shot detection and duplicate filtering enabled. Retired High settings migrate to Balanced. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported.",
-        "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR interpolation at 2–8x, with per-output TrueHDR. Windows x64 requires an Ada/Blackwell rendering GPU. Performance (Low) or Balanced (Medium). Defaults: 2x, Balanced, automatic shot detection and duplicate filtering enabled. Retired High settings migrate to Balanced. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported. "
+        "details": "Windows x64 requires an Ada/Blackwell rendering GPU. Performance (Low) or Balanced (Medium). Defaults: 2x, Balanced, automatic shot detection enabled and duplicate filtering disabled. Retired High settings migrate to Balanced. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported.",
+        "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR interpolation at 2–8x, with per-output TrueHDR. Windows x64 requires an Ada/Blackwell rendering GPU. Performance (Low) or Balanced (Medium). Defaults: 2x, Balanced, automatic shot detection enabled and duplicate filtering disabled. Retired High settings migrate to Balanced. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported. "
       },
       "source": {
         "path": "src/Effects/NvidiaVFX/VFG.hlsl",
-        "sha256": "ca6bebbb46a16ce84852cabd6aa6a07a7c0ea6bc1963eb3578dd9984296c3536",
+        "sha256": "055d7919929b4105c4c296ba96446c1ae843e5019b8cce3a761015f4cec8b4e5",
         "output": {
           "WIDTH": "INPUT_WIDTH",
           "HEIGHT": "INPUT_HEIGHT"
@@ -317,10 +317,6 @@
               {
                 "value": "1",
                 "label": "Medium"
-              },
-              {
-                "value": "2",
-                "label": "High"
               }
             ],
             "label": "Model",
@@ -341,7 +337,7 @@
             "type": "int",
             "options": [],
             "label": "Duplicate frame filtering",
-            "default": "1",
+            "default": "0",
             "min": "0",
             "max": "1",
             "step": "1"

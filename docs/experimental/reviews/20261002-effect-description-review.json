@@ -11398,7 +11398,7 @@
       "level": "advanced",
       "source": {
         "path": "src/Effects/XeSSFG/XeSS_FrameGeneration.hlsl",
-        "sha256": "575fb3ca3371813277a521448106af14dc4a2aa0c366a5de1bd098c7713f1b52",
+        "sha256": "6cf21592d65050e1a1604b9a6ef932a67abb5cb81ef2eafea4e9a6d6fc6d64fb",
         "output": {
           "WIDTH": "INPUT_WIDTH",
           "HEIGHT": "INPUT_HEIGHT"
@@ -11419,7 +11419,7 @@
             "name": "duplicateFrameFiltering",
             "type": "int",
             "label": "Duplicate Frame Filtering",
-            "default": "1",
+            "default": "0",
             "min": "0",
             "max": "1",
             "step": "1",
