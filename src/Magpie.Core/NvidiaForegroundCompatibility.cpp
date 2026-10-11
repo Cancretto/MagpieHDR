@@ -110,6 +110,7 @@ const char* PathName(ForegroundPresentationPath path) noexcept {
 	case ForegroundPresentationPath::OrdinaryDXGI: return "dxgi";
 	case ForegroundPresentationPath::DLSSFrontendDXGI: return "dlss-frontend-dxgi";
 	case ForegroundPresentationPath::XeSSProxy: return "xess-proxy";
+	case ForegroundPresentationPath::FSR3Proxy: return "fsr3-proxy";
 	case ForegroundPresentationPath::Composition: return "composition";
 	default: return "unknown";
 	}

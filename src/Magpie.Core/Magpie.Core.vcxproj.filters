@@ -378,4 +378,9 @@
     <Natvis Include="$(MSBuildThisFileDirectory)..\..\natvis\wil.natvis" />
     <Natvis Include="$(MSBuildThisFileDirectory)..\..\natvis\wil.natstepfilter" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FSR3FGPresenter.h"><Filter>Presenter</Filter></ClInclude>
+    <ClInclude Include="FSR3FGPolicy.h"><Filter>Presenter</Filter></ClInclude>
+    <ClCompile Include="FSR3FGPresenter.cpp"><Filter>Presenter</Filter></ClCompile>
+  </ItemGroup>
 </Project>

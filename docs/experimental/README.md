@@ -28,6 +28,7 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 - [Issue 37：DLSSFG 社区兼容接入开发交接](reviews/20261011-issue37-dlssfg-sm86-implementation.md)：默认统一接入、最高 4×；源码候选已写入，编译与实机验收交后续会话。
 - [Issue 37：DLSSFG 社区兼容接入 TODO](todos/20261011-issue37-dlssfg-sm86-unified-TODO.md)：原需求与完整验收清单。
+- **Issue 19：FSR 3 FG 源码集成**：独立分支 `feature/fsr3-frame-generation`，固定 2×、SDR、捕获时间戳优先及捕获接收间隔回退，未限制 WGC。见 [TODO](todos/20261011-issue19-fsr3-frame-generation-TODO.md)、[源码与编译交接](reviews/20261011-fsr3fg-source-development.md)、[效果说明](effects/FSR3FG.md)。本会话没有编译、部署或实机验收。
 
 - **0.6.10 Beta5 本地整合**：继承 Beta4 49de3f25，合入 RTSS e830078a 的初始化／能力判断和启动更新、NVIDIA VFX 999e94e2 的统一套件、截图 abfce2ef 的内容选择。见[中英说明](../RELEASE_NOTES_v0.6.10-beta5.md)。完整构建与本地验证以 reports/0610-beta5-20261009 的记录及包内清单为准，真实 GPU／UI／游戏验收另行记录。
 

@@ -42,12 +42,15 @@ public:
 	// Called only from the outer message pump, after BeginFrame found no capacity.
 	virtual bool WaitForFrameCapacity(DWORD) noexcept { return false; }
 	virtual bool WasFrameCapacityBusy() const noexcept { return false; }
+	// Fatal SDK/device errors must stop the session instead of retrying forever.
+	virtual bool HasFatalError() const noexcept { return false; }
 	std::chrono::steady_clock::time_point LastSubmissionTime() const noexcept { return _lastSubmissionTime; }
 	std::optional<uint32_t> LastPresentedFrameCount() const noexcept { return _lastPresentedFrameCount; }
 
 	// Supplies motion that belongs to the next real base frame. Presenters that
 	// do not consume frame guidance intentionally ignore this call.
 	virtual void SetSourceTiming(uint64_t, uint64_t, uint64_t, int64_t) noexcept {}
+	virtual void SetCaptureAdmissionTime(int64_t) noexcept {}
 
 	virtual void SetFrameGuidance(
 		ID3D11Texture2D*,

@@ -3365,6 +3365,22 @@
       "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR 2–8× 补帧，可逐帧接入 TrueHDR。 Windows x64 需要 Ada／Blackwell 渲染 GPU。性能（Low）／均衡（Medium）两档，默认 2×、均衡、自动场切和重复帧过滤开启。旧 High 设置迁移为均衡。SDR 前置效果 → VFG → 每张真实／生成帧的 TrueHDR 与支持的后置效果 → 呈现；HDR 源先显式转 SDR。首帧仅输出一次，有界队列逐张消费。首版后置支持 TrueHDR、Bicubic、Bilinear、CAS、RCAS；不支持的后置链会提示。 ",
       "family": null,
       "subfamily": null
+    },
+    {
+      "id": "FSR3FG\\FSR3_FrameGeneration",
+      "name": "FSR 3 FG（实验性）",
+      "category": "frame",
+      "subcategory": "补帧",
+      "purposes": [
+        "frame"
+      ],
+      "summary": "实验性 FSR 3 补帧，固定 2×，目前仅支持 SDR。",
+      "details": "在最终图像处理完成后补帧，固定 2×，不必搭配 FSR 超分。一条效果链只使用一个补帧效果器。不限定 WGC；缺少捕获时间戳时使用捕获接收间隔估计。需要包含 FSR FG 的程序构建、配套 AMD 运行库和满足要求的显卡。\n\n默认关闭外部运动估计和重复帧过滤，FSR 内部光流仍运行。可试验 AMD 或 NVIDIA 外部光流；仅支持已列出的矩形缩放效果链，CRT、几何变形和未验证效果请将光流方法设为无。光流变更需重启缩放。\n\n这是基于捕获图像的实验性接入，缺少游戏真实深度和运动信息。游戏 HUD、遮挡及快速运动可能出现伪影；当前不支持 HDR 和超出输出窗口的裁剪。请先验证画质与开销。基础帧率在“帧率与刷新”中设置，补帧不提高游戏逻辑帧率，也不代表输入延迟降低。",
+      "level": "advanced",
+      "recommendation": "进阶／实验",
+      "search": "FSR3FG FSR 3 FG FSR3_FrameGeneration AMD FidelityFX 补帧 帧生成 插帧 2x 2× SDR 实验性 AMDOF NVOF",
+      "family": null,
+      "subfamily": null
     }
   ]
 }

@@ -2049,4 +2049,18 @@
   <data name="Rtss_Failure_ProcessExited" xml:space="preserve"><value>RTSS 进程已退出</value></data>
   <data name="Rtss_Status_StartingAfterburner" xml:space="preserve"><value>正在启动 MSI Afterburner</value></data>
   <data name="Rtss_Status_AfterburnerStartFailed" xml:space="preserve"><value>MSI Afterburner 启动失败</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_amdOpticalFlowMode_Label" xml:space="preserve"><value>光流质量</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_amdOpticalFlowMode_Option_0" xml:space="preserve"><value>性能</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>质量</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>光流质量</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_1" xml:space="preserve"><value>性能</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>均衡（推荐）</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>质量</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>高质量（高开销）</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Label" xml:space="preserve"><value>光流方法</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_0" xml:space="preserve"><value>无</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMD 光流</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVIDIA 光流</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高质量（极高开销）</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重复帧过滤</value></data>
 </root>

@@ -517,9 +517,13 @@ private:
 	uint32_t _dlssFgRealPublishFailure = 0;
 	bool _dlssFgPresentationStopping = false;
 	bool _isXeSSFrameGenerationActive = false;
+	bool _isFSR3FrameGenerationActive = false;
+	bool _presenterFailureReported = false;
+	bool _HasProxyFrameGenerator() const noexcept { return _isXeSSFrameGenerationActive || _isFSR3FrameGenerationActive; }
+	void _ReportPresenterFailure() noexcept;
 	FrameGenerationEffectKind _xessFrameGenerationKind =
 		FrameGenerationEffectKind::None;
-	MotionVectorRequest _xessMotionRequest{};
+	MotionVectorRequest _proxyMotionRequest{};
 
 	// INVALID_HANDLE_VALUE 表示后端初始化失败
 	std::atomic<HANDLE> _sharedTextureHandle{ NULL };

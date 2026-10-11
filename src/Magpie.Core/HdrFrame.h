@@ -100,6 +100,10 @@ struct HdrFrameMetadata {
 	uint64_t parameterRevision = 0;
 	uint64_t previousFrameId = 0;
 	uint32_t frameIndex = 0, frameMultiplier = 1;
+	// Optional CPU observation at backend acceptance of a NEW captured frame.
+	// Separate clock/provenance from timestamp100ns; not game render time and
+	// never refreshed by publication retries, generated frames or UI redraws.
+	int64_t captureAdmissionTime100ns = 0;
     bool IsValid() const noexcept;
 };
 

@@ -25,6 +25,8 @@
       <AdditionalIncludeDirectories Condition="$(EnableNvidiaOpticalFlow) And '$(Platform)' == 'x64'">$(NvidiaOpticalFlowSdkDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="$(EnableFSR2ZeroMV) And '$(Platform)' == 'x64'">MP_ENABLE_FSR2_ZEROMV;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories Condition="$(EnableFSR2ZeroMV) And '$(Platform)' == 'x64'">$(FSR2SdkDir)\src\ffx-fsr2-api;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions Condition="$(EnableFSR3FrameGeneration) And '$(Platform)' == 'x64'">MP_ENABLE_FSR3_FRAME_GENERATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories Condition="$(EnableFSR3FrameGeneration) And '$(Platform)' == 'x64'">$(FSR3SdkDir)\Kits\FidelityFX\api\include;$(FSR3SdkDir)\Kits\FidelityFX\framegeneration\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="$(EnableFSR3ZeroMV) And '$(Platform)' == 'x64'">MP_ENABLE_FSR3_ZEROMV;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories Condition="$(EnableFSR3ZeroMV) And '$(Platform)' == 'x64'">$(FSR3SdkDir)\Kits\FidelityFX\api\include;$(FSR3SdkDir)\Kits\FidelityFX\upscalers\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="$(EnableAmdOpticalFlow) And '$(Platform)' == 'x64'">MP_ENABLE_AMD_OPTICAL_FLOW;%(PreprocessorDefinitions)</PreprocessorDefinitions>

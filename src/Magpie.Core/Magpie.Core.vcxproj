@@ -183,6 +183,8 @@
     <ClInclude Include="include\EffectParameterResetGesture.h" />
     <ClInclude Include="FrameGuidanceD3D12Interop.h" />
     <ClInclude Include="FSR2Upscaler.h" />
+    <ClInclude Include="FSR3FGPresenter.h" />
+    <ClInclude Include="FSR3FGPolicy.h" />
     <ClInclude Include="FSR3Upscaler.h" />
     <ClInclude Include="FSR2ZeroMVUpscaler.h" />
     <ClInclude Include="FSR3ZeroMVUpscaler.h" />
@@ -276,6 +278,7 @@
     <ClCompile Include="PassThroughFrames.cpp" />
     <ClCompile Include="FrameGuidanceD3D12Interop.cpp" />
     <ClCompile Include="FSR2Upscaler.cpp" />
+    <ClCompile Include="FSR3FGPresenter.cpp" />
     <ClCompile Include="FSR3Upscaler.cpp" />
     <ClCompile Include="FSR2ZeroMVUpscaler.cpp" />
     <ClCompile Include="FSR3ZeroMVUpscaler.cpp" />

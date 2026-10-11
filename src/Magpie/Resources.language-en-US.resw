@@ -2049,4 +2049,18 @@
   <data name="Rtss_Failure_ProcessExited" xml:space="preserve"><value>RTSS has exited</value></data>
   <data name="Rtss_Status_StartingAfterburner" xml:space="preserve"><value>Starting MSI Afterburner</value></data>
   <data name="Rtss_Status_AfterburnerStartFailed" xml:space="preserve"><value>MSI Afterburner could not start</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_amdOpticalFlowMode_Label" xml:space="preserve"><value>OF Quality</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_amdOpticalFlowMode_Option_0" xml:space="preserve"><value>Performance</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_amdOpticalFlowMode_Option_1" xml:space="preserve"><value>Quality</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Label" xml:space="preserve"><value>OF Quality</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_1" xml:space="preserve"><value>Performance</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_2" xml:space="preserve"><value>Balanced (Recommended)</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>Quality</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>High Quality (High Cost)</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Label" xml:space="preserve"><value>Optical Flow Method</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_0" xml:space="preserve"><value>None</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMDOF</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVOF</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>Duplicate Frame Filtering</value></data>
 </root>
