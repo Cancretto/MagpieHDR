@@ -16,7 +16,8 @@ inline bool HasOpticalFlowSelection(std::string_view effect) noexcept {
 		effect == "DLSSFG\\DLSS_FrameGeneration" ||
 		effect == "Diagnostics\\FrameGuidance_Motion" ||
 		effect == "Diagnostics\\FrameGuidance_Confidence" ||
-		effect == "XeSSFG\\XeSS_FrameGeneration";
+		effect == "XeSSFG\\XeSS_FrameGeneration" ||
+		effect == "FSR3FG\\FSR3_FrameGeneration";
 }
 
 // Restrict built-in UI rules to their owning effects. Custom effects may use

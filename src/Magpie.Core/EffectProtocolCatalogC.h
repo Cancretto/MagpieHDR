@@ -204,22 +204,11 @@ inline HdrFormatRoutes DLSSFG() {
 }
 
 inline HdrFormatRoutes FSR3FG() {
-	return { HdrFormatRoute{
-		.effectId = "FSR3FG",
-		.optionId = "presentation-terminal-runtime-format",
-		.inputFormat = DXGI_FORMAT_R16G16B16A16_FLOAT,
-		.outputFormat = DXGI_FORMAT_R16G16B16A16_FLOAT,
-		.inputTransfer = HdrTransferFunction::Linear,
-		.outputTransfer = HdrTransferFunction::Linear,
-		.inputRange = HdrColorRange::SceneLinear,
-		.outputRange = HdrColorRange::SceneLinear,
-		.alphaMode = HdrAlphaMode::Preserve,
-		.evidenceLevel = HdrEvidenceLevel::PublicApiContract,
-		.hdrNative = false,
-		.adapterProfile = HdrAdapterProfile::PresentationTerminal,
-		.defaultForHdr = false,
-		.defaultForSdr = false
-	} };
+	HdrFormatRoute route = SdrRoute("FSR3FG", "SDR-R8G8B8A8", DXGI_FORMAT_R8G8B8A8_UNORM);
+	route.evidenceLevel = HdrEvidenceLevel::PublicApiContract;
+	route.adapterProfile = HdrAdapterProfile::PresentationTerminal;
+	route.defaultForHdr = false;
+	return { route };
 }
 
 inline HdrFormatRoutes NvidiaOpticalFlow() {

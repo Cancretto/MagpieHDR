@@ -404,6 +404,9 @@ if ($featureOptions["EnableNvidiaVfx"] -eq 'true') {
     & (Join-Path $PSScriptRoot 'Test-NvidiaVfxPackage.ps1') -PackageDirectory $stagingDir -Layout $NvidiaVfxRuntimeLayout
     $featureOptions['NvidiaVfxRuntimeLayout'] = $NvidiaVfxRuntimeLayout
 }
+if ($Platform -eq 'x64' -and $featureOptions["EnableFSR3FrameGeneration"] -eq 'true') {
+    & (Join-Path $PSScriptRoot 'Test-FSR3FGPackage.ps1') -PackageDirectory $stagingDir
+}
 if ($featureOptions["EnableFrameTrace"] -eq "true") {
     $diagnosticsDir = Join-Path $stagingDir "Diagnostics"
     New-Item -ItemType Directory -Path $diagnosticsDir -Force | Out-Null

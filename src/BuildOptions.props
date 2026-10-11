@@ -36,6 +36,8 @@
     <FSR2RuntimeDir></FSR2RuntimeDir>
     <!-- FSR 3.1 upscaler-only through D3D11/D3D12 shared resources. -->
     <EnableFSR3ZeroMV>false</EnableFSR3ZeroMV>
+    <!-- FSR 3.1.6 FG is independent of SR and external optical-flow builds. -->
+    <EnableFSR3FrameGeneration>false</EnableFSR3FrameGeneration>
     <FSR3SdkDir></FSR3SdkDir>
     <!-- Cross-vendor FidelityFX Optical Flow frame-guidance provider. -->
     <EnableAmdOpticalFlow></EnableAmdOpticalFlow>

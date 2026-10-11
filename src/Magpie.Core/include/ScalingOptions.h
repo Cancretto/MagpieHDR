@@ -106,12 +106,14 @@ enum class FrameGenerationEffectKind : uint8_t {
 	DLSS,
 	XeSSX2,
 	XeSSMultiFrame,
-	NvidiaVfx
+	NvidiaVfx,
+	FSR3
 };
 
 inline FrameGenerationEffectKind ClassifyFrameGenerationEffect(
 	std::string_view name
 ) noexcept {
+	if (name == "FSR3FG\\FSR3_FrameGeneration") return FrameGenerationEffectKind::FSR3;
 	if (name == "NvidiaVFX\\VFG") return FrameGenerationEffectKind::NvidiaVfx;
 	if (name == "DLSSFG\\DLSS_FrameGeneration") {
 		return FrameGenerationEffectKind::DLSS;
@@ -128,6 +130,7 @@ inline FrameGenerationEffectKind ClassifyFrameGenerationEffect(
 inline FrameGenerationEffectKind ClassifyFrameGenerationEffect(
 	std::wstring_view name
 ) noexcept {
+	if (name == L"FSR3FG\\FSR3_FrameGeneration") return FrameGenerationEffectKind::FSR3;
 	if (name == L"NvidiaVFX\\VFG") return FrameGenerationEffectKind::NvidiaVfx;
 	if (name == L"DLSSFG\\DLSS_FrameGeneration") {
 		return FrameGenerationEffectKind::DLSS;

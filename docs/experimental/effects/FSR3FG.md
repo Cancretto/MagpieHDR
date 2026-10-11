@@ -1,0 +1,58 @@
+# FSR 3 FG（实验性） / FSR 3 FG (Experimental)
+
+状态：源码集成，尚未编译或进行 GPU、游戏画质、性能及显示验收。默认构建开关关闭。
+
+## 使用范围
+
+- 效果 ID：`FSR3FG\FSR3_FrameGeneration`。固定 2×，不支持 3×/4×/多帧倍率；导入配置里的 `multiplier` 不改变倍率。
+- 补帧在最终图像处理后执行，不要求同时使用 FSR 超分；一条链只允许一个 FG。
+- 不限制为 WGC。优先使用捕获时间戳；缺失时使用接受新捕获帧时记录的 CPU 单调时钟作为间隔估计，并明确标记来源。不同捕获方法仍分别待实测。
+- 首版仅支持 SDR / RGBA8 / BT.709。HDR 兼容模式、HDR 转换组件会被明确拒绝，HDR 接入留待单独开发与验收。
+- 默认外部光流为“无”，重复帧过滤关闭。这是保守试验默认值，不是经画质/性能对比选出的最优设置。FSR 自带内部光流始终运行。
+- 可试验 AMDOF 或 NVOF。当前允许的外部运动链由 `FSR3FGPolicy.h` 的 `SupportsFSR3FGExternalMotion` 列出：FSR/DLSS/XeSS SR、DLSSNR、VFX Upscale/VSR、基础矩形缩放、FSR EASU/RCAS、帧率过滤及 FSR FG 标记。CRT、几何变形和未知自定义效果请选择“无”。尚未实现 distortion field。
+- 支持画面在输出内部的缩放、黑边与不同宽高比映射；内容矩形超出输出的裁剪被拒绝。游戏自己画入图像内部的电影黑边不等于喜鹊的输出黑边。
+- 喜鹊工具栏与可独立绘制的鼠标走单独的 DirectComposition UI 层。游戏 HUD 和捕获中已经烘焙的鼠标仍留在图像中，无法自动分离。
+- 喜鹊限制基础帧输入，AMD 交换链控制插值和真实帧呈现。三种帧同步选择在 FSR FG 下均使用基础帧 Async 限速；不依赖 XeLL、Reflex 或 Anti-Lag。补帧不增加游戏逻辑帧率，也不能据此宣称降低输入延迟。
+
+## 实验性输入契约
+
+运动向量来自现有 Frame Guidance，方向为当前帧到前帧，单位为像素。后端先适配到最终效果输出，Presenter 再按内容矩形缩放向量，在辅助纹理左上角写入；`generationRect` 表示内容在整个交换链中的位置。外部运动失效或帧身份不匹配时使用零运动并重置历史。
+
+深度为独立生成的正向有限平面深度 1.0，不读取 HDR/SR 的深度清除选项。虚拟相机 near=0.1、far=1000、垂直 FOV=60°、右/上/前为单位轴、位置与 jitter 为零。这不等价于真实游戏深度、相机或运动输入。快速运动、遮挡、文字和 HUD 质量必须实测。
+
+源帧 ID、捕获会话、资源代际及捕获时间戳独立于连续 SDK ID。WGC 的原生捕获时间优先；其他捕获方式使用后端在接受新帧时已有的 `_lastCapturedFrameTime`，通过独立元数据字段传给 Presenter。它是接收间隔估计，可能受捕获调度与背压影响，不是游戏渲染时长，也不取自较晚的发布/Present 时刻。日志分别标记 `capture-timestamp`、`capture-admission-estimate` 和首帧 `bootstrap`；时钟来源切换重置一次，两种时钟不混算。重复 UI 刷新不提交基础帧；帧跳跃、会话/资源变化、无效时间、超过 500ms 的间隔、光流/几何变化重置历史。SDK 在首帧或 reset 时可能呈现真实内容的复制帧，它们单独计为 `resetPassThroughs`，不计入 `interpolationDispatches`。
+
+`baseSubmits` 是代理交换链提交，`callbackDispatches` / `interpolationDispatches` 是 SDK 命令调度数量，均不是屏幕实际显示帧数。UI 不显示由 `baseFPS × 2` 伪造的实测帧率；显示事件仍需 PresentMon/显示端证据。
+
+## 构建与依赖（交给构建会话执行）
+
+仅 x64 开启 `EnableFSR3FrameGeneration=true`，`FSR3SdkDir` 指向 FSR SDK 2.3.0 根目录。该功能独立于 `EnableFSR3ZeroMV`，不会隐式启用 SR 或外部 AMDOF/NVOF；若需外部光流，按现有构建规则分别开启对应 provider。
+
+运行库必须来自同一 SDK：
+
+| 文件 | SHA256 |
+| --- | --- |
+| `amd_fidelityfx_loader_dx12.dll` | `E2D85AA05A9BD9ED8B38935FDF5199372CCA6F74C12015143BB6F945EE1608AA` |
+| `amd_fidelityfx_framegeneration_dx12.dll` | `02297BEEDD285E822D3A64F314CF00FAF378DCEC0EDC47FF0C4DD71B3A8C2F18` |
+
+DLL 文件版本不代表算法版本。通过 `ffxQueryDescGetVersions` 获取 provider ID，精确选择 FG **3.1.6** 和交换链 **3.1.7**；禁止缺失时自动替换成 ML FG 4。创建描述附带当前 SDK ABI 版本描述，准备阶段使用 `PrepareV2`。不使用二进制补丁或厂商身份覆盖。
+
+硬件检查包括所选适配器 LUID、D3D12 FL12.0、SM6.2、typed UAV load/store、必要格式与实际共享资源创建。通过这些检查只表示满足初始化前提，不能推断画质、实时性能或全部显卡兼容性。
+
+工程会复制 loader、FG DLL、标记效果、`AMD-FSR-SDK-LICENSE.md`、`AMD-FSR-SDK-THIRD-PARTY.md` 和本说明 `FSR3FG-README.md`。`Build-Release.ps1` 的递归文件清单包含它们，启用该功能时会调用只读 `Test-FSR3FGPackage.ps1` 检查。升级/OTA 必须沿用完整包清单并验证实际安装，不能只复制 Magpie.exe。
+
+## 错误与生命周期
+
+缺少 DLL/provider、HDR/几何条件不满足、设备/资源创建失败会保留步骤与错误码。运行期 SDK 错误、设备移除或宿主等待超时会停止本次缩放，不悄悄展示为 FG 正常。查看日志中的 `FSR3FG` 行。
+
+Prepare、Configure、代理 Present、Resize 和销毁由前端串行执行并保护上下文；固定 SDK 的 FG callback 在 Present 内同步执行，不操作 UI。异步生成计算关闭，但 SDK 仍有异步呈现线程。停止/Resize 先禁用 FG 和回调，等待 SDK 呈现与两侧 GPU 工作，再销毁 FG、交换链及 DLL。若 SDK/GPU 清理无法确认，会保留该会话资源到进程退出并拒绝再次启用 FSR FG；需要完整重启喜鹊。宿主 fence/容量等待有超时诊断，SDK 自身内部等待仍需故障注入实测。
+
+## English summary
+
+Source implementation only; not yet compiled or GPU tested. No WGC-only restriction: native capture timestamps take priority; missing timestamps use a separately labeled CPU capture-admission estimate, not game render time. Fixed 2x SDR, independent of FSR upscaling. Uses pinned FSR 3.1.6 and swapchain 3.1.7 providers from SDK 2.3.0, with PrepareV2 and synchronous generation compute. Requires an x64 build with `EnableFSR3FrameGeneration=true`; supply `FSR3SdkDir` explicitly.
+
+External motion and duplicate filtering default to off. Internal FSR optical flow remains active. Synthetic flat depth and a virtual camera do not replace real game geometry. Validate occlusion, fast motion, HUD/text, cost and latency. HDR and out-of-window cropping are rejected; unsupported distortion chains require external motion off. Only one frame generator is allowed per group.
+
+Magpie's overlay is separate; baked game HUD is not. Native timestamps or a labeled capture-admission estimate drive temporal input; source discontinuities and clock-source changes reset history. SDK reset pass-throughs and dispatch counts are not evidence of successful interpolation or display events. Runtime failure stops scaling. If shutdown cannot prove resources retired, restart Magpie before using FSR FG again.
+
+References: [AMD FG API](https://gpuopen.com/manuals/fsr_sdk/techniques/frame-interpolation-api/), [swapchain](https://gpuopen.com/manuals/fsr_sdk/techniques/frame-interpolation-swap-chain/), [FSR 3.1.6](https://gpuopen.com/manuals/fsr_sdk/techniques/frame-interpolation/).

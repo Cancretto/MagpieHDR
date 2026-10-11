@@ -100,6 +100,7 @@
       <AdditionalDependencies Condition="($(EnableDLSSFrameGeneration) Or $(EnableDLSSNR)) And '$(Platform)' == 'x64'">D3D12.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(EnableXeSSZeroMV) And '$(Platform)' == 'x64'">$(XeSSSdkDir)\lib\libxess.lib;D3D12.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(EnableXeSSFrameGeneration) And '$(Platform)' == 'x64'">$(XeSSSdkDir)\lib\libxess_fg.lib;$(XeSSSdkDir)\lib\libxell.lib;D3D12.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(EnableFSR3FrameGeneration) And '$(Platform)' == 'x64'">D3D12.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>d3dcompiler_47.dll;Magnification.dll;Imagehlp.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
@@ -771,6 +772,16 @@
   <Target Name="CopyFSR2ZeroMVRuntime" AfterTargets="Build" Condition="$(EnableFSR2ZeroMV) And '$(Platform)' == 'x64'">
     <Copy SourceFiles="$(FSR2RuntimeDir)\ffx_fsr2_api_x64.dll;$(FSR2RuntimeDir)\ffx_fsr2_api_dx11_x64.dll" DestinationFolder="$(OutDir)" />
     <Copy SourceFiles="$(FSR2SdkDir)\LICENSE.txt" DestinationFiles="$(OutDir)\AMD-FSR2-DX11-LICENSE.txt" />
+  </Target>
+  <Target Name="ValidateFSR3FrameGenerationSdk" BeforeTargets="PrepareForBuild" Condition="$(EnableFSR3FrameGeneration) And '$(Platform)' == 'x64'">
+    <Error Condition="!Exists('$(FSR3SdkDir)\Kits\FidelityFX\framegeneration\include\ffx_framegeneration.h')" Text="FSR3FG requires FSR SDK 2.3.0. Set FSR3SdkDir to the matching SDK root." />
+    <Error Condition="!Exists('$(FSR3SdkDir)\Kits\FidelityFX\signedbin\amd_fidelityfx_framegeneration_dx12.dll')" Text="FSR3FG signed provider DLL is missing from FSR3SdkDir." />
+  </Target>
+  <Target Name="CopyFSR3FrameGenerationRuntime" AfterTargets="Build" Condition="$(EnableFSR3FrameGeneration) And '$(Platform)' == 'x64'">
+    <Copy SourceFiles="$(FSR3SdkDir)\Kits\FidelityFX\signedbin\amd_fidelityfx_loader_dx12.dll;$(FSR3SdkDir)\Kits\FidelityFX\signedbin\amd_fidelityfx_framegeneration_dx12.dll" DestinationFolder="$(OutDir)" />
+    <Copy SourceFiles="$(FSR3SdkDir)\3rdpartynotice.md" DestinationFiles="$(OutDir)\AMD-FSR-SDK-THIRD-PARTY.md" />
+    <Copy SourceFiles="$(FSR3SdkDir)\Kits\FidelityFX\docs\license.md" DestinationFiles="$(OutDir)\AMD-FSR-SDK-LICENSE.md" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\docs\experimental\effects\FSR3FG.md" DestinationFiles="$(OutDir)\FSR3FG-README.md" />
   </Target>
   <Target Name="CopyFSR3ZeroMVRuntime" AfterTargets="Build" Condition="$(EnableFSR3ZeroMV) And '$(Platform)' == 'x64'">
     <Copy SourceFiles="$(FSR3SdkDir)\Kits\FidelityFX\signedbin\amd_fidelityfx_loader_dx12.dll;$(FSR3SdkDir)\Kits\FidelityFX\signedbin\amd_fidelityfx_upscaler_dx12.dll" DestinationFolder="$(OutDir)" />

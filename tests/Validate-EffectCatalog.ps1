@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 & (Join-Path $repoRoot 'scripts/Generate-EffectCatalog.ps1') -Check
 $review = & (Join-Path $repoRoot 'scripts/Read-EffectCatalogReview.ps1')
-if ($review.effects.Count -ne 164 -or $review.families.Count -ne 13 -or $review.subfamilies.Count -ne 2) { throw 'Current review coverage differs.' }
+if ($review.effects.Count -ne 165 -or $review.families.Count -ne 13 -or $review.subfamilies.Count -ne 2) { throw 'Current review coverage differs.' }
 foreach ($entry in $review.effects) {
     if ($entry.review.status -ne 'source-reviewed') { throw "Unreviewed effect: $($entry.id)" }
     $sourcePath = Join-Path $repoRoot $entry.source.path

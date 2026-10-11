@@ -3365,6 +3365,22 @@
       "search": "NvidiaVFX\\VFG Nvidia VFX VFG SDR interpolation at 2–8x, with per-output TrueHDR. Windows x64 requires an Ada/Blackwell rendering GPU. Performance (Low) or Balanced (Medium). Defaults: 2x, Balanced, automatic shot detection and duplicate filtering enabled. Retired High settings migrate to Balanced. SDR pre-effects -> VFG -> TrueHDR and supported post-effects for every real/generated output -> presentation. Convert HDR input explicitly to SDR first. The first frame is published once, and outputs use a bounded queue. Initial post-effects: TrueHDR, Bicubic, Bilinear, CAS, RCAS; unsupported chains are reported. ",
       "family": null,
       "subfamily": null
+    },
+    {
+      "id": "FSR3FG\\FSR3_FrameGeneration",
+      "name": "FSR 3 FG (Experimental)",
+      "category": "frame",
+      "subcategory": "Frame generation",
+      "purposes": [
+        "frame"
+      ],
+      "summary": "Experimental FSR 3 frame generation at fixed 2x, currently SDR only.",
+      "details": "Generates frames after final image processing at fixed 2x. It can be used independently of FSR upscaling. Use one frame generator per group. WGC is not required; missing native timestamps use a capture-admission interval estimate. Requires a build with FSR FG, matching AMD runtimes and a compatible GPU.\n\nExternal motion estimation and duplicate filtering default to off; FSR internal optical flow remains active. AMD or NVIDIA external motion can be tested with supported rectangular scaling chains. Select None for CRT, distortion or unverified effects. Optical-flow changes require restarting scaling.\n\nThis experimental capture-based integration lacks real game depth and motion. Game HUD, occlusion and fast motion may show artifacts. HDR and cropping outside the output window are not supported. Validate quality and cost first. Set base FPS under Frame rate and refresh. Generation does not increase game simulation FPS or establish lower input latency.",
+      "level": "advanced",
+      "recommendation": "Advanced / experimental",
+      "search": "FSR3FG FSR 3 FG FSR3_FrameGeneration AMD FidelityFX frame generation interpolation fixed 2x SDR experimental AMDOF NVOF",
+      "family": null,
+      "subfamily": null
     }
   ]
 }

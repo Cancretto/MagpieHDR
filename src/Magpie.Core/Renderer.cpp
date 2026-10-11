@@ -47,6 +47,8 @@
 #include "NvidiaOpticalFlowProvider.h"
 #include "AmdOpticalFlowProvider.h"
 #include "XeSSFGPresenter.h"
+#include "FSR3FGPresenter.h"
+#include "FSR3FGPolicy.h"
 #ifdef MP_USE_COMPSWAPCHAIN
 #include "CompSwapchainPresenter.h"
 #else
@@ -88,7 +90,7 @@ static HRESULT ReleasePresentationTextures(
 static FrameGuidanceRequirements CollectFrameGuidanceRequirements(
 	const std::vector<std::unique_ptr<NativeEffectBackend>>& backends,
 	const DLSSFrameGenerator* frameGenerator,
-	MotionVectorRequest xessRequest = {}
+	MotionVectorRequest proxyRequest = {}
 ) noexcept {
 	FrameGuidanceRequirements result;
 	for (const auto& backend : backends) {
@@ -97,9 +99,9 @@ static FrameGuidanceRequirements CollectFrameGuidanceRequirements(
 	if (frameGenerator) {
 		result.Merge(frameGenerator->GetFrameGuidanceRequirements());
 	}
-	if (xessRequest.method != OpticalFlowMethod::None) {
+	if (proxyRequest.method != OpticalFlowMethod::None) {
 		result.zero = true;
-		result.Add(xessRequest);
+		result.Add(proxyRequest);
 	}
 	return result.Resolved();
 }
@@ -122,6 +124,11 @@ static bool IsXeSSFrameGenerationEffect(std::string_view name) noexcept {
 		ClassifyFrameGenerationEffect(name);
 	return kind == FrameGenerationEffectKind::XeSSX2 ||
 		kind == FrameGenerationEffectKind::XeSSMultiFrame;
+}
+
+static bool IsProxyFrameGenerationEffect(std::string_view name) noexcept {
+	return IsXeSSFrameGenerationEffect(name) ||
+		ClassifyFrameGenerationEffect(name) == FrameGenerationEffectKind::FSR3;
 }
 
 static bool IsFrameGenerationEffect(std::string_view name) noexcept {
@@ -374,9 +381,11 @@ void Renderer::_EnsureGpuPriority(bool force) noexcept {
 
 ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOptions) noexcept {
 	_frameTraceStarted = FrameTrace::Start();
-	_xessMotionRequest = {};
+	_proxyMotionRequest = {};
 	_isXeSSFrameGenerationActive = false;
 	_xessFrameGenerationKind = FrameGenerationEffectKind::None;
+	_isFSR3FrameGenerationActive = false;
+	_presenterFailureReported = false;
 
 	const std::vector<EffectOption>& effects =
 		ScalingWindow::Get().Options().effects;
@@ -390,6 +399,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	}
 
 	_hasFrameGeneration = frameGeneration.HasFrameGeneration();
+	_isFSR3FrameGenerationActive = frameGeneration.first == FrameGenerationEffectKind::FSR3;
 	_configuredFrameGenerationMultiplier = 1;
 	_frameSyncUsesSharedSlot = frameGeneration.first != FrameGenerationEffectKind::DLSS &&
 		frameGeneration.first != FrameGenerationEffectKind::NvidiaVfx;
@@ -399,38 +409,59 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 		const FrameGenerationEffectKind kind =
 			ClassifyFrameGenerationEffect(effect.name);
 		if (kind != FrameGenerationEffectKind::None) {
-			_configuredFrameGenerationMultiplier = kind == FrameGenerationEffectKind::XeSSX2 ? 2u :
+			_configuredFrameGenerationMultiplier = (kind == FrameGenerationEffectKind::XeSSX2 || kind == FrameGenerationEffectKind::FSR3) ? 2u :
 				static_cast<uint32_t>(ReadIntegralEffectParameter(effect, "multiplier", 2,
 					kind == FrameGenerationEffectKind::NvidiaVfx ? 8 : 4,
 					2));
 		}
 		if (kind != FrameGenerationEffectKind::XeSSX2 &&
-			kind != FrameGenerationEffectKind::XeSSMultiFrame) {
+			kind != FrameGenerationEffectKind::XeSSMultiFrame && kind != FrameGenerationEffectKind::FSR3) {
 			continue;
 		}
 
-		xessVariant = kind == FrameGenerationEffectKind::XeSSX2 ?
-			XeSSFGVariant::X2 : XeSSFGVariant::MultiFrame;
-		_xessFrameGenerationKind = kind;
-		xessFrameGenerationMultiplier = *xessVariant == XeSSFGVariant::X2 ? 2u :
-			static_cast<uint32_t>(ReadIntegralEffectParameter(
-				effect, "multiplier", 2, 4, 2));
+		if (kind != FrameGenerationEffectKind::FSR3) {
+			xessVariant = kind == FrameGenerationEffectKind::XeSSX2 ?
+				XeSSFGVariant::X2 : XeSSFGVariant::MultiFrame;
+			_xessFrameGenerationKind = kind;
+			xessFrameGenerationMultiplier = *xessVariant == XeSSFGVariant::X2 ? 2u :
+				static_cast<uint32_t>(ReadIntegralEffectParameter(
+					effect, "multiplier", 2, 4, 2));
+		}
 		const int method = ReadIntegralEffectParameter(
 			effect, "opticalFlowMethod", 0,
-			2, 1);
+			2, kind == FrameGenerationEffectKind::FSR3 ? 0 : 1);
 		if (method == static_cast<int>(OpticalFlowMethod::Amd)) {
 			const int quality = ReadIntegralEffectParameter(
 				effect, "amdOpticalFlowMode", 0, 1, 1);
-			_xessMotionRequest = MotionVectorRequest::Amd(
+			_proxyMotionRequest = MotionVectorRequest::Amd(
 				static_cast<AmdOpticalFlowMode>(quality));
 		} else if (method == static_cast<int>(OpticalFlowMethod::Nvidia)) {
 			const int quality = ReadIntegralEffectParameter(
 				effect, "nvidiaOpticalFlowQuality", 1, NVIDIA_OPTICAL_FLOW_MAX_QUALITY, 2);
-			_xessMotionRequest = MotionVectorRequest::Nvidia(
+			_proxyMotionRequest = MotionVectorRequest::Nvidia(
 				static_cast<NvidiaOpticalFlowQuality>(quality));
 		}
 	}
 	_isXeSSFrameGenerationActive = xessVariant.has_value();
+	if (_isFSR3FrameGenerationActive) {
+		const auto& options = ScalingWindow::Get().Options();
+		if (options.IsHdrCompatibilityEnabled() || std::ranges::any_of(effects, [](const auto& effect) {
+			return effect.name == "Color\\SDR_to_HDR" || effect.name == "Color\\HDR_to_SDR" ||
+				effect.name == "RTXVideo\\RTXVideo_HDR" || effect.name == "NvidiaVFX\\TrueHDR";
+		})) {
+			_backendInitContext = "FSR 3 FG currently supports SDR only. Remove HDR components and disable HDR compatibility.";
+			Logger::Get().Error(_backendInitContext);
+			return ScalingError::PresentationInitFailed;
+		}
+		if (_proxyMotionRequest.method != OpticalFlowMethod::None && std::ranges::any_of(effects, [](const auto& effect) {
+			return !SupportsFSR3FGExternalMotion(effect.name);
+		})) {
+			_backendInitContext = "FSR 3 FG external motion requires a supported rectangular effect chain. Select Optical Flow Method: None for CRT, distortion or unverified custom effects.";
+			Logger::Get().Error(_backendInitContext);
+			return ScalingError::PresentationInitFailed;
+		}
+	}
+
 
 	Logger::DiagnosticCapture frontendDiagnostic;
 	NvidiaForegroundCompatibility::Phase(ForegroundQueryPhase::Device);
@@ -443,13 +474,13 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 
 	const DXGI_ADAPTER_DESC1 adapterDesc =
 		LogAdapter(_frontendResources.GetGraphicsAdapter());
-	ForegroundPresentationPath presentationPath = xessVariant ? ForegroundPresentationPath::XeSSProxy :
+	ForegroundPresentationPath presentationPath = _isFSR3FrameGenerationActive ? ForegroundPresentationPath::FSR3Proxy : xessVariant ? ForegroundPresentationPath::XeSSProxy :
 		(frameGeneration.first == FrameGenerationEffectKind::DLSS || frameGeneration.first == FrameGenerationEffectKind::NvidiaVfx) ? ForegroundPresentationPath::DLSSFrontendDXGI :
 		ForegroundPresentationPath::OrdinaryDXGI;
-	if (!xessVariant && ScalingWindow::Get().Options().IsDirectFlipDisabled())
+	if (!_HasProxyFrameGenerator() && ScalingWindow::Get().Options().IsDirectFlipDisabled())
 		presentationPath = ForegroundPresentationPath::Composition;
 #ifdef MP_USE_COMPSWAPCHAIN
-	if (!xessVariant) presentationPath = ForegroundPresentationPath::Composition;
+	if (!_HasProxyFrameGenerator()) presentationPath = ForegroundPresentationPath::Composition;
 #endif
 	NvidiaForegroundCompatibility::DeviceInitialized(adapterDesc.VendorId, adapterDesc.AdapterLuid.LowPart,
 		adapterDesc.AdapterLuid.HighPart, presentationPath, _configuredFrameGenerationMultiplier);
@@ -458,15 +489,23 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	_EnsureGpuPriority(true);
 	_UpdateOverlayRefreshRate();
 
-	if (xessVariant) {
+	if (_isFSR3FrameGenerationActive) {
+		auto fsrPresenter = std::make_unique<FSR3FGPresenter>(_proxyMotionRequest.method != OpticalFlowMethod::None);
+		if (!fsrPresenter->Initialize(hwndAttach, _frontendResources)) {
+			_backendInitContext = "FSR 3 frame generation\n" + frontendDiagnostic.Details();
+			_backendInitSystemError = frontendDiagnostic.SystemError();
+			return ScalingError::PresentationInitFailed;
+		}
+		_presenter = std::move(fsrPresenter);
+	} else if (xessVariant) {
 		Logger::Get().Info(fmt::format(
 			"XeSSFG request: variant={}, requestedMultiplier={}x, "
 			"adapterVendor={:#x}, adapterDevice={:#x}, opticalFlowMethod={}, "
 			"opticalFlowQuality={}",
 			*xessVariant == XeSSFGVariant::X2 ? "x2" : "MFG",
 			xessFrameGenerationMultiplier, adapterDesc.VendorId,
-			adapterDesc.DeviceId, static_cast<uint32_t>(_xessMotionRequest.method),
-			static_cast<uint32_t>(_xessMotionRequest.quality)));
+			adapterDesc.DeviceId, static_cast<uint32_t>(_proxyMotionRequest.method),
+			static_cast<uint32_t>(_proxyMotionRequest.quality)));
 		// Both providers supply the same current-to-previous pixel-space motion
 		// contract. Provider/quality capabilities are checked by Frame Guidance;
 		// the number of interpolated frames does not change the input contract.
@@ -474,7 +513,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 		auto xessPresenter = std::make_unique<XeSSFGPresenter>(
 			*xessVariant,
 			xessFrameGenerationMultiplier,
-			_xessMotionRequest.method != OpticalFlowMethod::None);
+			_proxyMotionRequest.method != OpticalFlowMethod::None);
 		if (!xessPresenter->Initialize(hwndAttach, _frontendResources)) {
 			Logger::Get().Error("初始化 XeSSFGPresenter 失败");
 			_backendInitContext = "XeSS frame generation\n" + frontendDiagnostic.Details();
@@ -516,7 +555,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	_frameSyncBackend = ResolveFrameSyncBackend(
 		{ pacingOptions.isFrontEdgeSyncEnabled, pacingOptions.frontEdgeSyncFrameRate, pacingOptions.frameSyncMode },
 		frameGeneration.first == FrameGenerationEffectKind::DLSS, _isXeSSFrameGenerationActive,
-		frontEdgeSupported, pacingOptions.IsBenchmarkMode());
+		frontEdgeSupported, pacingOptions.IsBenchmarkMode(), _isFSR3FrameGenerationActive);
 	_frameSyncEnabled = _frameSyncBackend != FrameSyncBackend::None;
 	if (_frameSyncEnabled || frameGeneration.first == FrameGenerationEffectKind::DLSS ||
 		frameGeneration.first == FrameGenerationEffectKind::NvidiaVfx) {
@@ -570,7 +609,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 		return ScalingError::SharedTextureOpenFailed;
 	}
 
-	_hasFrameGeneration = _HasSoftwareFrameGenerator() || _isXeSSFrameGenerationActive;
+	_hasFrameGeneration = _HasSoftwareFrameGenerator() || _HasProxyFrameGenerator();
 
 	_UpdateDestRect();
 
@@ -730,22 +769,22 @@ bool Renderer::_OpenFrontendSharedTextures() noexcept {
 			Logger::Get().Error("Get shared presentation texture keyed mutex failed");
 			return false;
 		}
-		if (_xessMotionRequest.method != OpticalFlowMethod::None) {
+		if (_proxyMotionRequest.method != OpticalFlowMethod::None) {
 			if (!_sharedMotionTextureHandles[i]) {
-				Logger::Get().Error("XeSSFG shared motion slot has no NT handle");
+				Logger::Get().Error("Proxy FG shared motion slot has no NT handle");
 				return false;
 			}
 			const HRESULT motionHr = _frontendResources.GetD3DDevice()->OpenSharedResource1(
 				_sharedMotionTextureHandles[i].get(),
 				IID_PPV_ARGS(_frontendSharedMotionTextures[i].put()));
 			if (FAILED(motionHr)) {
-				Logger::Get().ComError("Open XeSSFG shared motion texture failed", motionHr);
+				Logger::Get().ComError("Open Proxy FG shared motion texture failed", motionHr);
 				return false;
 			}
 			_frontendSharedMotionTextureMutexes[i] =
 				_frontendSharedMotionTextures[i].try_as<IDXGIKeyedMutex>();
 			if (!_frontendSharedMotionTextureMutexes[i]) {
-				Logger::Get().Error("Get XeSSFG shared motion keyed mutex failed");
+				Logger::Get().Error("Get Proxy FG shared motion keyed mutex failed");
 				return false;
 			}
 		}
@@ -1056,6 +1095,7 @@ bool Renderer::_FrontendRender(
 	_presenter->SetSourceTiming(sourceMetadata.frameId,
 		sourceMetadata.captureSequence, sourceMetadata.resourceGeneration,
 		sourceMetadata.timestamp100ns);
+	_presenter->SetCaptureAdmissionTime(sourceMetadata.captureAdmissionTime100ns);
 	_presenter->SetFrameGuidance(
 		_frontendMotionValid ? _frontendMotionTexture.get() : nullptr,
 		_frontendMotionFrameId,
@@ -1070,6 +1110,7 @@ bool Renderer::_FrontendRender(
 	traceBegin.Data(traceBegan);
 	traceBegin.End();
 	if (!traceBegan) {
+		_ReportPresenterFailure();
 		if (timings) {
 			timings->beginFrame = std::chrono::steady_clock::now() - beginFrameStart;
 			timings->capacityBusy = _presenter->WasFrameCapacityBusy();
@@ -1133,6 +1174,18 @@ bool Renderer::_FrontendRender(
 	return submitted;
 }
 
+void Renderer::_ReportPresenterFailure() noexcept {
+	if (!_presenter || !_presenter->HasFatalError() || _presenterFailureReported) return;
+	_presenterFailureReported = true;
+	ScalingWindow::Dispatcher().TryEnqueue([session = _sessionLifetime] {
+		auto& window = ScalingWindow::Get();
+		if (!session->IsCurrent(ScalingWindow::RunId()) || !window) return;
+		if (auto report = window.Options().reportErrorDetails) report(window.SrcTracker().Handle(),
+			ScalingError::PresentationInitFailed, "FSR 3 FG stopped after a runtime error. See the FSR3FG diagnostic in Magpie.log.", 0);
+		window.Stop();
+	});
+}
+
 bool Renderer::_SubmitFrontendFrame() noexcept {
 	assert(_pendingFrontendFrame);
 	const auto frame = *_pendingFrontendFrame;
@@ -1149,6 +1202,7 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 	const auto [stableBaseOnly, contentFrame, generatedFrame, uiInIndependentLayer,
 		waitForGpu, paced, overlayActionRevision, contentKey, diagnosticReasons] = frame;
 	const bool submitted = _presenter->EndFrame(waitForGpu);
+	if (!submitted) _ReportPresenterFailure();
 	_pendingFrontendFrame.reset();
 	if (submitted) {
 		if constexpr (NativeBackendTiming::Enabled) {
@@ -1313,6 +1367,7 @@ uint32_t Renderer::_FrontendDiagnosticReasons() noexcept {
 }
 
 bool Renderer::Render(bool force, bool waitForGpu) noexcept {
+	if (_presenter && _presenter->HasFatalError()) { _ReportPresenterFailure(); return false; }
 	if (_pendingFrontendFrame) return _SubmitFrontendFrame();
 	_frontendPacingDeadline.reset();
 	// In synchronous DLSSFG mode regular capture work remains owned by the FIFO.
@@ -1336,12 +1391,23 @@ bool Renderer::Render(bool force, bool waitForGpu) noexcept {
 	FrameTrace::Mark(FrameTrace::Event::RenderDecision,
 		(force ? 1 : 0) | (hasNewBackendFrame ? 2 : 0) |
 		(_frontendBaseNeedsPresent ? 4 : 0) | (_isPassThroughActive ? 8 : 0));
+	// Comparison/forced UI refresh can mark the stable base as pending. Keep
+	// updating the independent overlay without resubmitting that source ID or
+	// leaving the pending flag stuck after FSR's duplicate-history guard.
+	if (_isFSR3FrameGenerationActive && (_frontendBaseNeedsPresent || force) &&
+		!hasNewBackendFrame && _frontendPresentedBaseValid &&
+		_frontendFrameMetadata.frameId == _frontendPresentedFrameMetadata.frameId &&
+		_frontendFrameMetadata.captureSequence == _frontendPresentedFrameMetadata.captureSequence &&
+		_frontendFrameMetadata.resourceGeneration == _frontendPresentedFrameMetadata.resourceGeneration) {
+		_frontendBaseNeedsPresent = false;
+		return _FrontendOverlayRender();
+	}
 	if (!force && !hasNewBackendFrame && !_frontendBaseNeedsPresent) {
 		if (_lastAccessMutexKeys[sharedTextureSlot] == 0) {
 			// 第一帧尚未完成
 			return false;
 		}
-		if (_isXeSSFrameGenerationActive) {
+		if (_HasProxyFrameGenerator()) {
 			return (_HasPendingOverlayAction() || _cursorDrawer.NeedRedraw() ||
 				_overlayDrawer.NeedRedraw(_stepTimer.FPS())) &&
 				_FrontendOverlayRender();
@@ -1353,6 +1419,8 @@ bool Renderer::Render(bool force, bool waitForGpu) noexcept {
 		}
 	}
 
+	if (_isFSR3FrameGenerationActive && !hasNewBackendFrame && !_frontendBaseNeedsPresent)
+		return _FrontendOverlayRender();
 	return _FrontendRender(waitForGpu, sharedTextureSlot,
 		nullptr, !hasNewBackendFrame && !_frontendBaseNeedsPresent);
 }
@@ -2210,7 +2278,7 @@ void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 			} else if (option.name == NVIDIA_VFX_VFG_ID) {
 				info.applyMode = parameter.name == "model" ? EffectParameterApplyMode::Live : EffectParameterApplyMode::RestartRequired;
 				info.restartReason = info.applyMode == EffectParameterApplyMode::Live ? EffectParameterRestartReason::None : EffectParameterRestartReason::FrameGeneration;
-			} else if (IsXeSSFrameGenerationEffect(option.name)) {
+			} else if (IsProxyFrameGenerationEffect(option.name)) {
 				info.restartReason = EffectParameterRestartReason::FrameGeneration;
 			} else if (_nativeEffectBackends[effectIdx]) {
 				const NativeEffectBackend& backend = *_nativeEffectBackends[effectIdx];
@@ -2580,7 +2648,7 @@ ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
 	inOutTexture->GetDesc(&sourceDesc);
 	FrameGuidanceRequirements guidanceRequirements =
 		CollectFrameGuidanceRequirements(
-			_nativeEffectBackends, _dlssFrameGenerator.get(), _xessMotionRequest);
+			_nativeEffectBackends, _dlssFrameGenerator.get(), _proxyMotionRequest);
 	if (_frameGuidanceService.IsInitialized()) {
 		const FrameGuidanceExtent sourceExtent{
 			sourceDesc.Width, sourceDesc.Height
@@ -3122,7 +3190,7 @@ HANDLE Renderer::_CreateSharedTexture(ID3D11Texture2D* effectsOutput) noexcept {
 			return NULL;
 		}
 
-		if (_xessMotionRequest.method != OpticalFlowMethod::None) {
+		if (_proxyMotionRequest.method != OpticalFlowMethod::None) {
 			D3D11_TEXTURE2D_DESC motionDesc{};
 			motionDesc.Width = desc.Width;
 			motionDesc.Height = desc.Height;
@@ -3137,7 +3205,7 @@ HANDLE Renderer::_CreateSharedTexture(ID3D11Texture2D* effectsOutput) noexcept {
 			HRESULT motionHr = _backendResources.GetD3DDevice()->CreateTexture2D(
 				&motionDesc, nullptr, _backendSharedMotionTextures[i].put());
 			if (FAILED(motionHr)) {
-				Logger::Get().ComError("Create XeSSFG shared motion texture failed", motionHr);
+				Logger::Get().ComError("Create Proxy FG shared motion texture failed", motionHr);
 				return NULL;
 			}
 			_backendSharedMotionTextureMutexes[i] =
@@ -3145,14 +3213,14 @@ HANDLE Renderer::_CreateSharedTexture(ID3D11Texture2D* effectsOutput) noexcept {
 			winrt::com_ptr<IDXGIResource1> motionDxgiResource =
 				_backendSharedMotionTextures[i].try_as<IDXGIResource1>();
 			if (!_backendSharedMotionTextureMutexes[i] || !motionDxgiResource) {
-				Logger::Get().Error("Create XeSSFG shared motion synchronization failed");
+				Logger::Get().Error("Create Proxy FG shared motion synchronization failed");
 				return NULL;
 			}
 			HANDLE motionHandle = nullptr;
 			motionHr = motionDxgiResource->CreateSharedHandle(
 				nullptr, GENERIC_ALL, nullptr, &motionHandle);
 			if (FAILED(motionHr) || !motionHandle) {
-				Logger::Get().ComError("Create XeSSFG motion NT handle failed", motionHr);
+				Logger::Get().ComError("Create Proxy FG motion NT handle failed", motionHr);
 				return NULL;
 			}
 			_sharedMotionTextureHandles[i].reset(motionHandle);
@@ -3620,7 +3688,7 @@ HANDLE Renderer::_InitBackend() noexcept {
 
 	FrameGuidanceRequirements guidanceRequirements =
 		CollectFrameGuidanceRequirements(
-			_nativeEffectBackends, _dlssFrameGenerator.get(), _xessMotionRequest);
+			_nativeEffectBackends, _dlssFrameGenerator.get(), _proxyMotionRequest);
 	_motionConsumers.clear();
 	if (ScalingWindow::Get().Options().IsHdrCaptureEnabled() && guidanceRequirements.HasMotion()) {
 		Logger::Get().Info("HDR mode: optical-flow providers receive the canonical frame and perform provider-local format adaptation");
@@ -3629,7 +3697,7 @@ HANDLE Renderer::_InitBackend() noexcept {
 		const auto& effect = _runtimeEffectOptions[i];
 		const MotionVectorRequest request = IsDLSSFrameGenerationEffect(effect.name) && _dlssFrameGenerator ?
 			_dlssFrameGenerator->GetFrameGuidanceRequirements().FirstMotion() :
-			IsXeSSFrameGenerationEffect(effect.name) ? _xessMotionRequest :
+			IsProxyFrameGenerationEffect(effect.name) ? _proxyMotionRequest :
 			i < _nativeEffectBackends.size() && _nativeEffectBackends[i] ?
 			_nativeEffectBackends[i]->GetFrameGuidanceRequirements().FirstMotion() : MotionVectorRequest{};
 		if (request.method != OpticalFlowMethod::None)
@@ -3788,7 +3856,7 @@ void Renderer::_BackendRender(
 		VRRPerformance::Record(VRRPerformance::Event::CaptureAccepted);
 		const FrameGuidanceRequirements guidanceRequirements =
 			CollectFrameGuidanceRequirements(
-				_nativeEffectBackends, _dlssFrameGenerator.get(), _xessMotionRequest);
+				_nativeEffectBackends, _dlssFrameGenerator.get(), _proxyMotionRequest);
 		if (_frameGuidanceService.IsInitialized()) {
 			FrameTrace::Scope traceGuidance(FrameTrace::Event::Guidance);
 			_frameGuidanceService.BeginFrame(
@@ -4013,7 +4081,7 @@ void Renderer::_BackendRender(
 	// Keep the pacing/queue optimization, while avoiding duplicate real-frame
 	// submissions during a capture gap. FG must advance from a new canonical
 	// capture or its own generated frame, never from a repeated stale input.
-	if (!isNewCaptureFrame && (_HasSoftwareFrameGenerator() || _isXeSSFrameGenerationActive)) {
+	if (!isNewCaptureFrame && (_HasSoftwareFrameGenerator() || _HasProxyFrameGenerator())) {
 		d3dDC->Flush();
 		return;
 	}
@@ -4247,6 +4315,12 @@ bool Renderer::_PublishBackendTexture(
 	publicationMetadata.captureSequence = captureSequence;
 	publicationMetadata.resourceGeneration = currentGeneration;
 	publicationMetadata.timestamp100ns = _frameSource ? _frameSource->CaptureTimestamp100ns() : 0;
+	// Use the already recorded acceptance time, not the publication/Present
+	// time. Copy it with this frame across the shared slot, preserving native
+	// capture timestamps and every existing DLSS/XeSS timing decision.
+	publicationMetadata.captureAdmissionTime100ns = _isFSR3FrameGenerationActive && !generatedFrame ?
+		std::chrono::duration_cast<std::chrono::duration<int64_t, std::ratio<1, 10000000>>>(
+			_lastCapturedFrameTime.time_since_epoch()).count() : 0;
 	publicationMetadata.generated = generatedFrame;
 	if (_nvidiaVfxFrameGenerator) {
 		publicationMetadata.stage = generatedFrame ? HdrFrameStage::GeneratedOutput : HdrFrameStage::PublishedOutput;
@@ -4303,20 +4377,20 @@ bool Renderer::_PublishBackendTexture(
 	FrameGuidanceFrameId xessMotionFrameId = _capturedFrameId;
 	bool xessMotionValid = false;
 	bool xessMotionReset = true;
-	if (!generatedFrame && _xessMotionRequest.method != OpticalFlowMethod::None) {
+	if (!generatedFrame && _proxyMotionRequest.method != OpticalFlowMethod::None) {
 		D3D11_TEXTURE2D_DESC textureDesc{};
 		texture->GetDesc(&textureDesc);
 		const FrameGuidanceExtent extent{ textureDesc.Width, textureDesc.Height };
 		const FrameGuidanceConsumerViews guidance =
 			_frameGuidanceService.GetConsumerViews(
-				_capturedFrameId, extent, _xessMotionRequest);
+				_capturedFrameId, extent, _proxyMotionRequest);
 		if (guidance.produced.IsValidFor(_capturedFrameId, extent) &&
 			!guidance.produced.motion.metadata.isZero) {
 			xessMotion = guidance.produced.motion.texture;
 			xessMotionReset = guidance.produced.requiresHistoryReset;
 			const FrameGuidanceSyncPoint sync = guidance.produced.motion.metadata.sync;
 			if (sync.fence && sync.value && FAILED(d3dDC->Wait(sync.fence, sync.value))) {
-				Logger::Get().Warn("XeSSFG motion synchronization failed; using Zero Motion");
+				Logger::Get().Warn("Proxy FG motion synchronization failed; using Zero Motion");
 				xessMotion = nullptr;
 				xessMotionReset = true;
 			}
