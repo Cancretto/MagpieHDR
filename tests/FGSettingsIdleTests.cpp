@@ -26,7 +26,7 @@ template<class Char> static void Parameters() {
 	const std::optional<float> methods[]{std::nullopt, 0.f, -1.f, 3.f, 1.5f,
 		std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()};
 	for (const auto method : methods) {
-		Effect<Char> effect{key("FSR3FG\\FSR3_FrameGeneration"), {{key("amdOpticalFlowMode"), 0}}};
+		Effect<Char> effect{key("FSR3FG\\FSR3_FrameGeneration"), {{key("amdOpticalFlowMode"), 0.f}}};
 		if (method) effect.parameters[key("opticalFlowMethod")] = *method;
 		effect.parameters[key("duplicateFrameFiltering")] = 1;
 		effect.parameters[key("customValue")] = 42;
@@ -49,19 +49,19 @@ template<class Char> static void Parameters() {
 	}
 	for (float bad : {-1.f, 6.f, 0.5f, std::numeric_limits<float>::quiet_NaN()}) {
 		Effect<Char> effect{key("FSR3FG\\FSR3_FrameGeneration"), {
-			{key("opticalFlowMethod"), 2}, {key("amdOpticalFlowMode"), bad}, {key("nvidiaOpticalFlowQuality"), bad}}};
+			{key("opticalFlowMethod"), 2.f}, {key("amdOpticalFlowMode"), bad}, {key("nvidiaOpticalFlowQuality"), bad}}};
 		Check(NormalizeFrameGenerationParameters(effect), "invalid qualities normalize");
 		Check(effect.parameters.at(key("opticalFlowMethod")) == 2 &&
 			effect.parameters.at(key("amdOpticalFlowMode")) == 1 &&
 			effect.parameters.at(key("nvidiaOpticalFlowQuality")) == 2, "quality repair preserves provider");
 	}
 	for (const char* id : {"DLSSFG\\DLSS_FrameGeneration", "XeSSFG\\XeSS_FrameGeneration", "NvidiaVFX\\VFG"}) {
-		Effect<Char> effect{key(id), {{key("duplicateFrameFiltering"), 0}, {key("opticalFlowMethod"), 0}}};
+		Effect<Char> effect{key(id), {{key("duplicateFrameFiltering"), 0.f}, {key("opticalFlowMethod"), 0.f}}};
 		Check(NormalizeFrameGenerationParameters(effect), "all FG families drop override");
 		Check(effect.parameters.at(key("opticalFlowMethod")) == 0, "other FG flow semantics unchanged");
 	}
 	for (const char* id : {"Custom\\FG", "FSR3\\FSR3_SR", "DLSSNR\\DLSSNR_AI_Filter"}) {
-		Effect<Char> effect{key(id), {{key("duplicateFrameFiltering"), 1}, {key("opticalFlowMethod"), 0}}};
+		Effect<Char> effect{key(id), {{key("duplicateFrameFiltering"), 1.f}, {key("opticalFlowMethod"), 0.f}}};
 		const auto before = effect.parameters;
 		Check(!NormalizeFrameGenerationParameters(effect) && before == effect.parameters, "custom/SR parameters untouched");
 	}

@@ -52,6 +52,7 @@ prefix = r'''
 #include <unordered_map>
 #include <string>
 #include "EffectParameterPersistence.h"
+#include "FrameGenerationParameters.h"
 using namespace Magpie;
 struct JsonHelper {
     static bool ReadBool(const rapidjson::GenericObject<true, rapidjson::Value>&, const char*, bool&, bool = false) noexcept;
@@ -97,7 +98,7 @@ Options Start(const Profile& profile) {
 '''
 prefix += startup + '\n(void)rtssSession; return options; }\n'
 prefix += r'''
-struct EffectOption { std::unordered_map<std::string, float> parameters; };
+struct EffectOption { std::unordered_map<std::string, float> parameters; std::string name; };
 '''
 prefix += block(read("src/Magpie.Core/include/ScalingOptions.h"), "struct EffectParameterSessionState") + ";\n"
 prefix += r'''
