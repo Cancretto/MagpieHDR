@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "DLSSSRUpscaler.h"
+#include "DlssgSm86Runtime.h"
 #include "DeviceResources.h"
 #include "DirectXHelper.h"
 #include "Logger.h"
@@ -112,6 +113,7 @@ bool DLSSSRUpscaler::Initialize(
 
 	// A stable custom project identifier is permitted by NGX when an NVIDIA
 	// application ID has not been assigned to an integration.
+	DlssgSm86Runtime::Prepare(deviceResources.GetGraphicsAdapter());
 	NVSDK_NGX_Result result = NVSDK_NGX_D3D11_Init_with_ProjectID(
 		"7c134ab9-9677-4af5-a2b2-bca943350861",
 		NVSDK_NGX_ENGINE_TYPE_CUSTOM,

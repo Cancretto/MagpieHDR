@@ -398,6 +398,11 @@ if (!$featureOptions.Contains("EnableAmdOpticalFlow") -and
 }
 
 $featureOptions["EnableFrameTrace"] = if ($EnableFrameTrace) { "true" } else { "false" }
+if ($featureOptions["EnableDLSSFrameGeneration"] -eq 'true') {
+    # Includes -SkipBuild: old native/mixed output must not become a new package.
+    & (Join-Path $PSScriptRoot 'Test-DlssgSm86Package.ps1') -PackageDirectory $stagingDir
+    $featureOptions['DLSSFrameGenerationProvider'] = 'dlssg_for_sm86/0.3.5/9621db573e07ed54f50c15bbb585ed9a7bdfac28'
+}
 if ($featureOptions["EnableNvidiaVfx"] -eq 'true') {
     # Also protects -SkipBuild: a former full-Core output cannot silently be
     # repackaged as the Minimal four-feature distribution.

@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "NgxRuntimeGuard.h"
 #include "DLSSFrameGenerator.h"
+#include "DlssgSm86Runtime.h"
+#include "DlssgSm86Policy.h"
 #include "DeviceResources.h"
 #include "FrameGuidanceD3D12Interop.h"
 #include "Logger.h"
@@ -51,6 +53,7 @@ struct DLSSFrameGenerator::Impl {
 	uint32_t multiplier = 2;
 	uint32_t maxSupportedMultiplier = 2;
 	uint32_t diagnosticRealFrames = 0;
+	uint64_t sessionRealFrames = 0, sessionEvaluations = 0, sessionGeneratedPublished = 0, sessionDisabled = 0;
 	std::array<uint32_t, 4> diagnosticEvaluateSuccess{};
 	std::array<uint32_t, 4> diagnosticEvaluateFailure{};
 	std::array<uint32_t, 4> diagnosticInterpolationEnabled{};
@@ -182,6 +185,10 @@ static bool WaitForQueue(DLSSFrameGenerator::Impl& impl) noexcept {
 }
 
 DLSSFrameGenerator::Impl::~Impl() {
+	Logger::Get().Info(fmt::format(
+		"DLSSFG session totals: realGroups={} evaluations={} generatedPublished={} interpolationDisabled={} "
+		"(published counts queue acceptance, not displayed frames)",
+		sessionRealFrames, sessionEvaluations, sessionGeneratedPublished, sessionDisabled));
 	if (queue12 && fence12) {
 		WaitForQueue(*this);
 	}
@@ -395,6 +402,10 @@ bool DLSSFrameGenerator::Initialize(
 	_requestedSettings = settings;
 	_requestedSettings.multiplier = std::clamp(settings.multiplier, 2u, 4u);
 	_impl.reset();
+	if (!DlssgSm86Runtime::Prepare(resources.GetGraphicsAdapter())) {
+		Logger::Get().Error("DLSSFG community runtime unavailable; see package/adapter diagnostics and restart Magpie if required");
+		return false;
+	}
 	auto impl = std::make_unique<Impl>();
 	impl->device11 = resources.GetD3DDevice();
 	impl->context11 = resources.GetD3DDC();
@@ -513,23 +524,29 @@ bool DLSSFrameGenerator::Initialize(
 
 	uint32_t maxGeneratedFrames = 1;
 	sehCode = 0;
-	if (!NGXSucceeded(GetParameterUISafely(
+	const bool hasMultiFrameCapability = NGXSucceeded(GetParameterUISafely(
 		impl->parameters,
 		NVSDK_NGX_DLSSG_Parameter_MultiFrameCountMax,
 		&maxGeneratedFrames,
-		&sehCode))) {
-		maxGeneratedFrames = 1;
+		&sehCode));
+	if (sehCode) return false;
+	impl->maxSupportedMultiplier = DlssgSm86Policy::MaxMultiplier(hasMultiFrameCapability, maxGeneratedFrames);
+	if (impl->maxSupportedMultiplier < 2) {
+		Logger::Get().Error("DLSSFG reports zero generated-frame capacity; refusing to promote it to 2x");
+		return false;
 	}
-	maxGeneratedFrames = std::clamp(maxGeneratedFrames, 1u, 3u);
-	impl->maxSupportedMultiplier = maxGeneratedFrames + 1;
-	impl->multiplier = std::min(
+	impl->multiplier = DlssgSm86Policy::EffectiveMultiplier(
 		_requestedSettings.multiplier, impl->maxSupportedMultiplier);
+	Logger::Get().Info(fmt::format(
+		"DLSSFG capabilities: available={} MFGQuery={} reportedGenerated={} requested={}x effective={}x ceiling=4x",
+		available, hasMultiFrameCapability, maxGeneratedFrames, _requestedSettings.multiplier, impl->multiplier));
 	if (impl->multiplier != _requestedSettings.multiplier) {
 		Logger::Get().Warn(fmt::format(
 			"DLSSFG {}x requested, hardware supports up to {}x; using {}x",
 			_requestedSettings.multiplier,
-			maxGeneratedFrames + 1, impl->multiplier));
+			impl->maxSupportedMultiplier, impl->multiplier));
 	}
+	if (!DlssgSm86Runtime::VerifyLoadedPair()) return false;
 	for (uint32_t frameIndex = 1;
 		frameIndex < impl->multiplier; ++frameIndex) {
 		if (!CreateInterpolationDisableResources(*impl, frameIndex)) {
@@ -818,6 +835,7 @@ bool DLSSFrameGenerator::Draw(
 			return false;
 		}
 		++impl.diagnosticEvaluateSuccess[frameIndex];
+		++impl.sessionEvaluations;
 		{
 			D3D12_RESOURCE_BARRIER diagnosticBarrier{};
 			diagnosticBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -884,16 +902,24 @@ bool DLSSFrameGenerator::Draw(
 		}
 		const auto disabled = ReadInterpolationDisabled(impl, frameIndex);
 		if (!disabled) return false;
+		if (*disabled) ++impl.sessionDisabled;
 		if (!resetThisFrame && !*disabled) {
 			if (!publishGeneratedFrame(impl.sharedGenerated11.get(), reflexPresentId)) {
 				++impl.diagnosticGeneratedPublishFailure;
 				return false;
 			}
 			++impl.diagnosticGeneratedPublishSuccess;
+			++impl.sessionGeneratedPublished;
 		}
 	}
 
 	impl.resetHistory = false;
+	++impl.sessionRealFrames;
+	if (impl.sessionRealFrames <= 3 || impl.sessionRealFrames % 600 == 0) {
+		Logger::Get().Info(fmt::format(
+			"DLSSFG progress: realGroups={} evaluations={} generatedPublished={} interpolationDisabled={} multiplier={}x",
+			impl.sessionRealFrames, impl.sessionEvaluations, impl.sessionGeneratedPublished, impl.sessionDisabled, impl.multiplier));
+	}
 	impl.lastGuidanceBinding = guidanceBinding;
 	if (guidanceReset) impl.lastGuidanceResetFrameId = frameId;
 	if constexpr (NativeBackendTiming::Enabled) {

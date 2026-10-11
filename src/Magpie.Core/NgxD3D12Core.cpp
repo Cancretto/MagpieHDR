@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "NgxRuntimeGuard.h"
 #include "NgxD3D12Core.h"
+#include "DlssgSm86Runtime.h"
 #include "DeviceResources.h"
 #include "Logger.h"
 #include "Win32Helper.h"
@@ -116,6 +117,7 @@ bool NgxD3D12Core::Acquire(
 		}
 	}
 	if (!_initialized) {
+		DlssgSm86Runtime::Prepare(resources.GetGraphicsAdapter());
 		const std::filesystem::path applicationDirectory =
 			Win32Helper::GetExePath().parent_path();
 		const std::wstring featurePath = applicationDirectory.wstring();

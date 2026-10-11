@@ -5312,7 +5312,7 @@
       "level": "advanced",
       "source": {
         "path": "src/Effects/DLSSFG/DLSS_FrameGeneration.hlsl",
-        "sha256": "b5c9a7edce4bc8bbac0e84cf7a3d9dba97ed479f1c215ea4d3d3d7ee0c06be64",
+        "sha256": "db44221f52db55f0804d480191424f6afc55c66cc081747fcc4c7b0fd79169a7",
         "output": {
           "WIDTH": "INPUT_WIDTH",
           "HEIGHT": "INPUT_HEIGHT"
@@ -5333,7 +5333,7 @@
             "name": "duplicateFrameFiltering",
             "type": "int",
             "label": "Duplicate Frame Filtering",
-            "default": "1",
+            "default": "0",
             "min": "0",
             "max": "1",
             "step": "1",
@@ -5405,15 +5405,15 @@
         "name": "DLSS FrameGeneration",
         "subcategory": "补帧",
         "summary": "在真实帧之间生成 2×～4× 显示帧。",
-        "details": "需要支持相应补帧能力的 NVIDIA 显卡、驱动与随附运行库；可用倍率由实际能力决定。同一效果组只使用一个补帧器。\n\n在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。\n\n补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。",
-        "search": "DLSSFG\\DLSS_FrameGeneration DLSS FrameGeneration 补帧与帧率 补帧 在真实帧之间生成 2×～4× 显示帧。 需要支持相应补帧能力的 NVIDIA 显卡、驱动与随附运行库；可用倍率由实际能力决定。同一效果组只使用一个补帧器。  在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。  补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。 DLSSFG\\DLSS_FrameGeneration Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality"
+        "details": "默认使用随附的社区兼容运行库，无需选择库。需要支持相应补帧能力的 NVIDIA 显卡及驱动；可用倍率以实际能力为准，最高 4×。同一效果组只使用一个补帧器。切换渲染显卡后需重启喜鹊。\n\n在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。\n\n补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。",
+        "search": "DLSSFG\\DLSS_FrameGeneration DLSS FrameGeneration 补帧与帧率 补帧 在真实帧之间生成 2×～4× 显示帧。 默认使用随附的社区兼容运行库，无需选择库。需要支持相应补帧能力的 NVIDIA 显卡及驱动；可用倍率以实际能力为准，最高 4×。同一效果组只使用一个补帧器。切换渲染显卡后需重启喜鹊。  在“帧率与刷新”中设置内容基础帧率；理论显示帧率为基础帧率乘倍率，实际值仍受捕获、处理能力和显示节奏影响。不会提高游戏逻辑帧率。  补帧在图像效果完成后执行，拖动条目不改变阶段。检查快速运动、遮挡、HUD、光标、切屏和 HDR 颜色；倍率及光流修改需重新缩放。 DLSSFG\\DLSS_FrameGeneration Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality"
       },
       "en-US": {
         "name": "DLSS FrameGeneration",
         "subcategory": "Frame generation",
         "summary": "Generate 2×–4× displayed frames between real frames.",
-        "details": "Requires an NVIDIA GPU, driver, and bundled runtime supporting the requested frame-generation capability; available multipliers depend on actual capabilities. Use one frame generator per group.\n\nSet the content base rate under Frame rate and refresh. The theoretical display rate is base FPS times the multiplier, but capture, processing capacity, and presentation pacing still limit it. Game simulation FPS is unchanged.\n\nRuns after image effects regardless of list position. Check fast motion, occlusion, HUD, cursor, window switching, and HDR colors. Multiplier and optical-flow changes require restarting scaling.",
-        "search": "DLSSFG\\DLSS_FrameGeneration DLSS FrameGeneration Frame generation and frame rate Frame generation Generate 2×–4× displayed frames between real frames. Requires an NVIDIA GPU, driver, and bundled runtime supporting the requested frame-generation capability; available multipliers depend on actual capabilities. Use one frame generator per group.  Set the content base rate under Frame rate and refresh. The theoretical display rate is base FPS times the multiplier, but capture, processing capacity, and presentation pacing still limit it. Game simulation FPS is unchanged.  Runs after image effects regardless of list position. Check fast motion, occlusion, HUD, cursor, window switching, and HDR colors. Multiplier and optical-flow changes require restarting scaling. DLSSFG\\DLSS_FrameGeneration Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality"
+        "details": "Uses the bundled community compatibility runtime automatically; no library selection is needed. Requires a supported NVIDIA GPU and driver; available multipliers depend on actual capabilities, up to 4×. Use one frame generator per group. Restart Magpie after changing the rendering GPU.\n\nSet the content base rate under Frame rate and refresh. The theoretical display rate is base FPS times the multiplier, but capture, processing capacity, and presentation pacing still limit it. Game simulation FPS is unchanged.\n\nRuns after image effects regardless of list position. Check fast motion, occlusion, HUD, cursor, window switching, and HDR colors. Multiplier and optical-flow changes require restarting scaling.",
+        "search": "DLSSFG\\DLSS_FrameGeneration DLSS FrameGeneration Frame generation and frame rate Frame generation Generate 2×–4× displayed frames between real frames. Uses the bundled community compatibility runtime automatically; no library selection is needed. Requires a supported NVIDIA GPU and driver; available multipliers depend on actual capabilities, up to 4×. Use one frame generator per group. Restart Magpie after changing the rendering GPU.  Set the content base rate under Frame rate and refresh. The theoretical display rate is base FPS times the multiplier, but capture, processing capacity, and presentation pacing still limit it. Game simulation FPS is unchanged.  Runs after image effects regardless of list position. Check fast motion, occlusion, HUD, cursor, window switching, and HDR colors. Multiplier and optical-flow changes require restarting scaling. DLSSFG\\DLSS_FrameGeneration Frame Multiplier Duplicate Frame Filtering Optical Flow Method OF Quality OF Quality"
       }
     },
     {
