@@ -112,7 +112,22 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 	bool IsNoGraphicsCard() const noexcept;
 	bool ShowGraphicsCardUnavailableWarning() const noexcept;
 
+	int32_t FrameRefreshModeIndex() const noexcept;
+	void FrameRefreshModeIndex(int32_t value);
+	bool IsSimpleFrameRefresh() const noexcept;
+	bool IsAdvancedFrameRefresh() const noexcept;
 	int32_t ContentFrameRateModeIndex() const noexcept;
+	bool SimpleRtssSync() const noexcept;
+	void SimpleRtssSync(bool value);
+	int32_t RtssModeIndex() const noexcept;
+	void RtssModeIndex(int32_t value);
+	int32_t RtssTargetScopeIndex() const noexcept;
+	void RtssTargetScopeIndex(int32_t value);
+	bool ShowRtssOptions() const noexcept;
+	bool ShowContentPacing() const noexcept;
+	bool ShowRtssDownload() const noexcept;
+	bool CanRetryRtss() const noexcept;
+	void RetryRtss();
 	int32_t RtssScopeIndex() const noexcept;
 	void RtssScopeIndex(int32_t value);
 	int32_t RtssRateModeIndex() const noexcept;
@@ -244,6 +259,7 @@ private:
 	::Magpie::Event<uint32_t>::EventRevoker _dpiChangedRevoker;
 	::Magpie::Event<>::EventRevoker _adaptersChangedRevoker;
 	::Magpie::Event<::Magpie::Profile&>::EventRevoker _frameSyncChangedRevoker;
+	::Magpie::Event<>::EventRevoker _frameRefreshModeChangedRevoker;
 	::Magpie::Event<>::EventRevoker _rtssStatusRevoker;
 	::Magpie::RtssStatus _rtssPreview;
 	uint64_t _rtssPreviewGeneration = 0;

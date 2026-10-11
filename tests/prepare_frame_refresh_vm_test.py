@@ -6,7 +6,7 @@ import sys
 repo = Path(__file__).resolve().parents[1]
 output = Path(sys.argv[1])
 source = (repo / "src/Magpie/ProfileViewModel.cpp").read_text(encoding="utf-8-sig")
-names = ("ContentFrameRateModeIndex", "ContentFrameRate", "FrameSyncModeIndex", "IsContentPacingEnabled",
+names = ("IsSimpleFrameRefresh", "IsAdvancedFrameRefresh", "FrameRefreshModeIndex", "ContentFrameRateModeIndex", "ContentFrameRate", "FrameSyncModeIndex", "IsContentPacingEnabled",
          "ShowContentFrameRate", "CursorRefreshModeIndex", "CursorSupplementModeIndex", "CursorSupplementRate",
          "ShowCursorSupplement", "ShowCursorSupplementRate", "IdleRedrawModeIndex", "IdleRedrawRate",
          "ShowIdleRedrawRate", "IsVRREnabled", "ResetFrameRefresh", "_SaveFrameRefresh")
@@ -26,16 +26,20 @@ prefix = r'''
 #include <iostream>
 #include <limits>
 namespace Magpie {
+enum class DuplicateFrameDetectionMode { Always, Dynamic, Never };
 struct Profile { FrameRefreshSettings frameRefresh; };
 struct ProfileService {
     struct Changed { unsigned count=0; void Invoke(Profile&) { ++count; } } FrameRefreshChanged;
     static ProfileService& Get() { static ProfileService s; return s; }
 };
-struct AppSettings { unsigned saves=0; void SaveAsync() { ++saves; }
+struct AppSettings { unsigned saves=0; bool simple=false; void SaveAsync() { ++saves; }
+    bool IsSimpleFrameRefresh() const { return simple; }
+    void IsSimpleFrameRefresh(bool value) { if (simple != value) { simple=value; SaveAsync(); } }
     static AppSettings& Get() { static AppSettings s; return s; }
 };
 struct ProfileViewModel {
     Profile* _data;
+    void DuplicateFrameDetectionMode(int32_t) {}
 '''
 suffix = r'''
 }
@@ -46,18 +50,18 @@ int main() {
     vm.IsVRREnabled(true);
     assert(vm.IsVRREnabled() && !app.frameRefresh.vrrEnabled);
     vm.ContentFrameRate(37); vm.CursorSupplementRate(144); vm.IdleRedrawRate(17);
-    for (int content=0; content<3; ++content) for (int pacing=0; pacing<3; ++pacing) for (int cursor=0; cursor<3; ++cursor)
+    for (int content=0; content<2; ++content) for (int pacing=0; pacing<3; ++pacing) for (int cursor=0; cursor<3; ++cursor)
     for (int supplement=0; supplement<2; ++supplement) for (int idle=0; idle<2; ++idle) {
         vm.ContentFrameRateModeIndex(content); vm.FrameSyncModeIndex(pacing); vm.CursorRefreshModeIndex(cursor);
         vm.CursorSupplementModeIndex(supplement); vm.IdleRedrawModeIndex(idle);
         assert(vm.ContentFrameRate()==37 && vm.CursorSupplementRate()==144 && vm.IdleRedrawRate()==17);
-        assert(vm.ShowContentFrameRate()==(content==2) && vm.IsContentPacingEnabled()==(content!=0));
+        assert(vm.ShowContentFrameRate()==(content==1) && vm.IsContentPacingEnabled()==(content!=0));
         assert(vm.ShowCursorSupplement()==(cursor==2) && vm.ShowCursorSupplementRate()==(cursor==2 && supplement==1));
         assert(vm.ShowIdleRedrawRate()==bool(idle));
         assert(app.frameRefresh==FrameRefreshSettings{});
     }
     auto saved=defaults.frameRefresh; const auto previousSaves=AppSettings::Get().saves;
-    vm.ContentFrameRateModeIndex(-1); vm.CursorRefreshModeIndex(3); vm.CursorSupplementModeIndex(2);
+    vm.ContentFrameRateModeIndex(-1); vm.ContentFrameRateModeIndex(2); vm.CursorRefreshModeIndex(3); vm.CursorSupplementModeIndex(2);
     vm.IdleRedrawModeIndex(2); vm.FrameSyncModeIndex(9);
     assert(defaults.frameRefresh==saved && AppSettings::Get().saves==previousSaves);
     defaults.frameRefresh.legacyContentLimit=20; vm.ContentFrameRate(38);
@@ -80,7 +84,23 @@ int main() {
     assert(!vm.IsVRREnabled());
     assert(defaults.frameRefresh==FrameRefreshSettings{} && app.frameRefresh==FrameRefreshSettings{});
     assert(AppSettings::Get().saves==ProfileService::Get().FrameRefreshChanged.count);
-    std::cout << "Production refresh view model: 108 mode combinations, hidden numeric retention, invalid edits, compatibility release, profile isolation and reset passed\n";
+    defaults.frameRefresh.pacing=FrameSyncMode::Reflex;
+    defaults.frameRefresh.cursorRate=144;
+    defaults.frameRefresh.vrrEnabled=true;
+    vm.FrameRefreshModeIndex(0);
+    assert(vm.IsSimpleFrameRefresh() && !vm.IsAdvancedFrameRefresh() && vm.FrameRefreshModeIndex()==0);
+    vm.FrameSyncModeIndex(0); vm.CursorSupplementRate(30); vm.IsVRREnabled(false); vm.ResetFrameRefresh();
+    assert(defaults.frameRefresh.pacing==FrameSyncMode::Reflex && defaults.frameRefresh.cursorRate==144 && !defaults.frameRefresh.vrrEnabled);
+    vm.ContentFrameRateModeIndex(1); vm.ContentFrameRate(90); vm.IdleRedrawRate(45);
+    vm.FrameRefreshModeIndex(1);
+    assert(vm.IsAdvancedFrameRefresh() && defaults.frameRefresh.contentRate==90 && defaults.frameRefresh.idleRate==45);
+    assert(vm.CursorSupplementRate()==144 && !vm.IsVRREnabled());
+    ProfileViewModel other{&app};
+    other.FrameRefreshModeIndex(0);
+    assert(vm.IsSimpleFrameRefresh());
+    other.FrameRefreshModeIndex(-1); other.FrameRefreshModeIndex(2);
+    assert(vm.IsSimpleFrameRefresh());
+    std::cout << "Production refresh view model: 72 mode combinations, hidden numeric retention, invalid edits, compatibility release, profile isolation and reset passed\n";
 }
 '''
 (output / "frame_refresh_vm.cpp").write_text(prefix + "\n".join(declarations) + "\n};\n" +

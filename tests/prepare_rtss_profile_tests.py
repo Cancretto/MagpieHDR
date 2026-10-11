@@ -42,8 +42,8 @@ status_end = enum_source.index("\n};", enum_source.index("struct RtssStatus {"))
 session_start = service.index("struct RtssService::Session {")
 session_end = service.index("\n};", session_start) + 3
 methods = []
-for name in ("_TryApply", "_Finish", "_InitializeMagpie", "_Prepare", "_RefreshMagpieInitialization"):
-    method_start = service.index(("bool" if name == "_Prepare" else "void") + " RtssService::" + name + "(")
+for name in ("_TryApply", "_Finish", "_InitializeMagpie", "_Prepare", "_RefreshMagpieInitialization", "_PrepareSession", "_PublishSession", "_CheckSession"):
+    method_start = service.index(("bool" if name in ("_Prepare", "_PrepareSession") else "void") + " RtssService::" + name + "(")
     method_end = service.index("\n}", method_start) + 2
     methods.append(service[method_start:method_end])
 (args.output / "RtssSessionCases.g.h").write_text(enum_source[enum_start:status_end], encoding="utf-8")

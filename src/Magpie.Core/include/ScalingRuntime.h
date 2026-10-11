@@ -1,5 +1,6 @@
 #pragma once
 #include "Event.h"
+#include <optional>
 
 namespace Magpie {
 
@@ -33,7 +34,7 @@ public:
 	void Stop();
 	// Main-thread system-key notification; cancels pending fullscreen restarts too.
 	bool StopForTaskSwitch();
-	void UpdateFrameRefreshSettings(FrameRefreshSettings settings);
+	void UpdateFrameRefreshSettings(FrameRefreshSettings settings, std::optional<bool> simpleMode = std::nullopt, bool policyChanged = false);
 	void UpdateToolbarShortcutLabels(ToolbarShortcutLabels labels);
 	void UpdateScreenshotContent(ScreenshotContent content);
 	void UpdateMainUI(SessionWindowIdentity identity);

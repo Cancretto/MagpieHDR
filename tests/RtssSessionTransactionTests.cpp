@@ -5,11 +5,23 @@
 #include "RtssSettings.h"
 #include <atomic>
 #include <memory>
+#include <thread>
+#include <chrono>
+namespace wil { template<class F> struct Exit { F callback; ~Exit() { callback(); } }; template<class F> auto scope_exit(F f) { return Exit<F>{f}; } }
 
 namespace Magpie {
+bool installed = true, launchSuccess = false;
+unsigned launches = 0;
+std::function<void()> launchHook;
 RtssToolInfo RtssProfileAccess::DetectTool(bool afterburner) {
-	if (afterburner || !active) return {};
+	if (afterburner || !active || !installed) return {};
 	return {active->directory / L"RTSS.exe", active->access._version, active->access._running};
+}
+bool RtssProfileAccess::LaunchTool(const RtssToolInfo&, std::wstring& error) {
+	++launches;
+	if (launchHook) launchHook();
+	if (launchSuccess) { active->access._running = true; return true; }
+	error = L"TestLaunchFailure"; return false;
 }
 #include "RtssSessionCases.g.h"
 namespace {
@@ -26,6 +38,7 @@ std::string ProfileName(const std::wstring& name) { return RtssProfileAccess::Pr
 namespace Win32Helper { std::filesystem::path GetExePath() {
 	wchar_t path[32768]{}; GetModuleFileNameW(nullptr, path, 32768); return path;
 } }
+void LogFailure(const char*, const std::wstring&) {}
 RtssProfileFailure loggedFailure;
 void LogProfileFailure(const char*, const std::wstring&, const RtssProfileFailure& failure) { loggedFailure = failure; }
 }
@@ -37,7 +50,9 @@ public:
 	RtssStatus _status;
 	std::shared_ptr<Session> _workerSession;
 	unsigned publications = 0;
-	std::atomic<bool> _notify = true;
+	std::atomic<bool> _notify = true, _autoPreparing = false;
+	struct Dispatcher { template<class F> void TryEnqueue(F f) { f(); } } _dispatcher;
+	struct Event { void Invoke() {} } StatusChanged;
 	std::atomic<RtssInitializationState> _magpieInitialization = RtssInitializationState::Unknown;
 	bool IsMagpieInitialized() const { return _magpieInitialization == RtssInitializationState::Initialized; }
 	explicit RtssService(RtssProfileAccess& access) : _access(access) {}
@@ -48,7 +63,11 @@ public:
 		status.readReady = _access.CanRead(); status.applyReady = _access.CanApply(); status.initializeReady = _access.CanInitializeUnlimited();
 	}
 	RtssStatus Status() const { return _status; }
+	void _CheckSession(const std::shared_ptr<Session>& session);
 	void _TryApply(const std::shared_ptr<Session>& session);
+	bool _PrepareSession(const std::shared_ptr<Session>& session, RtssStatus& status);
+	void _PublishSession(const std::shared_ptr<Session>& session, RtssStatus status);
+	void StartApply(const std::shared_ptr<Session>& session) { _workerSession = session; _TryApply(session); }
 	void _Finish(const std::shared_ptr<Session>& session);
 	void _InitializeMagpie();
 };
@@ -99,6 +118,10 @@ int wmain(int argc, wchar_t** argv) {
 			s->initialTarget = std::make_shared<TargetIdentity>(); s->target = s->initialTarget;
 			s->profile = scope == RtssScope::Global ? "" : "game.exe";
 			s->desiredRate = 60;
+			// Legacy transaction cases start after preparation; auto lifecycle cases below do not.
+			s->prepared = true;
+			static const auto owner = std::make_shared<const uint8_t>(uint8_t(0));
+			s->identity = owner;
 			return s;
 		};
 		for (const auto scope : {RtssScope::Global, RtssScope::Target}) for (const bool existing : {false, true})
@@ -108,10 +131,10 @@ int wmain(int argc, wchar_t** argv) {
 				if (existing) WriteBytes(f.Path("game.exe"), Profile(30));
 				RtssService service(f.access);
 				const auto s = session(scope, exit);
-				service._TryApply(s);
+				service.StartApply(s);
 				Require(s->modified && service._status.state == RtssState::Written && s->original.rate[0] == 30, "Session actual write");
 				s->settings.rateMode = RtssRateMode::ContentSync; s->desiredRate = 72;
-				service._TryApply(s);
+				service.StartApply(s);
 				Require(service._status.state == RtssState::Written && s->original.rate[0] == 30 && s->lastWritten.rate[0] == 72, "Sync update preserves first baseline");
 				s->cancelled = true;
 				service._Finish(s);
@@ -133,7 +156,7 @@ int wmain(int argc, wchar_t** argv) {
 			if (kind == 4) f.saveMode = SaveMode::Fault;
 			if (kind == 5) f.reject = "FramerateLimit";
 			if (kind == 6) f.reloadFault = true;
-			service._TryApply(s);
+			service.StartApply(s);
 			if (kind == 0) Require(f.saves == 0 && !s->modified, "Cancelled session never writes");
 			if (kind == 1) Require(!s->modified && service._status.failureStage == L"Rtss_Failure_Write", "Void unchanged save has no fabricated ownership");
 			if (kind == 2) Require(s->modified && service._status.failureStage == L"Rtss_Failure_Verify", "Partial new save retains cleanup ownership");
@@ -151,7 +174,7 @@ int wmain(int argc, wchar_t** argv) {
 			Fixture f(output);
 			RtssService service(f.access);
 			const auto s = session(RtssScope::Global, RtssExitPolicy::RestoreOriginal);
-			service._TryApply(s);
+			service.StartApply(s);
 			Require(SetFileAttributesW(f.Path("").c_str(), FILE_ATTRIBUTE_READONLY) != FALSE, "Session restore permission fixture");
 			service._Finish(s);
 			SetFileAttributesW(f.Path("").c_str(), FILE_ATTRIBUTE_NORMAL);
@@ -164,7 +187,7 @@ int wmain(int argc, wchar_t** argv) {
 			Fixture f(output);
 			RtssService service(f.access);
 			const auto s = session(RtssScope::Global, RtssExitPolicy::RestoreOriginal);
-			service._TryApply(s);
+			service.StartApply(s);
 			WriteBytes(f.Path(""), Profile(59));
 			service._Finish(s);
 			Require(service._status.state == RtssState::Conflict && f.Snapshot("").rate[0] == 59 && f.saves == 1, "Service restore conflict preserves external value");
@@ -174,7 +197,7 @@ int wmain(int argc, wchar_t** argv) {
 			WriteBytes(f.Path(""), Profile(30));
 			RtssService service(f.access);
 			const auto s = session(scope, exit);
-			service._TryApply(s);
+			service.StartApply(s);
 			const auto original = s->original;
 			const auto lastWritten = s->lastWritten;
 			const bool created = s->created;
@@ -185,7 +208,7 @@ int wmain(int argc, wchar_t** argv) {
 			const auto initialized = f.Snapshot(selfName).contents;
 			service._InitializeMagpie();
 			Require(service._status.state == RtssState::MagpieAlreadyUnlimited, "Worker no-op result");
-			s->desiredRate = 72; service._TryApply(s);
+			s->desiredRate = 72; service.StartApply(s);
 			Require(!service._status.selfInitialization && service._status.profile != selfExe, "Next sync update identifies the game transaction");
 			service._Finish(s);
 			Require(!service._status.selfInitialization && f.Snapshot(selfName).contents == initialized, "Stopping game scaling never restores/deletes self initialization");
@@ -194,7 +217,7 @@ int wmain(int argc, wchar_t** argv) {
 			Fixture f(output); RtssService service(f.access);
 			const auto s = session(missing == 0 ? RtssScope::Target : RtssScope::Global, RtssExitPolicy::RestoreOriginal);
 			if (missing == 0) f.access._delete = nullptr;
-			service._TryApply(s);
+			service.StartApply(s);
 			Require(s->modified && service._status.state == RtssState::Written, "Begin never requires guaranteed future restore");
 			if (missing == 1) f.access._save = nullptr;
 			if (missing == 2) f.access._set = nullptr;
@@ -202,7 +225,7 @@ int wmain(int argc, wchar_t** argv) {
 			Require(s->finished && s->settings.exitPolicy == RtssExitPolicy::RestoreOriginal && service._status.state == RtssState::RestoreFailed &&
 				service._status.failureStage == L"Rtss_Failure_MissingInterface" && f.saves == 1 && f.deletes == 0, "Missing restore interface attempts once without changing policy");
 			const auto publications = service.publications;
-			service._Finish(s); service._TryApply(s);
+			service._Finish(s); service.StartApply(s);
 			Require(f.saves == 1 && f.deletes == 0 && publications == service.publications, "No delayed restore or reapplication after cleanup");
 		}
 		{
@@ -211,19 +234,19 @@ int wmain(int argc, wchar_t** argv) {
 			Require(service._Prepare(prepared) && prepared.readReady && prepared.initializeReady && !prepared.applyReady && prepared.state == RtssState::NotRunning,
 				"Actual prepare exposes offline read/self capabilities independently");
 			const auto s = session(RtssScope::Global, RtssExitPolicy::RestoreOriginal);
-			service._TryApply(s);
-			Require(!s->modified && f.saves == 0 && service._status.state == RtssState::NotRunning, "Offline game cap waits without mutation");
+			service.StartApply(s);
+			Require(!s->modified && f.saves == 0 && service._status.state == RtssState::ToolStartFailed, "Failed automatic launch leaves target unchanged");
 			service._InitializeMagpie();
 			Require(service._status.state == RtssState::MagpieInitialized && service._status.rtss.running == false && !service._status.reloaded && f.reloads == 0,
 				"Offline worker self initialization reports saved without claiming reload");
 			s->cancelled = true; service._Finish(s); f.access._running = true; f.access._update = Fixture::Update;
-			service._TryApply(s);
+			service.StartApply(s);
 			Require(!s->modified && f.saves == 0, "Launching tools cannot revive cancelled cap request");
 		}
 		{
 			Fixture f(output); RtssService service(f.access);
 			const auto s = session(RtssScope::Global, RtssExitPolicy::RestoreOriginal);
-			service._TryApply(s); f.access._running = false; f.access._update = nullptr;
+			service.StartApply(s); f.access._running = false; f.access._update = nullptr;
 			service._Finish(s);
 			Require(service._status.state == RtssState::Restored && !service._status.rtss.running && !service._status.reloaded && f.reloads == 1,
 				"Offline stop restores persistent settings once without reload");
@@ -234,19 +257,94 @@ int wmain(int argc, wchar_t** argv) {
 			s->initialTarget->exe = selfExe; s->initialTarget->profile = selfName;
 			if (scope == RtssScope::Target) s->profile = selfName;
 			service._workerSession = s;
-			service._TryApply(s);
+			service.StartApply(s);
 			Require(!s->modified && f.saves == 0 && service._status.failureStage == L"Rtss_Failure_SelfProfileConflict", "Shared basename conflict is distinct from process identity");
 			service._InitializeMagpie();
 			Require(service._status.failureStage == L"Rtss_Failure_SelfProfileConflict" && !std::filesystem::exists(f.Path(selfName)), "Self initialization does not override active shared target profile");
 		}
 		{
 			Fixture f(output); RtssService service(f.access);
-			const auto s = session(RtssScope::Global, RtssExitPolicy::RestoreOriginal); service._TryApply(s);
+			const auto s = session(RtssScope::Global, RtssExitPolicy::RestoreOriginal); service.StartApply(s);
 			const auto original = ReadBytes(f.Path("")); s->installation = f.directory / "different-installation";
 			service._Finish(s);
 			Require(service._status.state == RtssState::RestoreFailed && service._status.failureStage == L"Rtss_Failure_InstallationChanged" && f.saves == 1 && original == ReadBytes(f.Path("")),
 				"Cleanup never restores another installation");
 		}
+		// Full automatic preparation uses the production worker path and file transactions.
+		for (int selfState : {0, 1, 2}) for (bool running : {false, true}) {
+			Fixture f(output); RtssService service(f.access);
+			f.access._running = running; launchSuccess = true; launches = 0;
+			if (selfState) WriteBytes(f.Path(selfName), Profile(selfState == 1 ? 60 : 0));
+			const auto s = session(RtssScope::Target, RtssExitPolicy::RestoreOriginal); s->prepared = false;
+			service.StartApply(s);
+			Require(s->modified && s->prepared && service._status.state == RtssState::Written, "Auto start/init/apply completes");
+			Require(launches == unsigned(!running), "Only absent RTSS process is launched");
+			Require(f.Snapshot(selfName).rate[0] == 0 && f.Snapshot("game.exe").rate[0] == 60, "Self unlimited and target cap are separate");
+			const auto saves = f.saves, reloads = f.reloads;
+			service.StartApply(s);
+			Require(f.saves == saves && f.reloads == reloads, "Prepared unchanged session does not rewrite/reload");
+			s->cancelled = true; service._Finish(s);
+			Require(!std::filesystem::exists(f.Path("game.exe")) && f.Snapshot(selfName).rate[0] == 0, "Stop restores only owned target cap");
+		}
+		{
+			Fixture f(output); RtssService service(f.access); installed = false;
+			const auto s = session(RtssScope::Target, RtssExitPolicy::RestoreOriginal); s->prepared = false;
+			service.StartApply(s);
+			Require(s->suspended && !s->modified && service._status.state == RtssState::NotInstalled, "Missing install suspends cap once");
+			const auto publications = service.publications;
+			installed = true; service.StartApply(s);
+			Require(service.publications == publications && f.saves == 0, "Failure does not retry from repeated notification");
+			s->suspended = false; service.StartApply(s);
+			Require(s->modified && service._status.state == RtssState::Written, "Explicit retry after installation succeeds");
+		}
+		{
+			Fixture f(output); RtssService service(f.access); f.access._running = false; launchSuccess = true;
+			const auto s = session(RtssScope::Target, RtssExitPolicy::RestoreOriginal); s->prepared = false;
+			launchHook = [s] { s->cancelled = true; };
+			service.StartApply(s); launchHook = {};
+			Require(!s->modified && f.saves == 0 && !std::filesystem::exists(f.Path(selfName)), "Cancelled launch cannot initialize or apply");
+			const auto publications = service.publications;
+			RtssStatus stale; stale.state = RtssState::Written; service._PublishSession(s, stale);
+			Require(service.publications == publications, "Cancelled result is never published");
+		}
+		{
+			Fixture f(output); RtssService service(f.access);
+			const auto s = session(RtssScope::Target, RtssExitPolicy::RestoreOriginal); s->prepared = false; s->desiredRate = 0;
+			service.StartApply(s);
+			Require(!s->prepared && f.saves == 0 && f.reloads == 0 && service._status.state == RtssState::WaitingContent, "Source sync waits without preparation or writes");
+		}
+		for (bool selfFailure : {false, true}) {
+			Fixture f(output); RtssService service(f.access);
+			const auto s = session(RtssScope::Target, RtssExitPolicy::RestoreOriginal);
+			s->prepared = !selfFailure; f.reloadFault = true;
+			service.StartApply(s);
+			Require(s->suspended && service._status.profileSaved && service._status.state == RtssState::Failed,
+				"Verified disk save with reload failure is partial completion");
+			const auto saves = f.saves;
+			f.reloadFault = false; f.access._faulted = false;
+			s->suspended = false; s->prepared = false;
+			service.StartApply(s);
+			Require(service._status.state == RtssState::Written && service._status.reloaded &&
+				!s->reloadPending && !s->selfReloadPending, "Explicit retry reloads and reaches ready");
+			Require(f.saves == saves + unsigned(selfFailure), "Retry does not resave an already written target");
+			const auto published = service.publications;
+			service._workerSession = session(RtssScope::Target, RtssExitPolicy::RestoreOriginal);
+			service._PublishSession(s, service._status);
+			Require(service.publications == published, "Old generation cannot publish into a newer session");
+		}
+		{
+			Fixture f(output); RtssService service(f.access);
+			const auto s = session(RtssScope::Target, RtssExitPolicy::RestoreOriginal);
+			service.StartApply(s); const auto saves = f.saves;
+			f.access._running = false; launches = 0;
+			service._CheckSession(s);
+			Require(s->suspended && !s->prepared && service._status.state == RtssState::NotRunning && f.saves == saves && launches == 0,
+				"Read-only health watch detects RTSS exit without restarting or rewriting");
+			const auto publications = service.publications; s->cancelled = true;
+			service._CheckSession(s);
+			Require(publications == service.publications, "Cancelled health check is silent");
+		}
+		launchSuccess = false;
 		std::cout << "RTSS production session transactions: " << checks << " checks passed.\n";
 		return 0;
 	} catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }

@@ -11,6 +11,8 @@ inline RtssSettings ReadProfileRtss(const rapidjson::GenericObject<true, rapidjs
 	if (member == object.MemberEnd() || !member->value.IsObject()) return result;
 	const auto fields = member->value.GetObj();
 	bool valid = true;
+	if (const auto value = fields.FindMember("simpleContentSync"); value != fields.MemberEnd() && value->value.IsBool())
+		result.simpleContentSync = value->value.GetBool();
 	auto enumeration = [&](const char* key, auto& target, uint32_t last) {
 		const auto value = fields.FindMember(key);
 		if (value == fields.MemberEnd()) return;
@@ -35,6 +37,7 @@ void WriteProfileRtss(Writer& writer, const RtssSettings& settings) {
 	auto s = settings.IsValid() ? settings : RtssSettings{};
 	if (s.customRate < RtssSettings::MinimumRate || s.customRate > RtssSettings::MaximumRate) s.customRate = 60;
 	writer.Key("rtss"); writer.StartObject();
+	writer.Key("simpleContentSync"); writer.Bool(s.simpleContentSync);
 	writer.Key("scope"); writer.Uint(uint32_t(s.scope));
 	writer.Key("rateMode"); writer.Uint(uint32_t(s.rateMode));
 	writer.Key("customRate"); writer.Uint(s.customRate);

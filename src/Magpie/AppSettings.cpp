@@ -836,6 +836,8 @@ std::string AppSettings::_Serialize(const _AppSettingsData& data) {
 	writer.Int64(data._updateCheckDate.time_since_epoch().count());
 	writer.Key("duplicateFrameDetectionMode");
 	writer.Uint((uint32_t)data._duplicateFrameDetectionMode);
+	writer.Key("simpleFrameRefresh");
+	writer.Bool(data._isSimpleFrameRefresh);
 	writer.Key("enableStatisticsForDynamicDetection");
 	writer.Bool(data._isStatisticsForDynamicDetectionEnabled);
 	writer.Key("stopEffectsOnTaskSwitch");
@@ -1038,14 +1040,16 @@ void AppSettings::_LoadSettings(const rapidjson::GenericObject<true, rapidjson::
 		_updateCheckDate = system_clock::time_point(system_clock::duration(d));
 	}
 	{
-		uint32_t duplicateFrameDetectionMode = (uint32_t)DuplicateFrameDetectionMode::Dynamic;
+		uint32_t duplicateFrameDetectionMode = (uint32_t)DuplicateFrameDetectionMode::Never;
 		JsonHelper::ReadUInt(root, "duplicateFrameDetectionMode", duplicateFrameDetectionMode);
 		if (duplicateFrameDetectionMode > 2) {
-			duplicateFrameDetectionMode = (uint32_t)DuplicateFrameDetectionMode::Dynamic;
+			duplicateFrameDetectionMode = (uint32_t)DuplicateFrameDetectionMode::Never;
 		}
 		_duplicateFrameDetectionMode = (::Magpie::DuplicateFrameDetectionMode)duplicateFrameDetectionMode;
 	}
 	JsonHelper::ReadBool(root, "enableStatisticsForDynamicDetection", _isStatisticsForDynamicDetectionEnabled);
+	_isSimpleFrameRefresh = true;
+	JsonHelper::ReadBool(root, "simpleFrameRefresh", _isSimpleFrameRefresh);
 	float legacyIdle = 10.0f;
 	JsonHelper::ReadFloat(root, "minFrameRate", legacyIdle);
 	if (!std::isfinite(legacyIdle) || legacyIdle < 0 || legacyIdle > 1000) legacyIdle = 10.0f;

@@ -15,6 +15,8 @@ struct RtssSettings {
 	RtssRateMode rateMode = RtssRateMode::Custom;
 	uint32_t customRate = 60;
 	RtssExitPolicy exitPolicy = RtssExitPolicy::RestoreOriginal;
+	// Independent simple-mode intent; advanced preferences remain untouched.
+	bool simpleContentSync = false;
 	static constexpr uint32_t MinimumRate = 15;
 	static constexpr uint32_t MaximumRate = 360;
 	bool operator==(const RtssSettings&) const = default;
@@ -36,5 +38,14 @@ struct RtssSettings {
 		return uint32_t(std::round(effectiveBaseRate));
 	}
 };
+
+inline RtssSettings EffectiveRtssSettings(RtssSettings settings, bool simple) noexcept {
+	if (simple) {
+		settings.scope = settings.simpleContentSync ? RtssScope::Target : RtssScope::None;
+		settings.rateMode = RtssRateMode::ContentSync;
+		settings.exitPolicy = RtssExitPolicy::RestoreOriginal;
+	}
+	return settings;
+}
 
 }

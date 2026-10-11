@@ -67,6 +67,10 @@ ProfileViewModel::ProfileViewModel(int profileIdx, bool initializePageData)
 		if (profile.runtimeIdentity != _data->runtimeIdentity) return;
 		_NotifyFrameRefreshChanged();
 	});
+	_frameRefreshModeChangedRevoker = AppSettings::Get().FrameRefreshModeChanged(auto_revoke, [this] {
+		_NotifyFrameRefreshChanged();
+		_LoadRtssPreview();
+	});
 	_BuildMonitorOptions();
 	_BuildGraphicsCards();
 	_rtssStatusRevoker = RtssService::Get().StatusChanged(auto_revoke, [this] {
@@ -701,6 +705,9 @@ bool ProfileViewModel::ShowGraphicsCardUnavailableWarning() const noexcept {
 }
 
 void ProfileViewModel::_NotifyFrameRefreshChanged() {
+	RaisePropertyChanged(L"FrameRefreshModeIndex");
+	RaisePropertyChanged(L"IsSimpleFrameRefresh");
+	RaisePropertyChanged(L"IsAdvancedFrameRefresh");
 	RaisePropertyChanged(L"IsVRREnabled");
 	_NotifyRtssChanged();
 	RaisePropertyChanged(L"ContentFrameRateModeIndex");
@@ -725,6 +732,14 @@ void ProfileViewModel::_SaveFrameRefresh() {
 	AppSettings::Get().SaveAsync();
 }
 
+int32_t ProfileViewModel::FrameRefreshModeIndex() const noexcept { return IsSimpleFrameRefresh() ? 0 : 1; }
+void ProfileViewModel::FrameRefreshModeIndex(int32_t value) {
+	if (value < 0 || value > 1) return;
+	AppSettings::Get().IsSimpleFrameRefresh(value == 0);
+}
+bool ProfileViewModel::IsSimpleFrameRefresh() const noexcept { return AppSettings::Get().IsSimpleFrameRefresh(); }
+bool ProfileViewModel::IsAdvancedFrameRefresh() const noexcept { return !IsSimpleFrameRefresh(); }
+
 bool ProfileViewModel::IsVRREnabled() const noexcept { return _data->frameRefresh.vrrEnabled; }
 void ProfileViewModel::IsVRREnabled(bool value) {
 	if (_data->frameRefresh.vrrEnabled == value) return;
@@ -733,7 +748,7 @@ void ProfileViewModel::IsVRREnabled(bool value) {
 }
 
 void ProfileViewModel::_NotifyRtssChanged() {
-	for (const auto property : { L"RtssScopeIndex", L"RtssRateModeIndex", L"RtssCustomRate", L"RtssSyncedRate", L"RtssExitPolicyIndex",
+	for (const auto property : { L"SimpleRtssSync", L"RtssModeIndex", L"RtssTargetScopeIndex", L"ShowRtssOptions", L"ShowContentPacing", L"ShowRtssDownload", L"CanRetryRtss", L"RtssScopeIndex", L"RtssRateModeIndex", L"RtssCustomRate", L"RtssSyncedRate", L"RtssExitPolicyIndex",
 		L"IsRtssManaged", L"ShowRtssCustomRate", L"ShowRtssSyncedRate", L"IsRtssSyncAvailable", L"ShowRtssGlobalNotice", L"RtssStatusText",
 		L"RtssStatusSegments", L"CanInitializeMagpie", L"ShowRtssInitialize", L"RtssInitializeText",
 		L"RtssSyncText", L"CanLaunchRtss", L"CanLaunchAfterburner", L"RtssLaunchText", L"AfterburnerLaunchText" })
@@ -752,7 +767,7 @@ void ProfileViewModel::_LoadRtssPreview() {
 	const auto identity = _data->runtimeIdentity;
 	// Packaged identities and the default profile require the actual session target.
 	const auto executable = _data->isPackaged ? std::wstring{} : _data->pathRule;
-	RtssService::Get().Preview(_data->rtss, executable, [weak = get_weak(), generation, identity](RtssStatus status) {
+	RtssService::Get().Preview(EffectiveRtssSettings(_data->rtss, IsSimpleFrameRefresh()), executable, [weak = get_weak(), generation, identity](RtssStatus status) {
 		if (auto self = weak.get(); self && self->_rtssPreviewGeneration == generation && self->_data->runtimeIdentity == identity) {
 			self->_rtssPreview = std::move(status);
 			self->_NotifyRtssChanged();
@@ -763,8 +778,8 @@ void ProfileViewModel::_LoadRtssPreview() {
 RtssStatus ProfileViewModel::_RtssStatus() const {
 	const auto active = RtssService::Get().Status();
 	if (active.selfInitialization) return active;
-	if (active.profileIdentity.lock() == _data->runtimeIdentity) return active;
-	if (active.state == RtssState::StartingTool || active.state == RtssState::ToolStartFailed) return active;
+	if (RtssService::Get().IsCurrentStatus(active, _data->runtimeIdentity)) return active;
+	if (!active.sessionGeneration && (active.state == RtssState::StartingTool || active.state == RtssState::ToolStartFailed)) return active;
 	auto result = _rtssPreview;
 	// Tool inventory is shared; another profile's write result is not.
 	result.rtss = active.rtss;
@@ -780,21 +795,67 @@ RtssStatus ProfileViewModel::_RtssStatus() const {
 		result.failureStage = active.failureStage;
 		if (active.rtss.executable.empty()) result.profile.clear();
 	}
+	if (!IsRtssManaged()) { result.state = RtssState::Disabled; result.rateKnown = false; }
+	else if (ShowRtssSyncedRate() && !IsRtssSyncAvailable()) { result.state = RtssState::WaitingContent; result.rateKnown = false; }
+	else if (result.state == RtssState::Read || result.state == RtssState::MissingProfile || result.state == RtssState::NotRunning) {
+		result.state = RtssState::WaitingTarget; result.rateKnown = false;
+	}
+	if (result.state == RtssState::Disabled || result.state == RtssState::WaitingContent) {
+		result.profile.clear(); result.failureStage.clear();
+		result.rateUnavailable = result.profileSaved = result.reloaded = false;
+		result.detectionDisabled = result.targetOverridesGlobal = false;
+	}
 	return result;
 }
 
+bool ProfileViewModel::SimpleRtssSync() const noexcept { return _data->rtss.simpleContentSync; }
+void ProfileViewModel::SimpleRtssSync(bool value) {
+	if (!IsSimpleFrameRefresh() || _data->rtss.simpleContentSync == value) return;
+	_data->rtss.simpleContentSync = value; _SaveRtss();
+}
+int32_t ProfileViewModel::RtssModeIndex() const noexcept {
+	return _data->rtss.scope == RtssScope::None ? 0 : _data->rtss.rateMode == RtssRateMode::ContentSync ? 1 : 2;
+}
+void ProfileViewModel::RtssModeIndex(int32_t value) {
+	if (IsSimpleFrameRefresh() || value < 0 || value > 2 || value == RtssModeIndex()) return;
+	if (!value) _data->rtss.scope = RtssScope::None;
+	else {
+		if (_data->rtss.scope == RtssScope::None) _data->rtss.scope = RtssScope::Target;
+		_data->rtss.rateMode = value == 1 ? RtssRateMode::ContentSync : RtssRateMode::Custom;
+	}
+	_SaveRtss();
+}
+int32_t ProfileViewModel::RtssTargetScopeIndex() const noexcept { return _data->rtss.scope == RtssScope::Global ? 0 : 1; }
+void ProfileViewModel::RtssTargetScopeIndex(int32_t value) {
+	if (value < 0 || value > 1 || !ShowRtssOptions()) return;
+	RtssScopeIndex(value == 0 ? 1 : 2);
+}
+bool ProfileViewModel::ShowRtssOptions() const noexcept { return IsAdvancedFrameRefresh() && IsRtssManaged(); }
+bool ProfileViewModel::ShowContentPacing() const noexcept { return IsAdvancedFrameRefresh() && ShowContentFrameRate(); }
+bool ProfileViewModel::ShowRtssDownload() const noexcept { return IsRtssManaged() && _RtssStatus().state == RtssState::NotInstalled; }
+bool ProfileViewModel::CanRetryRtss() const noexcept {
+	const auto s = _RtssStatus();
+	return s.profile != L"MSI Afterburner" && RtssService::Get().HasSession(_data->runtimeIdentity) &&
+		(s.state == RtssState::Failed || s.state == RtssState::ToolStartFailed ||
+		 s.state == RtssState::NotInstalled || s.state == RtssState::Incompatible || s.state == RtssState::NotRunning);
+}
+void ProfileViewModel::RetryRtss() { if (CanRetryRtss()) RtssService::Get().Retry(_data->runtimeIdentity); }
+
 int32_t ProfileViewModel::RtssScopeIndex() const noexcept { return int32_t(_data->rtss.scope); }
 void ProfileViewModel::RtssScopeIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 2 || RtssScopeIndex() == value) return;
 	_data->rtss.scope = RtssScope(value); _SaveRtss();
 }
 int32_t ProfileViewModel::RtssRateModeIndex() const noexcept { return int32_t(_data->rtss.rateMode); }
 void ProfileViewModel::RtssRateModeIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 1 || RtssRateModeIndex() == value || (value == 1 && !IsRtssSyncAvailable())) return;
 	_data->rtss.rateMode = RtssRateMode(value); _SaveRtss();
 }
 double ProfileViewModel::RtssCustomRate() const noexcept { return _data->rtss.customRate; }
 void ProfileViewModel::RtssCustomRate(double value) {
+	if (IsSimpleFrameRefresh()) return;
 	// A hidden editor's delayed binding callback must not change the manual preference.
 	if (!IsRtssManaged() || !ShowRtssCustomRate()) return;
 	const auto rate = RtssSettings::EditedRate(value);
@@ -813,12 +874,13 @@ double ProfileViewModel::RtssSyncedRate() const noexcept {
 }
 int32_t ProfileViewModel::RtssExitPolicyIndex() const noexcept { return int32_t(_data->rtss.exitPolicy); }
 void ProfileViewModel::RtssExitPolicyIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 1 || RtssExitPolicyIndex() == value) return;
 	_data->rtss.exitPolicy = RtssExitPolicy(value); _SaveRtss();
 }
-bool ProfileViewModel::IsRtssManaged() const noexcept { return _data->rtss.scope != RtssScope::None; }
-bool ProfileViewModel::ShowRtssCustomRate() const noexcept { return _data->rtss.rateMode == RtssRateMode::Custom; }
-bool ProfileViewModel::ShowRtssSyncedRate() const noexcept { return _data->rtss.rateMode == RtssRateMode::ContentSync; }
+bool ProfileViewModel::IsRtssManaged() const noexcept { return EffectiveRtssSettings(_data->rtss, IsSimpleFrameRefresh()).scope != RtssScope::None; }
+bool ProfileViewModel::ShowRtssCustomRate() const noexcept { return ShowRtssOptions() && _data->rtss.rateMode == RtssRateMode::Custom; }
+bool ProfileViewModel::ShowRtssSyncedRate() const noexcept { return IsRtssManaged() && EffectiveRtssSettings(_data->rtss, IsSimpleFrameRefresh()).rateMode == RtssRateMode::ContentSync; }
 bool ProfileViewModel::IsRtssSyncAvailable() const noexcept { return _data->frameRefresh.contentMode != ContentFrameRateMode::Source; }
 bool ProfileViewModel::ShowRtssGlobalNotice() const noexcept { return _data->rtss.scope == RtssScope::Global; }
 
@@ -827,6 +889,7 @@ IVector<hstring> ProfileViewModel::RtssStatusSegments() const {
 	const auto s = _RtssStatus();
 	const wchar_t* key = L"Rtss_Status_Checking";
 	switch (s.state) {
+	case RtssState::Disabled: key = L"Rtss_Status_Disabled"; break;
 	case RtssState::NotInstalled: key = L"Rtss_Status_NotInstalled"; break;
 	case RtssState::NotRunning: key = L"Rtss_Status_NotRunning"; break;
 	case RtssState::Incompatible: key = L"Rtss_Status_Incompatible"; break;
@@ -841,8 +904,8 @@ IVector<hstring> ProfileViewModel::RtssStatusSegments() const {
 	case RtssState::Kept: key = L"Rtss_Status_Kept"; break;
 	case RtssState::Restored: key = L"Rtss_Status_Restored"; break;
 	case RtssState::RestoreFailed: key = L"Rtss_Status_RestoreFailed"; break;
-	case RtssState::StartingTool: key = L"Rtss_Status_StartingTool"; break;
-	case RtssState::ToolStartFailed: key = L"Rtss_Status_ToolStartFailed"; break;
+	case RtssState::StartingTool: key = s.profile == L"MSI Afterburner" ? L"Rtss_Status_StartingAfterburner" : L"Rtss_Status_StartingTool"; break;
+	case RtssState::ToolStartFailed: key = s.profile == L"MSI Afterburner" ? L"Rtss_Status_AfterburnerStartFailed" : L"Rtss_Status_ToolStartFailed"; break;
 	case RtssState::InitializingMagpie: key = L"Rtss_Status_InitializingMagpie"; break;
 	case RtssState::MagpieInitialized: key = L"Rtss_Status_MagpieInitialized"; break;
 	case RtssState::MagpieAlreadyUnlimited: key = L"Rtss_Status_MagpieAlreadyUnlimited"; break;
@@ -853,21 +916,19 @@ IVector<hstring> ProfileViewModel::RtssStatusSegments() const {
 	auto add = [&](const std::wstring& value) {
 		if (!value.empty()) segments.Append(hstring(segments.Size() ? L"\u00a0-\u00a0" + value : value));
 	};
-	if (!s.rtss.executable.empty()) add(s.profile);
-	if (!s.rtss.version.empty()) add(L"RTSS " + s.rtss.version);
+	if (s.state != RtssState::Disabled && s.state != RtssState::WaitingContent) add(s.profile);
 	add(std::wstring(loader.GetString(key)));
 	if (s.rateKnown) add(s.timeLimit ? std::wstring(loader.GetString(L"Rtss_TimeLimit")) : s.currentRate > 0 ?
 		fmt::format(fmt::runtime(std::wstring_view(loader.GetString(L"Rtss_ProfileRate"))), s.currentRate) : std::wstring(loader.GetString(L"Rtss_NoLimit")));
 	if (s.rateUnavailable) add(std::wstring(loader.GetString(L"Rtss_RateUnknown")));
-	if (!s.rtss.executable.empty() && !s.rtss.running && s.state != RtssState::NotRunning)
-		add(std::wstring(loader.GetString(L"Rtss_Status_NotRunning")));
 	if (s.profileSaved) add(std::wstring(loader.GetString(L"Rtss_ProfileSaved")));
-	if (s.reloaded) add(std::wstring(loader.GetString(L"Rtss_Reloaded")));
 	if (!s.failureStage.empty()) add(std::wstring(loader.GetString(s.failureStage)));
-	if (!IsRtssManaged() && !s.selfInitialization) add(std::wstring(loader.GetString(L"Rtss_UnmanagedNotice")));
 	if (s.detectionDisabled) add(std::wstring(loader.GetString(L"Rtss_DetectionDisabled")));
 	if (s.targetOverridesGlobal) add(std::wstring(loader.GetString(L"Rtss_TargetOverridesGlobal")));
-	if (ShowRtssGlobalNotice() && !s.selfInitialization) add(std::wstring(loader.GetString(L"Rtss_GlobalNotice/Text")));
+	if (s.profile != L"MSI Afterburner" && RtssService::Get().HasSession(_data->runtimeIdentity) &&
+		(s.state == RtssState::Failed || s.state == RtssState::ToolStartFailed || s.state == RtssState::Incompatible ||
+		 s.state == RtssState::NotInstalled || s.state == RtssState::NotRunning || s.state == RtssState::Conflict))
+		add(std::wstring(loader.GetString(L"Rtss_ScalingContinues")));
 	return segments.as<IVector<hstring>>();
 }
 
@@ -885,15 +946,15 @@ hstring ProfileViewModel::RtssSyncText() const {
 }
 
 bool ProfileViewModel::CanLaunchRtss() const {
-	const auto s = _RtssStatus(); return !s.rtss.executable.empty() && !s.rtss.running && !RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie();
+	const auto s = _RtssStatus(); return !s.rtss.executable.empty() && !s.rtss.running && !RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie() && !RtssService::Get().IsPreparing();
 }
 bool ProfileViewModel::CanLaunchAfterburner() const {
-	const auto s = _RtssStatus(); return !s.afterburner.executable.empty() && !s.afterburner.running && !RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie();
+	const auto s = _RtssStatus(); return !s.afterburner.executable.empty() && !s.afterburner.running && !RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie() && !RtssService::Get().IsPreparing();
 }
 bool ProfileViewModel::CanInitializeMagpie() const {
 	const auto s = _RtssStatus();
 	return s.initializeReady &&
-		ShowRtssInitialize() && !RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie();
+		!RtssService::Get().IsLaunching() && !RtssService::Get().IsInitializingMagpie() && !RtssService::Get().IsPreparing();
 }
 bool ProfileViewModel::ShowRtssInitialize() const {
 	return RtssService::Get().MagpieInitialization() == RtssInitializationState::Uninitialized;
@@ -913,14 +974,21 @@ hstring ProfileViewModel::AfterburnerLaunchText() const {
 	return ResourceLoader::GetForCurrentView(CommonSharedConstants::APP_RESOURCE_MAP_ID).GetString(s.afterburner.executable.empty() ? L"Rtss_LaunchAfterburnerMissing" :
 		s.afterburner.running ? L"Rtss_LaunchAfterburnerRunning" : L"Rtss_LaunchAfterburner");
 }
-void ProfileViewModel::RefreshRtss() { RtssService::Get().Recheck(); _LoadRtssPreview(); }
+void ProfileViewModel::RefreshRtss() {
+	auto& service = RtssService::Get();
+	if (service.HasSession(_data->runtimeIdentity)) service.Retry(_data->runtimeIdentity);
+	else service.Recheck(false);
+	_LoadRtssPreview();
+}
 void ProfileViewModel::LaunchRtss() { RtssService::Get().Launch(false); }
 void ProfileViewModel::LaunchAfterburner() { RtssService::Get().Launch(true); }
 
-int32_t ProfileViewModel::ContentFrameRateModeIndex() const noexcept { return int32_t(_data->frameRefresh.contentMode); }
+int32_t ProfileViewModel::ContentFrameRateModeIndex() const noexcept {
+	return _data->frameRefresh.contentMode == ContentFrameRateMode::Custom ? 1 : 0;
+}
 void ProfileViewModel::ContentFrameRateModeIndex(int32_t value) {
-	if (value < 0 || value > 2) return;
-	const auto next = ContentFrameRateMode(value);
+	if (value < 0 || value > 1) return;
+	const auto next = value == 1 ? ContentFrameRateMode::Custom : ContentFrameRateMode::Source;
 	if (_data->frameRefresh.contentMode == next) return;
 	_data->frameRefresh.contentMode = next;
 	_data->frameRefresh.ContentEdited();
@@ -938,6 +1006,7 @@ void ProfileViewModel::ContentFrameRate(double value) {
 
 int32_t ProfileViewModel::FrameSyncModeIndex() const noexcept { return int32_t(_data->frameRefresh.pacing); }
 void ProfileViewModel::FrameSyncModeIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 2) return;
 	const auto next = FrameSyncMode(value);
 	if (_data->frameRefresh.pacing == next) return;
@@ -948,6 +1017,7 @@ void ProfileViewModel::FrameSyncModeIndex(int32_t value) {
 
 int32_t ProfileViewModel::CursorRefreshModeIndex() const noexcept { return int32_t(_data->frameRefresh.cursorMode); }
 void ProfileViewModel::CursorRefreshModeIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 2) return;
 	const auto next = CursorRefreshMode(value);
 	if (_data->frameRefresh.cursorMode == next) return;
@@ -958,6 +1028,7 @@ void ProfileViewModel::CursorRefreshModeIndex(int32_t value) {
 
 int32_t ProfileViewModel::CursorSupplementModeIndex() const noexcept { return int32_t(_data->frameRefresh.cursorSupplement); }
 void ProfileViewModel::CursorSupplementModeIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 1) return;
 	const auto next = CursorSupplementMode(value);
 	if (_data->frameRefresh.cursorSupplement == next) return;
@@ -967,6 +1038,7 @@ void ProfileViewModel::CursorSupplementModeIndex(int32_t value) {
 
 double ProfileViewModel::CursorSupplementRate() const noexcept { return double(_data->frameRefresh.cursorRate); }
 void ProfileViewModel::CursorSupplementRate(double value) {
+	if (IsSimpleFrameRefresh()) return;
 	const auto next = FrameRefreshSettings::ValidateEditedRate(value, 60);
 	if (_data->frameRefresh.cursorRate == next) return;
 	_data->frameRefresh.cursorRate = next;
@@ -999,6 +1071,7 @@ int32_t ProfileViewModel::DuplicateFrameDetectionMode() const noexcept {
 	return int32_t(AppSettings::Get().DuplicateFrameDetectionMode());
 }
 void ProfileViewModel::DuplicateFrameDetectionMode(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > int32_t(::Magpie::DuplicateFrameDetectionMode::Never)) return;
 	const auto mode = ::Magpie::DuplicateFrameDetectionMode(value);
 	AppSettings& settings = AppSettings::Get();
@@ -1013,7 +1086,7 @@ bool ProfileViewModel::ShowFrameRefreshNotice() const noexcept {
 }
 hstring ProfileViewModel::FrameRefreshNotice() const noexcept {
 	const auto loader = ResourceLoader::GetForViewIndependentUse(CommonSharedConstants::APP_RESOURCE_MAP_ID);
-	const auto& s = _data->frameRefresh;
+	const auto s = EffectiveFrameRefreshSettings(_data->frameRefresh, IsSimpleFrameRefresh());
 	std::wstring text;
 	if (s.legacyContentLimit > 0 || s.legacySourceTarget >= 0 || s.legacyLimiterOnly || s.legacyResponsiveMinimum) {
 		text += loader.GetString(L"FrameRefresh_LegacyNotice");
@@ -1030,7 +1103,9 @@ hstring ProfileViewModel::FrameRefreshNotice() const noexcept {
 	return hstring(text);
 }
 void ProfileViewModel::ResetFrameRefresh() {
+	if (IsSimpleFrameRefresh()) return;
 	_data->frameRefresh = {};
+	DuplicateFrameDetectionMode(int32_t(::Magpie::DuplicateFrameDetectionMode::Never));
 	_SaveFrameRefresh();
 }
 

@@ -48,7 +48,7 @@ inline FrameRefreshSettings ReadProfileFrameRefresh(
 		boolean("legacyLimiterOnly", result.legacyLimiterOnly);
 		boolean("legacyResponsiveMinimum", result.legacyResponsiveMinimum);
 		if (result.contentMode != ContentFrameRateMode::Custom) result.legacyLimiterOnly = false;
-		return result;
+		return NormalizeContentFrameRate(result);
 	}
 
 	if (!migrateLegacy) return result;
@@ -87,12 +87,12 @@ inline FrameRefreshSettings ReadProfileFrameRefresh(
 	result.legacyResponsiveMinimum = !original && minimum;
 	result.idleEnabled = std::isfinite(legacyIdle) && legacyIdle > 0;
 	result.idleRate = result.idleEnabled ? FrameRefreshSettings::ValidateRate(legacyIdle, 10) : 30;
-	return result;
+	return NormalizeContentFrameRate(result);
 }
 
 template<class Writer>
 void WriteProfileFrameRefresh(Writer& writer, const FrameRefreshSettings& settings) {
-	const auto s = settings.IsValid() ? settings : FrameRefreshSettings{};
+	const auto s = NormalizeContentFrameRate(settings.IsValid() ? settings : FrameRefreshSettings{});
 	writer.Key("frameRefresh"); writer.StartObject();
 	writer.Key("contentMode"); writer.Uint(uint32_t(s.contentMode));
 	writer.Key("contentRate"); writer.Double(s.contentRate);

@@ -56,10 +56,11 @@ struct _AppSettingsData {
 	std::chrono::system_clock::time_point _updateCheckDate;
 
 	DuplicateFrameDetectionMode _duplicateFrameDetectionMode =
-		DuplicateFrameDetectionMode::Dynamic;
+		DuplicateFrameDetectionMode::Never;
 
 	bool _isStopEffectsOnTaskSwitchEnabled = false;
 	bool _isVRREnabled = false;
+	bool _isSimpleFrameRefresh = true;
 
 	ToolbarState _fullscreenInitialToolbarState = ToolbarState::AutoHide;
 	ToolbarState _windowedInitialToolbarState = ToolbarState::AutoHide;
@@ -323,6 +324,14 @@ public:
 		_updateCheckDate = value;
 	}
 
+	bool IsSimpleFrameRefresh() const noexcept { return _isSimpleFrameRefresh; }
+	void IsSimpleFrameRefresh(bool value) noexcept {
+		if (_isSimpleFrameRefresh == value) return;
+		_isSimpleFrameRefresh = value;
+		SaveAsync();
+		FrameRefreshModeChanged.Invoke();
+	}
+
 	DuplicateFrameDetectionMode DuplicateFrameDetectionMode() const noexcept {
 		return _duplicateFrameDetectionMode;
 	}
@@ -392,6 +401,7 @@ public:
 	Event<bool> IsShowNotifyIconChanged;
 	Event<bool> IsAutoCheckForUpdatesChanged;
 	Event<> DuplicateFrameDetectionModeChanged;
+	Event<> FrameRefreshModeChanged;
 
 private:
 	std::filesystem::path _recoveredConfigPath;

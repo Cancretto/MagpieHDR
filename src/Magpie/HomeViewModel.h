@@ -135,6 +135,7 @@ struct HomeViewModel : HomeViewModelT<HomeViewModel>, wil::notify_property_chang
 private:
 	::Magpie::Event<>::EventRevoker _duplicateFrameDetectionModeChangedRevoker;
 	::Magpie::Event<::Magpie::Profile&>::EventRevoker _frameRefreshChangedRevoker;
+	::Magpie::Event<>::EventRevoker _frameRefreshModeChangedRevoker;
 	void _ScalingService_IsTimerOnChanged(bool value, bool windowedMode);
 
 	void _ScalingService_TimerTick(double);

@@ -24,6 +24,20 @@ void ProfilePage::ComboBox_DropDownOpened(IInspectable const& sender, IInspectab
 	ControlHelper::ComboBox_DropDownOpened(sender);
 }
 
+void ProfilePage::RtssOptionsGrid_SizeChanged(IInspectable const& sender, SizeChangedEventArgs const& args) {
+	const bool narrow = args.NewSize().Width < 560;
+	(void)sender;
+	Grid::SetColumnSpan(RtssScopeLabel(), narrow ? 3 : 1);
+	Grid::SetColumnSpan(RtssScopeField(), narrow ? 3 : 1);
+	Grid::SetColumn(RtssExitLabel(), narrow ? 0 : 2);
+	Grid::SetColumnSpan(RtssExitLabel(), narrow ? 3 : 1);
+	Grid::SetRow(RtssExitLabel(), narrow ? 2 : 0);
+	Grid::SetColumn(RtssExitField(), narrow ? 0 : 2);
+	Grid::SetColumnSpan(RtssExitField(), narrow ? 3 : 1);
+	Grid::SetRow(RtssExitField(), narrow ? 3 : 1);
+	RtssExitLabel().Margin(Thickness{ 0, narrow ? 16.0 : 0.0, 0, 8 });
+}
+
 void ProfilePage::NumberBox_Loaded(IInspectable const& sender, RoutedEventArgs const&) {
 	ControlHelper::NumberBox_Loaded(sender);
 }

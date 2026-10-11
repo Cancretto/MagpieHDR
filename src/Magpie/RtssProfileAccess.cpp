@@ -434,6 +434,14 @@ bool RtssProfileAccess::_CheckWriteAccess(const std::string& profile, bool exist
 	return _Fail(RtssFailureStage::Save, L"WriteAccessFailed", error);
 }
 
+bool RtssProfileAccess::ReloadProfiles(std::wstring& error, const std::function<bool()>& stillValid) {
+	_ResetFailure({});
+	if (!stillValid()) return _Fail(RtssFailureStage::Cancelled, L"Cancelled", error);
+	if (!_RequireInterface(_module && !_faulted && _running && _update, RtssFailureStage::Reload, "UpdateProfiles", error)) return false;
+	if (!_Reload()) return _Fail(RtssFailureStage::Reload, L"ReloadFailed", error);
+	return true;
+}
+
 bool RtssProfileAccess::InitializeUnlimited(const std::string& profile, RtssProfileSnapshot& written,
 	bool& alreadyUnlimited, std::wstring& error, const std::function<bool()>& stillValid) {
 	_ResetFailure(profile);

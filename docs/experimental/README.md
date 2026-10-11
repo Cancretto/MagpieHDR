@@ -1,5 +1,7 @@
 # Magpie 实验分支文档索引
 
+帧率与刷新第二阶段：已在 `feature/0610-frame-refresh-rtss-auto` 完成 [TODO U01–U09](todos/20261011-frame-refresh-modes-TODO.md) 的源码开发与适用检查。简单三块/高级四块、共享 VRR、重复检测默认关闭，RTSS 自动准备、准确状态与当前会话重试。产品编译、部署、真实 UI/RTSS/GPU 验收交给后续会话，见[实施与交接记录](reviews/20261011-frame-refresh-rtss-auto.md)。[第一阶段历史](reviews/20261011-frame-refresh-modes.md)保留。
+
 当前公开版本为 [Magpie Experimental v0.6.9](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.9-experimental)：[完整中英 Release Note](../RELEASE_NOTES_v0.6.9-experimental.md)、[分发准备记录](reviews/20261002-v0.6.9-release-preparation.md)。默认分支 `experimental` 已同步完整 0.6.9 源码，`version.json` 指向该版本。发布标签及运行包的准确构建提交为 `27c5df91177a29b33be612e98274169f3d2fca49`；后续文档与版本入口更新保留为独立提交。
 
 HDR 兼容模式更新开发中：见[功能文档](design/20261005-hdr-compatibility-update-functional-spec.md)和[开发需求与进度](todos/20261005-hdr-compatibility-update-development-TODO.md)。本轮进行源码和针对性回归，应用完整编译及部署留给后续会话。
