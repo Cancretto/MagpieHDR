@@ -1,6 +1,6 @@
 # FSR3 FrameGeneration
 
-状态：实验性功能，固定 2×、仅 SDR。Beta7 已包含初版；本次外部运动纹理修复尚未编译或实机验证，游戏画质、性能及显示验收仍待完成。默认构建开关关闭。
+状态：实验性功能，固定 2×、仅 SDR。Beta7 已包含初版；本次必选光流与通用空闲重绘改动尚未编译或实机验证，游戏画质、性能及显示验收仍待完成。默认构建开关关闭。
 
 ## 使用范围
 
@@ -8,15 +8,15 @@
 - 补帧在最终图像处理后执行，不要求同时使用 FSR 超分；一条链只允许一个 FG。
 - 不限制为 WGC。优先使用捕获时间戳；缺失时使用接受新捕获帧时记录的 CPU 单调时钟作为间隔估计，并明确标记来源。不同捕获方法仍分别待实测。
 - 首版仅支持 SDR / RGBA8 / BT.709。HDR 兼容模式、HDR 转换组件会被明确拒绝，HDR 接入留待单独开发与验收。
-- 默认外部光流为“无”，重复帧过滤关闭。这是保守试验默认值，不是经画质/性能对比选出的最优设置。FSR 自带内部光流始终运行。
-- 可试验 AMDOF 或 NVOF。当前允许的外部运动链由 `FSR3FGPolicy.h` 的 `SupportsFSR3FGExternalMotion` 列出：FSR/DLSS/XeSS SR、DLSSNR、VFX Upscale/VSR、基础矩形缩放、FSR EASU/RCAS、帧率过滤及 FSR FG 标记。CRT、几何变形和未知自定义效果请选择“无”。尚未实现 distortion field。
+- 必须使用外部光流，默认 AMDOF 质量，保留 NVOF。旧“无”/缺省/非法 method 迁移为 AMDOF 质量；已有合法 AMDOF 性能/质量或 NVOF 选择保留。FSR 自带内部光流仍运行。
+- 重复帧检测统一使用通用设置；移除效果级开关和覆盖。当前允许的外部运动链由 `FSR3FGPolicy.h` 的 `SupportsFSR3FGExternalMotion` 列出：FSR/DLSS/XeSS SR、DLSSNR、VFX Upscale/VSR、基础矩形缩放、FSR EASU/RCAS、帧率过滤及 FSR FG 标记。CRT、几何变形和未知自定义效果会明确拒绝，请从该效果组移除。尚未实现 distortion field。
 - 支持画面在输出内部的缩放、黑边与不同宽高比映射；内容矩形超出输出的裁剪被拒绝。游戏自己画入图像内部的电影黑边不等于喜鹊的输出黑边。
 - 喜鹊工具栏与可独立绘制的鼠标走单独的 DirectComposition UI 层。游戏 HUD 和捕获中已经烘焙的鼠标仍留在图像中，无法自动分离。
 - 喜鹊限制基础帧输入，AMD 交换链控制插值和真实帧呈现。三种帧同步选择在 FSR FG 下均使用基础帧 Async 限速；不依赖 XeLL、Reflex 或 Anti-Lag。补帧不增加游戏逻辑帧率，也不能据此宣称降低输入延迟。
 
 ## 实验性输入契约
 
-运动向量来自现有 Frame Guidance，方向为当前帧到前帧，单位为像素。后端先适配到最终效果输出，Presenter 再按内容矩形缩放向量，在辅助纹理左上角写入；`generationRect` 表示内容在整个交换链中的位置。外部运动失效或帧身份不匹配时使用零运动并重置历史。
+运动向量来自现有 Frame Guidance，方向为当前帧到前帧，单位为像素。后端先适配到最终效果输出，Presenter 再按内容矩形缩放向量，在辅助纹理左上角写入；`generationRect` 表示内容在整个交换链中的位置。首帧或明确 reset 时允许合法零纹理占位；正常插帧须有对应的光流输入。有效的全零光流代表静止，不是错误。缓存重绘不提交新的光流样本。
 
 前端在共享槽事务内复制运动纹理，FSR 的稳定副本带有 `D3D11_BIND_SHADER_RESOURCE` 供重映射采样。帧身份匹配但资源格式、布局、绑定或设备不符时明确报错停止；这类内部契约错误不当作普通的暂缺运动数据处理。
 
@@ -26,9 +26,19 @@
 
 `baseSubmits` 是代理交换链提交，`callbackDispatches` / `interpolationDispatches` 是 SDK 命令调度数量，均不是屏幕实际显示帧数。UI 不显示由 `baseFPS × 2` 伪造的实测帧率；显示事件仍需 PresentMon/显示端证据。
 
+## 通用重复检测与空闲重绘
+
+DLSS / XeSS / FSR3 / VFG 不再提供 `duplicateFrameFiltering`。旧效果字段会迁移移除，不覆盖通用保存值；简单模式继续使用既有策略，高级模式使用通用设置，3D 模式规则与普通效果一致。
+
+启用已有“空闲持续重绘”后，约 0.5 秒没有新内容才进入缓存重绘，避免把 24/30 FPS 的正常输入间隔误判为空闲并反复重置插帧。随后按有效重绘率呈现最后完成的输出，受内容上限和显示刷新率限制，倍率不乘到重绘率。关闭则保持最后画面等待。恢复内容、队列中的真实/生成帧优先；捕获中断或错误不当作正常空闲。
+
+FSR3 在重绘期间通过 SDK 关闭生成，只复制和 Present；不运行 Prepare/内部光流/插帧，不修改捕获时间戳或源帧身份。SDK 呈现序号仍递增，恢复新内容时重置插帧历史。空闲重绘不重跑前后置效果，包括依赖 TIME 的效果；FG 下这些效果仍随新内容推进，普通非 FG 的动态效果语义不变。
+
+工具栏 `R/s` 与性能面板单独显示成功提交的缓存重绘次数；不合入内容/真实 FPS，也不当作屏幕扫描率。无新内容时性能面板显示“等待新画面”。FSR3 的异步内容输出统计未知时继续保留未知状态，不用倍率估算。
+
 ## 构建与依赖（交给构建会话执行）
 
-仅 x64 开启 `EnableFSR3FrameGeneration=true`，`FSR3SdkDir` 指向 FSR SDK 2.3.0 根目录。该功能独立于 `EnableFSR3ZeroMV`，不会隐式启用 SR 或外部 AMDOF/NVOF；若需外部光流，按现有构建规则分别开启对应 provider。
+仅 x64 开启 `EnableFSR3FrameGeneration=true`，`FSR3SdkDir` 指向 FSR SDK 2.3.0 根目录。该功能独立于 `EnableFSR3ZeroMV`，不隐式启用 SR，但会在未指定时启用 `EnableAmdOpticalFlow=true`；显式关闭 AMDOF 与 FSR3 FG 冲突，构建和打包预检均会拒绝。NVOF 仍按原能力检查启用。`-SkipBuild` 也检查 marker 和二进制中的 AMDOF 能力标记，旧产物不能与新设置混包。
 
 运行库必须来自同一 SDK：
 
@@ -53,9 +63,9 @@ Prepare、Configure、代理 Present、Resize 和销毁由前端串行执行并�
 
 ## English summary
 
-Experimental FSR3 FrameGeneration, fixed 2x SDR. Beta7 includes the initial integration; this external-motion resource fix has not yet been compiled or GPU tested. No WGC-only restriction: native capture timestamps take priority; missing timestamps use a separately labeled CPU capture-admission estimate, not game render time. Independent of FSR upscaling. Uses pinned FSR 3.1.6 and swapchain 3.1.7 providers from SDK 2.3.0, with PrepareV2 and synchronous generation compute. Requires an x64 build with `EnableFSR3FrameGeneration=true`; supply `FSR3SdkDir` explicitly.
+Experimental FSR3 FrameGeneration, fixed 2x SDR. Beta7 includes the initial integration; this required-optical-flow and idle-redraw revision has not yet been compiled or GPU tested. No WGC-only restriction: native capture timestamps take priority; missing timestamps use a separately labeled CPU capture-admission estimate, not game render time. Independent of FSR upscaling. Uses pinned FSR 3.1.6 and swapchain 3.1.7 providers from SDK 2.3.0, with PrepareV2 and synchronous generation compute. Requires an x64 build with `EnableFSR3FrameGeneration=true`; supply `FSR3SdkDir` explicitly.
 
-External motion and duplicate filtering default to off. Internal FSR optical flow remains active. Synthetic flat depth and a virtual camera do not replace real game geometry. Validate occlusion, fast motion, HUD/text, cost and latency. HDR and out-of-window cropping are rejected; unsupported distortion chains require external motion off. Only one frame generator is allowed per group.
+External motion is required: AMDOF Quality by default, with NVOF also available. Retired None/missing settings migrate to AMDOF Quality. Internal FSR optical flow remains active. Duplicate detection uses common settings. Enabled idle redraw replays cached output after about 0.5 seconds without new content; it does not advance capture/motion/FG history. R/s counts successful redraw submissions separately from content FPS. Synthetic depth and a virtual camera do not replace game geometry. Validate occlusion, fast motion, HUD/text, cost and latency. HDR, out-of-window cropping and unsupported distortion chains are rejected. Only one frame generator is allowed per group. This revision is not compiled or GPU-validated yet.
 
 Magpie's overlay is separate; baked game HUD is not. Native timestamps or a labeled capture-admission estimate drive temporal input; source discontinuities and clock-source changes reset history. SDK reset pass-throughs and dispatch counts are not evidence of successful interpolation or display events. Runtime failure stops scaling. If shutdown cannot prove resources retired, restart Magpie before using FSR FG again.
 

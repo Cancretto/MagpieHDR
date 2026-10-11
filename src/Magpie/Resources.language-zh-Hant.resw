@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -1339,7 +1339,7 @@
   <data name="Motion_Nvidia_4" xml:space="preserve"><value>高品質</value></data>
   <data name="Motion_Amd_0" xml:space="preserve"><value>效能</value></data>
   <data name="Motion_Amd_1" xml:space="preserve"><value>品質</value></data>
-  <data name="Overlay_Profiler_FrameRateWithFG" xml:space="preserve"><value>幀率（總 / 真實）</value></data>
+  <data name="Overlay_Profiler_FrameRateWithFG" xml:space="preserve"><value>影格率（內容輸出 / 真實輸入）</value></data>
   <data name="EffectParam_DLSS_DLSS_SR_opticalFlowMethod_Label" xml:space="preserve"><value>光流估算方式</value></data>
   <data name="EffectParam_DLSS_DLSS_SR_opticalFlowMethod_Option_0" xml:space="preserve"><value>不使用</value></data>
   <data name="EffectParam_DLSS_DLSS_SR_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMD OF</value></data>
@@ -1643,8 +1643,6 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_2" xml:space="preserve"><value>光流累積</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_3" xml:space="preserve"><value>光流累積+</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_4" xml:space="preserve"><value>低頻時域重建</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重複影格過濾</value></data>
-  <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重複影格過濾</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHueProtection_Label" xml:space="preserve"><value>色相保護</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDarkProtection_Label" xml:space="preserve"><value>暗部保護</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualHighlightProtection_Label" xml:space="preserve"><value>亮部保護</value></data>
@@ -1736,7 +1734,7 @@
   <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>選擇自動或自訂的游標補充更新率。</value></data>
   <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>設定游標補充更新的目標最低影格率。</value></data>
   <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>可變更新率、重複影格偵測與閒置重繪。</value></data>
-  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>畫面不變時按指定幀率重绘。</value></data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>畫面不變時按指定影格率重繪。FG 約 0.5 秒沒有新內容後重用快取重繪，不額外插幀。</value></data>
   <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>設定閒置重繪的目標影格率。</value></data>
   <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>還原內容 60、游標補充 60、閒置重繪 30 FPS，節奏方式為 Front Edge。</value></data>
   <data name="FrameRefresh_Content_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>內容影格率</value></data>
@@ -1991,11 +1989,9 @@
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>品質</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>高品質（高開銷）</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Label" xml:space="preserve"><value>光流方法</value></data>
-  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_0" xml:space="preserve"><value>無</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMD 光流</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVIDIA 光流</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高品質（極高開銷）</value></data>
-  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重複影格過濾</value></data>
   <data name="FrameRefresh_CursorStrategy.Header" xml:space="preserve"><value>重新整理策略</value></data>
   <data name="Rtss_Management.Header" xml:space="preserve"><value>管理</value></data>
   <data name="Rtss_Recheck.Content" xml:space="preserve"><value>重新偵測</value></data>
@@ -2043,4 +2039,8 @@
   <data name="Rtss_ManagementCollapsed" xml:space="preserve"><value>管理詳細資料已收合</value></data>
   <data name="Profile_InitialScale_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>初始縮放倍數</value></data>
   <data name="Profile_CursorScale_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>縮放係數</value></data>
+  <data name="Overlay_FG_FrameRateHelp" xml:space="preserve"><value>內容輸出 / 真實輸入 FPS。R/s 單獨記錄成功提交的閒置重繪，不是生成影格率或螢幕實際更新率。</value></data>
+  <data name="Overlay_FG_IdleSubmissions" xml:space="preserve"><value>閒置重繪提交/秒（R/s）</value></data>
+  <data name="Overlay_FG_Waiting" xml:space="preserve"><value>等待新畫面</value></data>
+  <data name="Overlay_FG_GeneratedRate" xml:space="preserve"><value>已回報生成影格率</value></data>
 </root>

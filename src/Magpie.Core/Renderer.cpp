@@ -429,8 +429,8 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 					effect, "multiplier", 2, 4, 2));
 		}
 		const int method = ReadIntegralEffectParameter(
-			effect, "opticalFlowMethod", 0,
-			2, kind == FrameGenerationEffectKind::FSR3 ? 0 : 1);
+			effect, "opticalFlowMethod", kind == FrameGenerationEffectKind::FSR3 ? 1 : 0,
+			2, 1);
 		if (method == static_cast<int>(OpticalFlowMethod::Amd)) {
 			const int quality = ReadIntegralEffectParameter(
 				effect, "amdOpticalFlowMode", 0, 1, 1);
@@ -454,10 +454,11 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 			Logger::Get().Error(_backendInitContext);
 			return ScalingError::PresentationInitFailed;
 		}
-		if (_proxyMotionRequest.method != OpticalFlowMethod::None && std::ranges::any_of(effects, [](const auto& effect) {
+		const auto incompatible = std::ranges::find_if(effects, [](const auto& effect) {
 			return !SupportsFSR3FGExternalMotion(effect.name);
-		})) {
-			_backendInitContext = "FSR 3 FG external motion requires a supported rectangular effect chain. Select Optical Flow Method: None for CRT, distortion or unverified custom effects.";
+		});
+		if (incompatible != effects.end()) {
+			_backendInitContext = "FSR 3 FG requires optical flow and a supported rectangular effect chain. Remove the incompatible effect: " + incompatible->name;
 			Logger::Get().Error(_backendInitContext);
 			return ScalingError::PresentationInitFailed;
 		}
@@ -491,7 +492,7 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 	_UpdateOverlayRefreshRate();
 
 	if (_isFSR3FrameGenerationActive) {
-		auto fsrPresenter = std::make_unique<FSR3FGPresenter>(_proxyMotionRequest.method != OpticalFlowMethod::None);
+		auto fsrPresenter = std::make_unique<FSR3FGPresenter>();
 		if (!fsrPresenter->Initialize(hwndAttach, _frontendResources)) {
 			_backendInitContext = "FSR 3 frame generation\n" + frontendDiagnostic.Details();
 			_backendInitSystemError = frontendDiagnostic.SystemError();
@@ -741,6 +742,7 @@ bool Renderer::_OpenFrontendSharedTextures() noexcept {
 	_frontendMotionReset = true;
 	_frontendBaseValid = false;
 	_frontendPresentedBaseValid = false;
+	_idlePresentationClock.Reset();
 	_frontendFrameMetadata = {};
 	_frontendPresentedFrameMetadata = {};
 	_frontendBaseNeedsPresent = false;
@@ -917,6 +919,7 @@ Renderer::FrontendBaseResult Renderer::_UpdateFrontendBase(uint32_t sharedTextur
 				&baseDesc, nullptr, _frontendPresentedBaseTexture.put());
 		}
 		_frontendPresentedBaseValid = false;
+		_idlePresentationClock.Reset();
 	}
 	if (SUCCEEDED(hr)) {
 		_frontendResources.GetD3DDC()->CopyResource(_frontendBaseTexture.get(), source);
@@ -996,8 +999,10 @@ bool Renderer::_FrontendRender(
 	uint32_t sharedTextureSlot,
 	FrontendRenderTimings* timings,
 	bool stableBaseOnly,
-	bool* droppedFrame
+	bool* droppedFrame,
+	bool idleRedraw
 ) noexcept {
+	assert(!idleRedraw || stableBaseOnly);
 	if (droppedFrame) *droppedFrame = false;
 	if (_pendingFrontendFrame) return _SubmitFrontendFrame();
 	_frontendPacingDeadline.reset();
@@ -1023,7 +1028,7 @@ bool Renderer::_FrontendRender(
 	} else if (!stableBaseOnly) {
 		_frontEdgeClock.Reset();
 	}
-	if (stableBaseOnly && !paced && !_CanRenderOverlay()) return false;
+	if (stableBaseOnly && !idleRedraw && !paced && !_CanRenderOverlay()) return false;
 	if (_frameSyncEnabled && _isXeSSFrameGenerationActive &&
 		!_presenter->SetBaseFrameRateLimit(_FrameSyncFrameRate())) {
 		if (!_frameSyncLimiterFailed) {
@@ -1076,21 +1081,24 @@ bool Renderer::_FrontendRender(
 		_destRect.bottom - rendererRect.top
 	};
 	const auto& sourceMetadata = stableBaseOnly ? _frontendPresentedFrameMetadata : _frontendFrameMetadata;
-	_presenter->SetSourceTiming(sourceMetadata.frameId,
-		sourceMetadata.captureSequence, sourceMetadata.resourceGeneration,
-		sourceMetadata.timestamp100ns);
-	_presenter->SetCaptureAdmissionTime(sourceMetadata.captureAdmissionTime100ns);
-	_presenter->SetFrameGuidance(
-		_frontendMotionValid ? _frontendMotionTexture.get() : nullptr,
-		_frontendMotionFrameId,
-		_frontendMotionReset || !_frontendMotionValid,
-		guidanceDestination);
+	if (!stableBaseOnly) {
+		_presenter->SetSourceTiming(sourceMetadata.frameId,
+			sourceMetadata.captureSequence, sourceMetadata.resourceGeneration,
+			sourceMetadata.timestamp100ns);
+		_presenter->SetCaptureAdmissionTime(sourceMetadata.captureAdmissionTime100ns);
+		_presenter->SetFrameGuidance(
+			_frontendMotionValid ? _frontendMotionTexture.get() : nullptr,
+			_frontendMotionFrameId,
+			_frontendMotionReset || !_frontendMotionValid,
+			guidanceDestination);
+	}
 	FrameTrace::Scope traceBegin(FrameTrace::Event::BeginFrame);
 	const bool reflexContent = !stableBaseOnly && _frontendBaseNeedsPresent;
 	const uint32_t diagnosticReasons = reflexContent ? 0 : _FrontendDiagnosticReasons();
 	_presenter->SetReflexFrame(reflexContent ? _frontendReflexIds.first : 0,
 		reflexContent ? _frontendReflexIds.second : 0, _frontendFrameMetadata.generated);
-	const bool traceBegan = _presenter->BeginFrame(frameTex, frameRtv, drawOffset);
+	const bool traceBegan = idleRedraw ? _presenter->BeginIdleFrame(frameTex, frameRtv, drawOffset) :
+		_presenter->BeginFrame(frameTex, frameRtv, drawOffset);
 	traceBegin.Data(traceBegan);
 	traceBegin.End();
 	if (!traceBegan) {
@@ -1148,7 +1156,7 @@ bool Renderer::_FrontendRender(
 	_pendingFrontendFrame = PendingFrontendFrame{
 		.stableBaseOnly = stableBaseOnly, .contentFrame = contentFrame,
 		.generatedFrame = generatedFrame, .independentOverlay = uiInIndependentLayer,
-		.waitForGpu = waitForGpu, .paced = paced,
+		.waitForGpu = waitForGpu, .paced = paced, .idleRedraw = idleRedraw,
 		.overlayRevision = overlayActionRevision,
 		.contentKey = _lastAccessMutexKeys[sharedTextureSlot], .diagnosticReasons = diagnosticReasons
 	};
@@ -1187,7 +1195,7 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 	}
 	_frontendPacingDeadline.reset();
 	const auto [stableBaseOnly, contentFrame, generatedFrame, uiInIndependentLayer,
-		waitForGpu, paced, overlayActionRevision, contentKey, diagnosticReasons] = frame;
+		waitForGpu, paced, idleRedraw, overlayActionRevision, contentKey, diagnosticReasons] = frame;
 	const bool submitted = _presenter->EndFrame(waitForGpu);
 	if (!submitted) _ReportPresenterFailure();
 	_pendingFrontendFrame.reset();
@@ -1230,6 +1238,10 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 	if (submitted) FrameTrace::Mark(contentFrame ? FrameTrace::Event::ContentSubmit :
 		FrameTrace::Event::OverlaySubmit, generatedFrame,
 		_presenter->LastPresentedFrameCount() ? int64_t(*_presenter->LastPresentedFrameCount()) : -1);
+	if (submitted && _hasFrameGeneration) {
+		_idlePresentationClock.Presented(std::chrono::steady_clock::now(), contentFrame);
+		if (idleRedraw) _presentationRate.RecordIdleSubmission();
+	}
 	if (submitted && contentFrame && _hasFrameGeneration && _frontendCaptureFrameId != 0 &&
 		(generatedFrame || _frontendCaptureFrameId != _lastCountedRealFrameId)) {
 		const auto count = _presenter->LastPresentedFrameCount();
@@ -1381,14 +1393,15 @@ bool Renderer::Render(bool force, bool waitForGpu) noexcept {
 	// Comparison/forced UI refresh can mark the stable base as pending. Keep
 	// updating the independent overlay without resubmitting that source ID or
 	// leaving the pending flag stuck after FSR's duplicate-history guard.
-	if (_isFSR3FrameGenerationActive && (_frontendBaseNeedsPresent || force) &&
+	if (_HasProxyFrameGenerator() && (_frontendBaseNeedsPresent || force) &&
 		!hasNewBackendFrame && _frontendPresentedBaseValid &&
 		_frontendFrameMetadata.frameId == _frontendPresentedFrameMetadata.frameId &&
 		_frontendFrameMetadata.captureSequence == _frontendPresentedFrameMetadata.captureSequence &&
 		_frontendFrameMetadata.resourceGeneration == _frontendPresentedFrameMetadata.resourceGeneration) {
 		_frontendBaseNeedsPresent = false;
-		return _FrontendOverlayRender();
+		return _TryIdleRedraw() || _FrontendOverlayRender();
 	}
+	if (_hasFrameGeneration && !hasNewBackendFrame && !_frontendBaseNeedsPresent && _TryIdleRedraw()) return true;
 	if (!force && !hasNewBackendFrame && !_frontendBaseNeedsPresent) {
 		if (_lastAccessMutexKeys[sharedTextureSlot] == 0) {
 			// 第一帧尚未完成
@@ -1406,7 +1419,7 @@ bool Renderer::Render(bool force, bool waitForGpu) noexcept {
 		}
 	}
 
-	if (_isFSR3FrameGenerationActive && !hasNewBackendFrame && !_frontendBaseNeedsPresent)
+	if (_HasProxyFrameGenerator() && !hasNewBackendFrame && !_frontendBaseNeedsPresent)
 		return _FrontendOverlayRender();
 	return _FrontendRender(waitForGpu, sharedTextureSlot,
 		nullptr, !hasNewBackendFrame && !_frontendBaseNeedsPresent);
@@ -1428,6 +1441,7 @@ bool Renderer::RenderOverlay() noexcept {
 		_pendingDLSSFGFrontendFrames.load(std::memory_order_acquire) != 0) {
 		return false;
 	}
+	if (_TryIdleRedraw()) return true;
 	if (!_HasPendingOverlayAction() && !_overlayDrawer.NeedRedraw(_stepTimer.FPS()) && !_cursorDrawer.NeedRedraw()) {
 		return false;
 	}
@@ -1439,6 +1453,14 @@ bool Renderer::RenderOverlay() noexcept {
 	}
 	return _FrontendRender(false,
 		std::numeric_limits<uint32_t>::max(), nullptr, true);
+}
+
+bool Renderer::_TryIdleRedraw() noexcept {
+	_idlePresentationClock.SetRate(_idleRedrawRate.load(std::memory_order_acquire));
+	const auto remaining = TimeUntilIdleRedraw();
+	if (!remaining || *remaining > std::chrono::nanoseconds::zero()) return false;
+	_idlePresentationClock.Attempted(std::chrono::steady_clock::now());
+	return _FrontendRender(false, std::numeric_limits<uint32_t>::max(), nullptr, true, nullptr, true);
 }
 
 bool Renderer::HasPendingOverlayInput() const noexcept {
@@ -1501,7 +1523,20 @@ double Renderer::_FrameSyncFrameRate() const noexcept {
 		_presentationRefreshRate.load(std::memory_order_acquire), _configuredFrameGenerationMultiplier);
 }
 
+std::optional<std::chrono::nanoseconds> Renderer::TimeUntilIdleRedraw() const noexcept {
+	if (!_hasFrameGeneration || !_presenter || !_frontendPresentedBaseValid || HasPendingContent() ||
+		_backendContentInFlight.load(std::memory_order_acquire) || !_captureAllowsIdle.load(std::memory_order_acquire) ||
+		_sessionLifetime->IsStopping() || ScalingWindow::Get().IsResizingOrMoving() || _presenter->HasFatalError())
+		return std::nullopt;
+	const auto remaining = _idlePresentationClock.Remaining(std::chrono::steady_clock::now());
+	return remaining ? std::optional(std::chrono::duration_cast<std::chrono::nanoseconds>(*remaining)) : std::nullopt;
+}
+
 void Renderer::WaitForFrontendWork(std::chrono::nanoseconds maximumWait) noexcept {
+	if (const auto idleWait = TimeUntilIdleRedraw(); idleWait && !HasPendingContent()) {
+		WaitForFramePacing(std::min(maximumWait, *idleWait), _frontendPacingTimer);
+		return;
+	}
 	if (_frontendPacingDeadline) {
 		const auto remaining = *_frontendPacingDeadline - std::chrono::steady_clock::now();
 		if (remaining <= std::chrono::nanoseconds::zero()) return;
@@ -1510,7 +1545,7 @@ void Renderer::WaitForFrontendWork(std::chrono::nanoseconds maximumWait) noexcep
 	} else {
 		const DWORD ms = static_cast<DWORD>(std::max<int64_t>(0,
 			(maximumWait.count() + 999'999) / 1'000'000));
-		if (!_presenter->WaitForFrameCapacity(ms)) {
+		if ((_hasFrameGeneration && !HasPendingContent()) || !_presenter->WaitForFrameCapacity(ms)) {
 			MsgWaitForMultipleObjectsEx(0, nullptr, ms, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
 		}
 	}
@@ -1875,17 +1910,10 @@ bool Renderer::_InitFrameSource() noexcept {
 
 	Logger::Get().Info(StrHelper::Concat("当前捕获模式: ", _frameSource->Name()));
 
-	for (const EffectOption& effect : ScalingWindow::Get().Options().effects) {
-		if (!IsFrameGenerationEffect(effect.name)) continue;
-		// Missing fields follow the effect's default, independently of global detection.
-		const bool enabled = ReadIntegralEffectParameter(
-			effect, "duplicateFrameFiltering", 0, 1, 0) != 0;
-		_frameSource->DuplicateFrameDetectionOverride(enabled);
-		Logger::Get().Info(fmt::format(
-			"Frame Generation: exact duplicate-frame filtering {} for captured input",
-			enabled ? "enabled" : "disabled"));
-		break;
-	}
+	Logger::Get().Info(fmt::format(
+		"Capture duplicate detection: common refresh settings, mode={}, 3D={}",
+		static_cast<uint32_t>(ScalingWindow::Get().Options().duplicateFrameDetectionMode),
+		ScalingWindow::Get().Options().Is3DGameMode()));
 
 	Logger::DiagnosticCapture captureDiagnostic;
 	if (!_frameSource->Initialize(_backendResources, _backendDescriptorStore)) {
@@ -3392,6 +3420,7 @@ void Renderer::_BackendThreadProc() noexcept {
 			auto input = std::move(_pendingFrameGenerationInput);
 			_fgInputClock.Submitted(now);
 			_CompleteBackendFrame(input.get(), true, _captureSequence);
+			_backendContentInFlight.store(false, std::memory_order_release);
 			if (!_dlssFrameGenerator || !_synchronousFramePresentationEnabled.load(std::memory_order_acquire)) {
 				PostMessage(ScalingWindow::Get().Handle(), CommonSharedConstants::WM_FRONTEND_RENDER, 0, 0);
 			}
@@ -3429,6 +3458,8 @@ void Renderer::_BackendThreadProc() noexcept {
 		if (_sessionLifetime->IsStopping()) continue;
 		_stepTimer.CaptureStarting();
 		const FrameSourceState frameSourceState = _frameSource->Update();
+		_captureAllowsIdle.store(frameSourceState != FrameSourceState::Error &&
+			!_frameSource->IsCaptureInterrupted(), std::memory_order_release);
 		// A rejected GPU comparison is a completed attempt. Polls without GPU
 		// work retain their slept candidate, and staged FG retains its base ID.
 		const auto discardReflexRender = wil::scope_exit([this] {
@@ -3472,11 +3503,13 @@ void Renderer::_BackendThreadProc() noexcept {
 			FrameTrace::Mark(FrameTrace::Event::RenderReason,
 				frameSourceState == FrameSourceState::NewFrame ? 0 : _forceNextRender ? 2 : 1);
 			_forceNextRender = false;
+			_backendContentInFlight.store(true, std::memory_order_release);
 			_backendMayDeferFG = true;
 			_BackendRender(
 				_effectDrawers.back().GetExternalOutputTexture(),
 				frameSourceState == FrameSourceState::NewFrame);
 			_backendMayDeferFG = false;
+			if (!_pendingFrameGenerationInput) _backendContentInFlight.store(false, std::memory_order_release);
 			// DLSSFG uses synchronous, individually paced presentation so generated
 			// frames cannot be coalesced into the following real frame.
 			if (!_HasSoftwareFrameGenerator() ||
@@ -3558,7 +3591,7 @@ void Renderer::_UpdateFrameRateLimits() noexcept {
 		_runtimeEffectOptions,
 		[](const EffectOption& effect) { return IsFrameGenerationEffect(effect.name); });
 	_existingBaseFrameRateLimit.store(maxFrameRate.value_or(0.0f), std::memory_order_release);
-	const float minFrameRate = useFrameGeneration ? 0.0f :
+	const float minFrameRate =
 		(options.IsBenchmarkMode() ? std::numeric_limits<float>::max() :
 			std::min(options.minFrameRate, _frameSyncEnabled
 				? float(_FrameSyncFrameRate()) : maxFrameRate.value_or(options.minFrameRate)));
@@ -3579,7 +3612,11 @@ void Renderer::_UpdateFrameRateLimits() noexcept {
 		_appliedFrameSyncBackend == FrameSyncBackend::XeLL || _appliedFrameSyncBackend == FrameSyncBackend::Reflex;
 	const std::optional<float> fallbackLimit = _frameSyncEnabled ?
 		std::optional<float>(float(_FrameSyncFrameRate())) : maxFrameRate;
-	_stepTimer.Initialize(minFrameRate, consumerPacing ? std::nullopt : fallbackLimit,
+	// FG idle replay belongs to presentation, not capture/effects. Do not force
+	// old captures through motion estimation or temporal generation.
+	_idleRedrawRate.store(useFrameGeneration ? std::min(double(minFrameRate),
+		_presentationRefreshRate.load(std::memory_order_acquire)) : 0, std::memory_order_release);
+	_stepTimer.Initialize(useFrameGeneration ? 0.0f : minFrameRate, consumerPacing ? std::nullopt : fallbackLimit,
 		_appliedFrameSyncBackend == FrameSyncBackend::Async || _appliedFrameSyncBackend == FrameSyncBackend::Reflex);
 
 	_baseFrameRateLimit = _frameSyncEnabled ? _FrameSyncFrameRate() : maxFrameRate.value_or(0.0f);

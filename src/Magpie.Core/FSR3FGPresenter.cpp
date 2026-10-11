@@ -75,7 +75,8 @@ struct FSR3FGPresenter::Impl {
 	FSR3FGHistory history;
 	FSR3FGSourceSample sourceSample;
 	FSR3FGHistory::Decision decision{};
-	bool externalMotionEnabled = false, externalMotionValid = false, externalMotionReset = true;
+	bool externalMotionEnabled = true, externalMotionValid = false, externalMotionReset = true;
+	bool idlePresentation = false;
 	bool geometryReset = true, capacityBusy = false, fatal = false;
 	uint64_t callbackDispatches = 0, interpolations = 0, resetPassThroughs = 0, baseSubmissions = 0;
 	uint64_t invalidMotionSamples = 0;
@@ -546,7 +547,7 @@ static ffxReturnCode_t GenerateFrame(ffxDispatchDescFrameGeneration* desc, void*
 	return impl.callbackResult;
 }
 
-FSR3FGPresenter::FSR3FGPresenter(bool useExternalMotion) : _useExternalMotion(useExternalMotion) {}
+FSR3FGPresenter::FSR3FGPresenter() = default;
 FSR3FGPresenter::~FSR3FGPresenter() noexcept = default;
 
 bool FSR3FGPresenter::_Initialize(HWND hwndAttach) noexcept {
@@ -568,7 +569,7 @@ bool FSR3FGPresenter::_Initialize(HWND hwndAttach) noexcept {
 	impl->width = static_cast<uint32_t>(size.cx);
 	impl->height = static_cast<uint32_t>(size.cy);
 	impl->generationRect = { 0, 0, size.cx, size.cy };
-	impl->externalMotionEnabled = _useExternalMotion;
+	impl->externalMotionEnabled = true;
 	HRESULT hr = D3D12CreateDevice(_deviceResources->GetGraphicsAdapter(), D3D_FEATURE_LEVEL_12_0,
 		IID_PPV_ARGS(impl->device12.put()));
 	if (FAILED(hr)) return impl->Fail("create D3D12 device on selected adapter", hr);
@@ -646,7 +647,7 @@ bool FSR3FGPresenter::_Initialize(HWND hwndAttach) noexcept {
 	if (!CreateSizeDependentResources(*impl) || !CreateMotionShader(*impl) || !CreateFGContext(*impl)) return false;
 	Logger::Get().Info(fmt::format("FSR3FG initialized: {}x{} SDR/RGBA8, fixed 2x, FG=3.1.6 id={:#x}, swapchain=3.1.7 id={:#x}, adapter={:x}:{:x} LUID={:x}:{:x}, externalMotion={}, forward flat depth=1, virtual camera, asyncCompute=false; image-only experimental inputs",
 		impl->width, impl->height, impl->fgVersionId, impl->swapchainVersionId,
-		adapter.VendorId, adapter.DeviceId, uint32_t(luid.HighPart), luid.LowPart, _useExternalMotion));
+		adapter.VendorId, adapter.DeviceId, uint32_t(luid.HighPart), luid.LowPart, true));
 	_impl = std::move(impl);
 	return _ResizeOverlaySurface();
 }
@@ -671,9 +672,13 @@ void FSR3FGPresenter::SetFrameGuidance(ID3D11Texture2D* motion, FrameGuidanceFra
 	impl.generationRect = rect;
 	impl.externalMotionValid = false;
 	impl.externalMotionReset = impl.externalMotionEnabled;
-	if (!impl.externalMotionEnabled) return; // Internal FSR optical flow still runs.
+	// The provider is mandatory; only bootstrap/reset may have no valid motion.
 	const HRESULT hr = impl.sourceMotion.Prepare(impl.device11, motion, frameId, impl.sourceSample.frameId);
-	if (hr == S_FALSE) { ++impl.invalidMotionSamples; return; }
+	if (hr == S_FALSE) {
+		++impl.invalidMotionSamples;
+		if (!requiresHistoryReset) impl.Fail("FSR3 FG requires valid AMDOF/NVOF motion for new interpolation input");
+		return;
+	}
 	if (FAILED(hr)) {
 		const auto& d = impl.sourceMotion.Desc();
 		impl.Fail(fmt::format("validate/create source motion SRV: frame={} source={} session={} generation={} "
@@ -692,9 +697,21 @@ void FSR3FGPresenter::SetFrameGuidance(ID3D11Texture2D* motion, FrameGuidanceFra
 
 bool FSR3FGPresenter::BeginFrame(winrt::com_ptr<ID3D11Texture2D>& tex,
 	winrt::com_ptr<ID3D11RenderTargetView>& rtv, POINT& offset) noexcept {
+	return _BeginFrame(tex, rtv, offset, false);
+}
+
+bool FSR3FGPresenter::BeginIdleFrame(winrt::com_ptr<ID3D11Texture2D>& tex,
+	winrt::com_ptr<ID3D11RenderTargetView>& rtv, POINT& offset) noexcept {
+	return _BeginFrame(tex, rtv, offset, true);
+}
+
+bool FSR3FGPresenter::_BeginFrame(winrt::com_ptr<ID3D11Texture2D>& tex,
+	winrt::com_ptr<ID3D11RenderTargetView>& rtv, POINT& offset, bool idle) noexcept {
 	if (!_impl || _impl->fatal) return false;
 	auto& impl = *_impl;
-	impl.decision = impl.history.Next(impl.sourceSample, impl.externalMotionReset, impl.geometryReset);
+	impl.idlePresentation = idle;
+	impl.decision = idle ? impl.history.Replay() :
+		impl.history.Next(impl.sourceSample, impl.externalMotionReset, impl.geometryReset);
 	if (!impl.decision.submit) return false;
 	const DWORD result = impl.frameLatencyGate.TryAcquire(impl.frameLatencyWaitableObject.get());
 	impl.capacityBusy = result == WAIT_TIMEOUT;
@@ -729,7 +746,9 @@ bool FSR3FGPresenter::EndFrame(bool waitForGpu) noexcept {
 	ffxConfigureDescFrameGeneration config{};
 	config.header.type = FFX_API_CONFIGURE_DESC_TYPE_FRAMEGENERATION;
 	config.swapChain = impl.swapChain.get();
-	config.frameGenerationEnabled = true;
+	config.frameGenerationEnabled = !impl.idlePresentation;
+	// Keep callbacks stable. The pinned proxy drains on enable/disable changes,
+	// not on each replay; source and SDK presentation IDs remain independent.
 	config.frameGenerationCallback = GenerateFrame;
 	config.frameGenerationCallbackUserContext = &impl;
 	config.frameID = impl.decision.sdkFrameId;
@@ -757,29 +776,31 @@ bool FSR3FGPresenter::EndFrame(bool waitForGpu) noexcept {
 	impl.commandList12->CopyResource(impl.backBuffers[index].get(), impl.color12.get());
 	for (auto& barrier : barriers) std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
 	impl.commandList12->ResourceBarrier(2, barriers);
-	D3D12_RESOURCE_BARRIER motionBarrier{};
-	motionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	motionBarrier.Transition = { impl.motion12.get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE };
-	if (impl.externalMotionValid) impl.commandList12->ResourceBarrier(1, &motionBarrier);
-	ffxDispatchDescFrameGenerationPrepareV2 prepare{};
-	prepare.header.type = FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE_V2;
-	prepare.frameID = config.frameID;
-	prepare.commandList = impl.commandList12.get();
-	prepare.renderSize = { uint32_t(config.generationRect.width), uint32_t(config.generationRect.height) };
-	prepare.motionVectorScale = { 1.0f, 1.0f };
-	prepare.frameTimeDelta = impl.decision.deltaMs;
-	prepare.reset = impl.decision.reset != 0;
-	prepare.cameraNear = 0.1f; prepare.cameraFar = 1000.0f;
-	prepare.cameraFovAngleVertical = 1.0471975512f;
-	prepare.viewSpaceToMetersFactor = 1.0f;
-	prepare.cameraUp[1] = 1.0f; prepare.cameraRight[0] = 1.0f; prepare.cameraForward[2] = 1.0f;
-	prepare.depth = ffxApiGetResourceDX12(impl.flatDepth12.get());
-	prepare.motionVectors = ffxApiGetResourceDX12(impl.externalMotionValid ? impl.motion12.get() : impl.zeroMotion12.get());
-	if (!impl.Check(impl.dispatch(&impl.fgContext, &prepare.header), "PrepareV2")) return false;
-	if (impl.externalMotionValid) {
-		std::swap(motionBarrier.Transition.StateBefore, motionBarrier.Transition.StateAfter);
-		impl.commandList12->ResourceBarrier(1, &motionBarrier);
+	if (!impl.idlePresentation) {
+		D3D12_RESOURCE_BARRIER motionBarrier{};
+		motionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		motionBarrier.Transition = { impl.motion12.get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE };
+		if (impl.externalMotionValid) impl.commandList12->ResourceBarrier(1, &motionBarrier);
+		ffxDispatchDescFrameGenerationPrepareV2 prepare{};
+		prepare.header.type = FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE_V2;
+		prepare.frameID = config.frameID;
+		prepare.commandList = impl.commandList12.get();
+		prepare.renderSize = { uint32_t(config.generationRect.width), uint32_t(config.generationRect.height) };
+		prepare.motionVectorScale = { 1.0f, 1.0f };
+		prepare.frameTimeDelta = impl.decision.deltaMs;
+		prepare.reset = impl.decision.reset != 0;
+		prepare.cameraNear = 0.1f; prepare.cameraFar = 1000.0f;
+		prepare.cameraFovAngleVertical = 1.0471975512f;
+		prepare.viewSpaceToMetersFactor = 1.0f;
+		prepare.cameraUp[1] = 1.0f; prepare.cameraRight[0] = 1.0f; prepare.cameraForward[2] = 1.0f;
+		prepare.depth = ffxApiGetResourceDX12(impl.flatDepth12.get());
+		prepare.motionVectors = ffxApiGetResourceDX12(impl.externalMotionValid ? impl.motion12.get() : impl.zeroMotion12.get());
+		if (!impl.Check(impl.dispatch(&impl.fgContext, &prepare.header), "PrepareV2")) return false;
+		if (impl.externalMotionValid) {
+			std::swap(motionBarrier.Transition.StateBefore, motionBarrier.Transition.StateAfter);
+			impl.commandList12->ResourceBarrier(1, &motionBarrier);
+		}
 	}
 	hr = impl.commandList12->Close();
 	if (FAILED(hr)) return impl.Fail("close prepared command list", hr);
@@ -803,6 +824,12 @@ bool FSR3FGPresenter::EndFrame(bool waitForGpu) noexcept {
 	// DXGI/dispatch counts cannot establish how many frames reached a display.
 	_lastPresentedFrameCount = std::nullopt;
 	_lastSubmissionTime = std::chrono::steady_clock::now();
+	if (impl.idlePresentation) {
+		impl.history.ReplaySubmitted();
+		impl.geometryReset = true; // Re-enable starts with a real-input reset.
+		impl.decision.submit = false;
+		return true;
+	}
 	++impl.baseSubmissions;
 	if (impl.decision.reset || impl.baseSubmissions % 120 == 0) Logger::Get().Info(fmt::format(
 		"FSR3FG source={} session={} generation={} sdk={} resetMask={} inputMs={:.3f} timingSource={} content={}x{}+{},{} baseSubmits={} callbackDispatches={} interpolationDispatches={} resetPassThroughs={} invalidMotionSamples={} PresentMs={:.3f}; game render time and display events unmeasured",
@@ -898,13 +925,15 @@ bool FSR3FGPresenter::EndOverlayFrame() noexcept {
 namespace Magpie {
 struct FSR3FGPresenter::Impl {};
 void FSR3FGPresenter::ImplDeleter::operator()(Impl* impl) const noexcept { delete impl; }
-FSR3FGPresenter::FSR3FGPresenter(bool externalMotion) : _useExternalMotion(externalMotion) {}
+FSR3FGPresenter::FSR3FGPresenter() = default;
 FSR3FGPresenter::~FSR3FGPresenter() noexcept = default;
 bool FSR3FGPresenter::_Initialize(HWND) noexcept {
 	Logger::Get().Error("FSR3FG is unavailable in this build (EnableFSR3FrameGeneration=false or unsupported architecture)");
 	return false;
 }
 bool FSR3FGPresenter::BeginFrame(winrt::com_ptr<ID3D11Texture2D>&, winrt::com_ptr<ID3D11RenderTargetView>&, POINT&) noexcept { return false; }
+bool FSR3FGPresenter::BeginIdleFrame(winrt::com_ptr<ID3D11Texture2D>&, winrt::com_ptr<ID3D11RenderTargetView>&, POINT&) noexcept { return false; }
+bool FSR3FGPresenter::_BeginFrame(winrt::com_ptr<ID3D11Texture2D>&, winrt::com_ptr<ID3D11RenderTargetView>&, POINT&, bool) noexcept { return false; }
 bool FSR3FGPresenter::EndFrame(bool) noexcept { return false; }
 bool FSR3FGPresenter::WaitForFrameCapacity(DWORD) noexcept { return false; }
 bool FSR3FGPresenter::WasFrameCapacityBusy() const noexcept { return false; }

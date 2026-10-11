@@ -27,6 +27,13 @@ public:
 		winrt::com_ptr<ID3D11RenderTargetView>& frameRtv,
 		POINT& drawOffset
 	) noexcept = 0;
+	// Replay a completed output without supplying a new capture/motion sample.
+	// Plain presenters have no temporal state. SDK proxies explicitly disable
+	// generation for this submission and reset temporal history on resumption.
+	virtual bool BeginIdleFrame(winrt::com_ptr<ID3D11Texture2D>& frameTex,
+		winrt::com_ptr<ID3D11RenderTargetView>& frameRtv, POINT& drawOffset) noexcept {
+		return BeginFrame(frameTex, frameRtv, drawOffset);
+	}
 
 	// Returns true when the frame was submitted to the presentation backend.
 	// Successful status codes such as DXGI_STATUS_OCCLUDED still count as a

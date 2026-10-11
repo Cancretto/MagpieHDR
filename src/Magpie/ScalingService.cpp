@@ -854,6 +854,7 @@ void ScalingService::_HandleEffectParametersRequest(
 			fail(EffectParametersSaveError::Conflict);
 			return;
 		}
+		NormalizeFrameGenerationParameters(destination);
 	}
 	mode.effects = std::move(merged);
 	if (frameSyncProfile->frameRefresh != mergedFrameRefresh) {

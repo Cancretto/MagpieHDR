@@ -41,6 +41,9 @@ void ScalingModesService::AddScalingMode(std::wstring_view name, int copyFrom) {
 		scalingModes.emplace_back(scalingModes[copyFrom]).name = uniqueName;
 	}
 
+	for (auto& effect : scalingModes.back().effects) {
+		if (!effect.isRecoveryInvalid) NormalizeFrameGenerationParameters(effect);
+	}
 	ScalingModeAdded.Invoke(copyFrom < 0 ? EffectAddedWay::Add : EffectAddedWay::Duplicate);
 
 	AppSettings::Get().SaveAsync();
@@ -162,7 +165,8 @@ static void WriteScalingMode(rapidjson::PrettyWriter<rapidjson::StringBuffer>& w
 	if (!scaleMode.effects.empty()) {
 		writer.Key("effects");
 		writer.StartArray();
-		for (const auto& effect : scaleMode.effects) {
+		for (auto effect : scaleMode.effects) {
+			if (!effect.isRecoveryInvalid) NormalizeFrameGenerationParameters(effect);
 			writer.StartObject();
 			writer.Key("name");
 			writer.String(StrHelper::UTF16ToUTF8(effect.name).c_str());
@@ -613,6 +617,18 @@ bool ScalingModesService::Import(const rapidjson::GenericObject<true, rapidjson:
 	if (migratedVfg) {
 		Logger::Get().Info("Nvidia VFX VFG: migrated retired High model to Balanced");
 		if (loadingSettings) AppSettings::Get().MarkConfigMigrationNeeded();
+	}
+
+	bool migratedFg = false;
+	for (auto& mode : scalingModes) {
+		if (mode.hdrMigrationInvalid) continue;
+		for (auto& effect : mode.effects) {
+			if (!effect.isRecoveryInvalid) migratedFg |= NormalizeFrameGenerationParameters(effect);
+		}
+	}
+	if (migratedFg) {
+		if (loadingSettings) AppSettings::Get().MarkConfigMigrationNeeded();
+		Logger::Get().Info("FG settings migration: FSR3 requires optical flow (default AMDOF Quality); retired per-effect duplicate filter removed; common settings preserved");
 	}
 
 	const V065NormalizationStats normalization =

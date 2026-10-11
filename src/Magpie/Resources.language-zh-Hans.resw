@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -1372,7 +1372,7 @@
   <data name="Motion_Nvidia_4" xml:space="preserve"><value>高质量</value></data>
   <data name="Motion_Amd_0" xml:space="preserve"><value>性能</value></data>
   <data name="Motion_Amd_1" xml:space="preserve"><value>质量</value></data>
-  <data name="Overlay_Profiler_FrameRateWithFG" xml:space="preserve"><value>帧率（总 / 真实）</value></data>
+  <data name="Overlay_Profiler_FrameRateWithFG" xml:space="preserve"><value>帧率（内容输出 / 真实输入）</value></data>
   <data name="EffectParam_DLSS_DLSS_SR_opticalFlowMethod_Label" xml:space="preserve"><value>光流估算方式</value></data>
   <data name="EffectParam_DLSS_DLSS_SR_opticalFlowMethod_Option_0" xml:space="preserve"><value>不使用</value></data>
   <data name="EffectParam_DLSS_DLSS_SR_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMD OF</value></data>
@@ -1674,8 +1674,6 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_2" xml:space="preserve"><value>光流累积</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_3" xml:space="preserve"><value>光流累积+</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_4" xml:space="preserve"><value>低频时域重建</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重复帧过滤</value></data>
-  <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重复帧过滤</value></data>
   <data name="EffectParam_xBR_xBR_2x_paramXbrYWeight_Label" xml:space="preserve"><value>亮度权重</value></data>
   <data name="EffectParam_xBR_xBR_2x_paramXbrEqThreshold_Label" xml:space="preserve"><value>相等阈值</value></data>
   <data name="EffectParam_xBR_xBR_2x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 边缘系数</value></data>
@@ -1786,7 +1784,7 @@
   <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>选择自动或自定义的光标补充刷新率。</value></data>
   <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>设置光标补充刷新的目标最低帧率。</value></data>
   <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>可变刷新率、重复帧检测与空闲重绘。</value></data>
-  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>画面不变时按指定帧率重绘。</value></data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>画面不变时按指定帧率重绘。FG 约 0.5 秒没有新内容后复用缓存重绘，不额外插帧。</value></data>
   <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>设置空闲重绘的目标帧率。</value></data>
   <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>恢复内容 60、光标补充 60、空闲重绘 30 FPS，节奏方式为 Front Edge。</value></data>
   <data name="FrameRefresh_Content_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>内容帧率</value></data>
@@ -1958,7 +1956,6 @@
   <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>已保存 {0}；{1} 保存失败，请查看错误详情。</value></data>
   <data name="EffectParam_NvidiaVFX_Upscale_sharpness_Label" xml:space="preserve"><value>锐化强度</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_automaticShotDetection_Label" xml:space="preserve"><value>自动场景切换检测</value></data>
-  <data name="EffectParam_NvidiaVFX_VFG_duplicateFrameFiltering_Label" xml:space="preserve"><value>重复帧过滤</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_model_Label" xml:space="preserve"><value>模型档位</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_model_Option_0" xml:space="preserve"><value>性能</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_model_Option_1" xml:space="preserve"><value>均衡</value></data>
@@ -2058,11 +2055,9 @@
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>质量</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>高质量（高开销）</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Label" xml:space="preserve"><value>光流方法</value></data>
-  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_0" xml:space="preserve"><value>无</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMD 光流</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVIDIA 光流</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>最高质量（极高开销）</value></data>
-  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>重复帧过滤</value></data>
   <data name="FrameRefresh_CursorStrategy.Header" xml:space="preserve"><value>刷新策略</value></data>
   <data name="Rtss_Management.Header" xml:space="preserve"><value>管理</value></data>
   <data name="Rtss_Recheck.Content" xml:space="preserve"><value>重新检测</value></data>
@@ -2110,4 +2105,8 @@
   <data name="Rtss_ManagementCollapsed" xml:space="preserve"><value>管理详情已收起</value></data>
   <data name="Profile_InitialScale_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>初始缩放倍数</value></data>
   <data name="Profile_CursorScale_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>缩放系数</value></data>
+  <data name="Overlay_FG_FrameRateHelp" xml:space="preserve"><value>内容输出 / 真实输入 FPS。R/s 单独记录成功提交的空闲重绘，不是生成帧率或屏幕实际刷新率。</value></data>
+  <data name="Overlay_FG_IdleSubmissions" xml:space="preserve"><value>空闲重绘提交/秒（R/s）</value></data>
+  <data name="Overlay_FG_Waiting" xml:space="preserve"><value>等待新画面</value></data>
+  <data name="Overlay_FG_GeneratedRate" xml:space="preserve"><value>已报告生成帧率</value></data>
 </root>

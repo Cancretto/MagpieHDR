@@ -8,6 +8,7 @@
 #include "FrameGuidanceService.h"
 #include "NgxD3D12Core.h"
 #include "OverlayDrawer.h"
+#include "IdlePresentationClock.h"
 #include "PassThroughFrames.h"
 #include "PresenterBase.h"
 #include "ReflexController.h"
@@ -52,6 +53,11 @@ public:
 	bool RenderOverlay() noexcept;
 	bool HasFrameGeneration() const noexcept { return _hasFrameGeneration; }
 	PresentationRateSnapshot PresentationRate() const noexcept { return _presentationRate.Get(); }
+	bool IsWaitingForNewContent() const noexcept {
+		return _hasFrameGeneration && _captureAllowsIdle.load(std::memory_order_acquire) &&
+			!HasPendingContent() && !_backendContentInFlight.load(std::memory_order_acquire) &&
+			_presentationRate.WaitingForContent();
+	}
 	std::string NvidiaVfxProcessDescription(size_t effect) const;
 	DLSSFGFrameRenderResult RenderDLSSFGFrame(
 		uint32_t sharedTextureSlot,
@@ -64,6 +70,7 @@ public:
 	std::chrono::nanoseconds FrontendPollInterval() const noexcept {
 		return std::min(_overlayPresentationClock.PollInterval(), _cursorDrawer.PollInterval());
 	}
+	std::optional<std::chrono::nanoseconds> TimeUntilIdleRedraw() const noexcept;
 
 	// Sleep in the outer message pump, never inside a prepared frame.
 	void WaitForFrontendWork(std::chrono::nanoseconds maximumWait) noexcept;
@@ -202,12 +209,18 @@ private:
 		bool independentOverlay = false;
 		bool waitForGpu = false;
 		bool paced = false;
+		bool idleRedraw = false;
 		uint64_t overlayRevision = 0;
 		uint64_t contentKey = 0;
 		uint32_t diagnosticReasons = 0;
 	};
 	std::optional<PendingFrontendFrame> _pendingFrontendFrame;
 	bool _SubmitFrontendFrame() noexcept;
+	bool _TryIdleRedraw() noexcept;
+	IdlePresentationClock _idlePresentationClock;
+	std::atomic<double> _idleRedrawRate = 0;
+	std::atomic<bool> _captureAllowsIdle = false;
+	std::atomic<bool> _backendContentInFlight = false;
 	uint32_t _FrontendDiagnosticReasons() noexcept;
 	OverlayPresentationClock _overlayPresentationClock;
 	HMONITOR _overlayMonitor = nullptr;
@@ -230,7 +243,8 @@ private:
 		uint32_t sharedTextureSlot = std::numeric_limits<uint32_t>::max(),
 		FrontendRenderTimings* timings = nullptr,
 		bool stableBaseOnly = false,
-		bool* droppedFrame = nullptr
+		bool* droppedFrame = nullptr,
+		bool idleRedraw = false
 	) noexcept;
 	bool _FrontendOverlayRender(bool contentChanged = false) noexcept;
 	enum class FrontendBaseResult { Ready, Retry, Dropped };

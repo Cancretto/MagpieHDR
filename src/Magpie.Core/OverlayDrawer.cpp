@@ -393,8 +393,10 @@ std::string OverlayDrawer::_FormatFrameRate(uint32_t fps) const noexcept {
 	const auto& renderer = ScalingWindow::Get().Renderer();
 	if (!renderer.HasFrameGeneration()) return fmt::format("{} FPS", fps);
 	const auto rate = renderer.PresentationRate();
-	return rate.totalKnown ? fmt::format("{}/{} FPS", rate.total, rate.real) :
+	std::string text = rate.totalKnown ? fmt::format("{}/{} FPS", rate.total, rate.real) :
 		fmt::format("—/{} FPS", rate.real);
+	if (rate.idleSubmissions) text += fmt::format(" +{} R/s", rate.idleSubmissions);
+	return text;
 }
 
 void OverlayDrawer::_ShowComparisonStatus(bool original) noexcept {
@@ -1109,6 +1111,8 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		ImGui::SetCursorPosY((contentTop + 15) * toolbarScale - ImGui::GetFontSize() / 2);
 		ImGui::TextUnformatted(fpsText.c_str());
 		ImGui::PopFont();
+		if (ScalingWindow::Get().Renderer().HasFrameGeneration() && ImGui::IsItemHovered())
+			ImGui::SetTooltip("%s", _GetResourceString(L"Overlay_FG_FrameRateHelp").c_str());
 		ImGui::SetWindowFontScale(toolbarScale / _dpiScale);
 
 		ImGui::SameLine();
@@ -2217,6 +2221,14 @@ bool OverlayDrawer::_DrawProfiler(const SmallVector<float>& effectTimings, uint3
 	const std::string& frameRateStr = _GetResourceString(ScalingWindow::Get().Renderer().HasFrameGeneration() ?
 		L"Overlay_Profiler_FrameRateWithFG" : L"Overlay_Profiler_FrameRate");
 	ImGui::TextUnformatted(fmt::format("{}: {}", frameRateStr, _FormatFrameRate(fps)).c_str());
+	if (renderer.HasFrameGeneration()) {
+		const auto rate = renderer.PresentationRate();
+		ImGui::TextUnformatted(fmt::format("{}: {}", _GetResourceString(L"Overlay_FG_GeneratedRate"),
+			rate.totalKnown ? std::to_string(rate.generated) : "--").c_str());
+		ImGui::TextUnformatted(fmt::format("{}: {}", _GetResourceString(L"Overlay_FG_IdleSubmissions"),
+			renderer.PresentationRate().idleSubmissions).c_str());
+		if (renderer.IsWaitingForNewContent()) ImGui::TextUnformatted(_GetResourceString(L"Overlay_FG_Waiting").c_str());
+	}
 	ImGui::PopTextWrapPos();
 
 	const std::vector<const EffectDesc*>& effectDescs = renderer.ActiveEffectDescs();

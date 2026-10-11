@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Microsoft ResX Schema
@@ -1372,7 +1372,7 @@
   <data name="Motion_Nvidia_4" xml:space="preserve"><value>High quality</value></data>
   <data name="Motion_Amd_0" xml:space="preserve"><value>Performance</value></data>
   <data name="Motion_Amd_1" xml:space="preserve"><value>Quality</value></data>
-  <data name="Overlay_Profiler_FrameRateWithFG" xml:space="preserve"><value>Frame rate (total / real)</value></data>
+  <data name="Overlay_Profiler_FrameRateWithFG" xml:space="preserve"><value>Frame rate (content / real)</value></data>
   <data name="Overlay_EffectParameters_NotApplied" xml:space="preserve"><value>Not applied (current: {0})</value></data>
   <data name="Overlay_EffectParameters_ApplyPending" xml:space="preserve"><value>{0} change(s) not yet applied</value></data>
   <data name="EffectParam_DLSS_DLSS_SR_opticalFlowMethod_Label" xml:space="preserve"><value>Optical Flow Method</value></data>
@@ -1674,8 +1674,6 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_2" xml:space="preserve"><value>Optical Flow Accumulation</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_3" xml:space="preserve"><value>Optical Flow Accumulation+</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Option_4" xml:space="preserve"><value>Low-frequency Temporal Reconstruction</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>Duplicate Frame Filtering</value></data>
-  <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>Duplicate Frame Filtering</value></data>
   <data name="EffectParam_xBR_xBR_2x_paramXbrYWeight_Label" xml:space="preserve"><value>Y Weight</value></data>
   <data name="EffectParam_xBR_xBR_2x_paramXbrEqThreshold_Label" xml:space="preserve"><value>Eq Threshold</value></data>
   <data name="EffectParam_xBR_xBR_2x_paramXbrLv2Coefficient_Label" xml:space="preserve"><value>LV2 Coefficient</value></data>
@@ -1786,7 +1784,7 @@
   <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>Selects automatic or custom supplemental cursor refresh.</value></data>
   <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>Sets the target minimum rate for supplemental cursor refresh.</value></data>
   <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>Variable refresh rate, duplicate detection and idle redraw.</value></data>
-  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>Redraw unchanged content at the selected frame rate.</value></data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>Redraw unchanged content at the selected rate. FG reuses cached output after about 0.5 seconds without new content, without generating frames.</value></data>
   <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>Sets the target rate for idle redraw.</value></data>
   <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>Restores content 60, supplemental cursor 60, idle redraw 30 FPS, and Front Edge.</value></data>
   <data name="FrameRefresh_Content_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Content frame rate</value></data>
@@ -1958,7 +1956,6 @@
   <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>Saved {0}; {1} could not be saved. See error details.</value></data>
   <data name="EffectParam_NvidiaVFX_Upscale_sharpness_Label" xml:space="preserve"><value>Sharpness</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_automaticShotDetection_Label" xml:space="preserve"><value>Automatic shot detection</value></data>
-  <data name="EffectParam_NvidiaVFX_VFG_duplicateFrameFiltering_Label" xml:space="preserve"><value>Duplicate frame filtering</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_model_Label" xml:space="preserve"><value>Model</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_model_Option_0" xml:space="preserve"><value>Performance</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_model_Option_1" xml:space="preserve"><value>Balanced</value></data>
@@ -2058,11 +2055,9 @@
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_3" xml:space="preserve"><value>Quality</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_4" xml:space="preserve"><value>High Quality (High Cost)</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Label" xml:space="preserve"><value>Optical Flow Method</value></data>
-  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_0" xml:space="preserve"><value>None</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_1" xml:space="preserve"><value>AMDOF</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Option_2" xml:space="preserve"><value>NVOF</value></data>
   <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Option_5" xml:space="preserve"><value>Highest Quality (Very High Cost)</value></data>
-  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_duplicateFrameFiltering_Label" xml:space="preserve"><value>Duplicate Frame Filtering</value></data>
   <data name="FrameRefresh_CursorStrategy.Header" xml:space="preserve"><value>Refresh strategy</value></data>
   <data name="Rtss_Management.Header" xml:space="preserve"><value>Manage</value></data>
   <data name="Rtss_Recheck.Content" xml:space="preserve"><value>Check again</value></data>
@@ -2110,4 +2105,8 @@
   <data name="Rtss_ManagementCollapsed" xml:space="preserve"><value>Management details collapsed</value></data>
   <data name="Profile_InitialScale_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Initial scale factor</value></data>
   <data name="Profile_CursorScale_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Scale factor</value></data>
+  <data name="Overlay_FG_FrameRateHelp" xml:space="preserve"><value>Content output / real input FPS. R/s counts successful idle redraw submissions separately; it is not generated FPS or measured display scanout.</value></data>
+  <data name="Overlay_FG_IdleSubmissions" xml:space="preserve"><value>Idle redraw submissions/s (R/s)</value></data>
+  <data name="Overlay_FG_Waiting" xml:space="preserve"><value>Waiting for new content</value></data>
+  <data name="Overlay_FG_GeneratedRate" xml:space="preserve"><value>Reported generated FPS</value></data>
 </root>

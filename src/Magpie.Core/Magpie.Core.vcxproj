@@ -39,6 +39,9 @@
     <Error Condition="'$(Platform)' != 'x64'" Text="The current NVIDIA VFX component set is Windows x64 only." />
     <Error Condition="!Exists('$(VFXIncludeDir)\nvVideoEffects.h') Or !Exists('$(VFXProxyDir)\nvVideoEffectsProxy.cpp') Or !Exists('$(VFXSdkDir)\features\nvvfxvideoframegeneration\include\nvVFXVideoFrameGeneration.h')" Text="NVIDIA VFX needs the matched Core 1.3.0.0 development kit and requested feature packages. Set VFXSdkDir to core/VideoFX." />
   </Target>
+  <Target Name="CheckFSR3FGOpticalFlow" BeforeTargets="PrepareForBuild" Condition="'$(EnableFSR3FrameGeneration)' == 'true' And '$(Platform)' == 'x64'">
+    <Error Condition="'$(EnableAmdOpticalFlow)' != 'true'" Text="FSR3 FrameGeneration requires AMDOF (default Quality). EnableAmdOpticalFlow=false is not supported when FSR3 FG is enabled." />
+  </Target>
   <Target Name="CheckNvapiHeaders" BeforeTargets="PrepareForBuild" Condition="$(EnableDLSSFrameGeneration) And '$(Platform)' == 'x64'">
     <Error Condition="!Exists('$(NvapiSdkDir)\nvapi.h') Or !Exists('$(NvapiSdkDir)\nvapi_interface.h')" Text="DLSS FG Reflex needs the official NVAPI headers. Run scripts/Fetch-NvapiHeaders.ps1 or set NvapiSdkDir to that SDK directory, then rebuild." />
   </Target>
@@ -186,6 +189,8 @@
     <ClInclude Include="FSR2Upscaler.h" />
     <ClInclude Include="FSR3FGPresenter.h" />
     <ClInclude Include="FSR3FGPolicy.h" />
+    <ClInclude Include="IdlePresentationClock.h" />
+    <ClInclude Include="include\FrameGenerationParameters.h" />
     <ClInclude Include="FSR3FGMotion.h" />
     <ClInclude Include="FrontendMotionTexture.h" />
     <ClInclude Include="PresenterFailure.h" />

@@ -24,6 +24,44 @@ $sourceRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $workspaceRoot = Split-Path $sourceRoot -Parent
 $releaseRoot = [System.IO.Path]::GetFullPath((Join-Path $workspaceRoot "release"))
 
+$featureOptions = [ordered]@{}
+$buildOptionsPath = Join-Path $sourceRoot "src\BuildOptions.props"
+[xml]$buildOptions = Get-Content -LiteralPath $buildOptionsPath
+$supportedFeatureOptions = @{}
+$buildOptions.Project.PropertyGroup.ChildNodes | Where-Object {
+    $_.Name -like "Enable*"
+} | ForEach-Object {
+    $supportedFeatureOptions[$_.Name] = $true
+    if ($_.InnerText -in @("true", "false")) {
+        $featureOptions[$_.Name] = [string]$_.InnerText
+    }
+}
+$userOptionsPath = Join-Path $sourceRoot "src\BuildOptions.props.user"
+if (Test-Path -LiteralPath $userOptionsPath) {
+    [xml]$userOptions = Get-Content -LiteralPath $userOptionsPath
+    $properties = $userOptions.Project.PropertyGroup.ChildNodes | Where-Object {
+        $_.Name -like "Enable*" -and $supportedFeatureOptions.ContainsKey($_.Name)
+    }
+    foreach ($property in $properties) {
+        $featureOptions[$property.Name] = [string]$property.InnerText
+    }
+}
+# Match the compatibility defaults as well as explicit user overrides.
+if (!$featureOptions.Contains("EnableDLSSSR") -and
+    $featureOptions.Contains("EnableDLSSZeroMV")) {
+    $featureOptions["EnableDLSSSR"] = $featureOptions["EnableDLSSZeroMV"]
+}
+if (!$featureOptions.Contains("EnableAmdOpticalFlow")) {
+    $featureOptions["EnableAmdOpticalFlow"] = if ($featureOptions["EnableFSR3FrameGeneration"] -eq 'true') {
+        'true'
+    } else { $featureOptions["EnableFSR3ZeroMV"] }
+}
+if ($Platform -eq 'x64' -and $featureOptions["EnableFSR3FrameGeneration"] -eq 'true' -and
+    $featureOptions["EnableAmdOpticalFlow"] -ne 'true') {
+    throw 'FSR3 FG requires EnableAmdOpticalFlow=true, including -SkipBuild packages.'
+}
+
+
 function Find-MSBuild {
     $command = Get-Command msbuild.exe -ErrorAction SilentlyContinue
     if ($command) {
@@ -362,39 +400,6 @@ foreach ($guide in @(
     @{ source = 'docs/experimental/design/XESSFG-COMPATIBILITY-NOTICE.md'; target = 'XESSFG-COMPATIBILITY-NOTICE.md' }
 )) {
     Copy-Item -LiteralPath (Join-Path $sourceRoot $guide.source) -Destination (Join-Path $stagingDir $guide.target)
-}
-
-$featureOptions = [ordered]@{}
-$buildOptionsPath = Join-Path $sourceRoot "src\BuildOptions.props"
-[xml]$buildOptions = Get-Content -LiteralPath $buildOptionsPath
-$supportedFeatureOptions = @{}
-$buildOptions.Project.PropertyGroup.ChildNodes | Where-Object {
-    $_.Name -like "Enable*"
-} | ForEach-Object {
-    $supportedFeatureOptions[$_.Name] = $true
-    if ($_.InnerText -in @("true", "false")) {
-        $featureOptions[$_.Name] = [string]$_.InnerText
-    }
-}
-$userOptionsPath = Join-Path $sourceRoot "src\BuildOptions.props.user"
-if (Test-Path -LiteralPath $userOptionsPath) {
-    [xml]$userOptions = Get-Content -LiteralPath $userOptionsPath
-    $properties = $userOptions.Project.PropertyGroup.ChildNodes | Where-Object {
-        $_.Name -like "Enable*" -and $supportedFeatureOptions.ContainsKey($_.Name)
-    }
-    foreach ($property in $properties) {
-        $featureOptions[$property.Name] = [string]$property.InnerText
-    }
-}
-# Match the compatibility defaults as well as explicit user overrides.
-if (!$featureOptions.Contains("EnableDLSSSR") -and
-    $featureOptions.Contains("EnableDLSSZeroMV")) {
-    $featureOptions["EnableDLSSSR"] = $featureOptions["EnableDLSSZeroMV"]
-}
-if (!$featureOptions.Contains("EnableAmdOpticalFlow") -and
-    $featureOptions.Contains("EnableFSR3ZeroMV")) {
-    $featureOptions["EnableAmdOpticalFlow"] =
-        $featureOptions["EnableFSR3ZeroMV"]
 }
 
 $featureOptions["EnableFrameTrace"] = if ($EnableFrameTrace) { "true" } else { "false" }

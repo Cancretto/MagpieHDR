@@ -1,22 +1,13 @@
 // Experimental fixed 2x SDR marker. FSR3FGPresenter processes final color.
-// External motion defaults to None; FSR internal optical flow still runs.
+// External motion is required; default AMDOF Quality supplements FSR internal OF.
 
 //!MAGPIE EFFECT
 //!VERSION 4
 //!SORT_NAME FSR3_FrameGeneration
 
 //!PARAMETER
-//!LABEL Duplicate Frame Filtering
-//!DEFAULT 0
-//!MIN 0
-//!MAX 1
-//!STEP 1
-int duplicateFrameFiltering;
-
-//!PARAMETER
 //!LABEL Optical Flow Method
-//!DEFAULT 0
-//!OPTION 0 None
+//!DEFAULT 1
 //!OPTION 1 AMDOF
 //!OPTION 2 NVOF
 int opticalFlowMethod;
