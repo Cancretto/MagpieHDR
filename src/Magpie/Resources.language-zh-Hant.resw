@@ -1802,7 +1802,7 @@
   <data name="HdrParameter_PairSource" xml:space="preserve"><value>使用第 {} 個效果器（HDR → SDR）的配對參數還原。</value></data>
 
   <data name="Rtss_TargetLimit.Header" xml:space="preserve"><value>Target application frame rate limit</value></data>
-  <data name="Rtss_TargetLimit.Description" xml:space="preserve"><value>通過 RTSS 限制程序幀率。</value></data>
+  <data name="Rtss_Takeover.Description" xml:space="preserve"><value>通過 RTSS 限制程序幀率。</value></data>
   <data name="Rtss_Scope_None.Content" xml:space="preserve"><value>Do not manage RTSS profiles</value></data>
   <data name="Rtss_Scope_Global.Content" xml:space="preserve"><value>Modify global profile</value></data>
   <data name="Rtss_Scope_Target.Content" xml:space="preserve"><value>Modify target application profile</value></data>
@@ -1923,7 +1923,7 @@
     <value>幀率控制</value>
   </data>
   <data name="FrameRefresh_RateGroup.Description" xml:space="preserve">
-    <value>設置內容幀率與目標程序限幀。</value>
+    <value>設定內容畫面的處理幀率與節奏。</value>
   </data>
   <data name="FrameRefresh_StaticGroup.Header" xml:space="preserve">
     <value>靜态畫面</value>
@@ -1935,7 +1935,7 @@
     <value>同步限制目標程序</value>
   </data>
   <data name="Rtss_SimpleSync.Description" xml:space="preserve">
-    <value>通過 RTSS 將目標程序限制到內容幀率。</value>
+    <value>跟隨內容幀率，停止縮放後恢復原設定。</value>
   </data>
   <data name="Rtss_SimpleSync_Input.OnContent" xml:space="preserve">
     <value>開</value>
@@ -1999,7 +1999,7 @@
   <data name="FrameRefresh_CursorStrategy.Header" xml:space="preserve"><value>重新整理策略</value></data>
   <data name="Rtss_Management.Header" xml:space="preserve"><value>管理</value></data>
   <data name="Rtss_Recheck.Content" xml:space="preserve"><value>重新偵測</value></data>
-  <data name="Rtss_ProgramLabel.Text" xml:space="preserve"><value>RTSS 程式</value></data>
+  <data name="Rtss_ProgramLabel.Text" xml:space="preserve"><value>RTSS</value></data>
   <data name="Rtss_SelfLabel.Text" xml:space="preserve"><value>Magpie 設定</value></data>
   <data name="Rtss_Title_WaitingContent" xml:space="preserve"><value>等待固定內容幀率</value></data>
   <data name="Rtss_Detail_Disabled" xml:space="preserve"><value>不接管目標程式幀率。</value></data>

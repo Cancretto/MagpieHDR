@@ -22,7 +22,7 @@ root = ET.fromstring(read("src/Magpie/ProfilePage.xaml"))
 nodes = list(root.iter())
 uids = {n.get(x + "Uid"): n for n in nodes if n.get(x + "Uid")}
 group = next(n for n in nodes if n.get(x+"Name") == "FrameRefreshGroup")
-rtss = uids["FrameRefresh_RateGroup"]
+rtss = uids["Rtss_Takeover"]
 check([n.get(x+"Uid") for n in uids["Rtss_Mode_Input"]] == ["Rtss_Scope_None", "Rtss_Rate_Sync", "Rtss_Rate_Custom"], "combined management/rate selector")
 check([n.get(x+"Uid") for n in uids["Rtss_Scope_Input"]] == ["Rtss_Scope_Global", "Rtss_Scope_Target"], "scope only contains actual scopes")
 check([n.get(x+"Uid") for n in uids["Rtss_ExitPolicy_Input"]] == ["Rtss_Exit_Keep", "Rtss_Exit_Restore"], "exit semantics preserved")
@@ -45,11 +45,13 @@ items = next(n for n in rtss if n.tag.endswith("SettingsExpander.Items"))
 check(status in list(items) and all(n in list(items) for n in details), "status and details share direct native settings rows")
 check(all(n.get("Style") == "{StaticResource ProfileItemStyle}" for n in [status]+details), "continuous group surface")
 check(sum(n.tag.endswith("Button") for row in details for n in row.iter()) == 4, "recheck/self init/tool entries remain available")
-check(status.get(x+"Uid") == "Rtss_Takeover", "fixed feature title independent of current state")
+check(rtss.tag.endswith("SettingsExpander") and "Visibility" not in rtss.attrib, "fixed RTSS feature group available in both modes")
+check(status.get(x+"Uid") is None, "status does not repeat the fixed feature title")
+check(uids["Rtss_TargetLimit"] in list(items) and uids["Rtss_SimpleSync"] in list(items), "simple and advanced target rules belong to RTSS")
 presentation = status
 texts = {n.get("Text") for n in presentation.iter()}
 check("{x:Bind ViewModel.RtssStatusTitle, Mode=OneWay}" in texts and
-      "{x:Bind ViewModel.RtssStatusDescription, Mode=OneWay}" in texts, "independent status title and detail")
+      status.get("Description") == "{x:Bind ViewModel.RtssStatusDescription, Mode=OneWay}", "independent status title and detail")
 check(any(n.get("AutomationProperties.LiveSetting") == "Polite" for n in presentation.iter()), "accessible status updates")
 
 idl = read("src/Magpie/ProfileViewModel.idl")

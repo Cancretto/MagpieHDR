@@ -16,9 +16,9 @@ profile = ET.fromstring(read("src/Magpie/ProfilePage.xaml"))
 group = next(n for n in profile.iter() if n.get(x + "Name") == "FrameRefreshGroup")
 uids = {n.get(x + "Uid"): n for n in group.iter() if n.get(x + "Uid")}
 sections = [n for n in group if n.tag in (local+"SettingsExpander", local+"SettingsCard")]
-assert [n.get(x+"Uid") for n in sections] == ["FrameRefresh_RateGroup", "FrameRefresh_StaticGroup", "FrameRefresh_Cursor", "FrameRefresh_VRR"]
-assert sections[2].get("Visibility") == "{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}"
-assert "Visibility" not in sections[3].attrib
+assert [n.get(x+"Uid") for n in sections] == ["FrameRefresh_RateGroup", "Rtss_Takeover", "FrameRefresh_StaticGroup", "FrameRefresh_Cursor", "FrameRefresh_VRR"]
+assert sections[3].get("Visibility") == "{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}"
+assert "Visibility" not in sections[1].attrib and "Visibility" not in sections[4].attrib
 for section in sections:
     assert any(n.tag.endswith(".HeaderIcon") and len(n) == 1 for n in section), "group icon missing"
 for mode, number in (("FrameRefresh_Content_Input", "FrameRefresh_ContentRate_Input"),
@@ -28,7 +28,8 @@ for mode, number in (("FrameRefresh_Content_Input", "FrameRefresh_ContentRate_In
     pair = next(n for n in group.iter() if uids[mode] in list(n))
     assert pair.tag.endswith("Grid") and uids[number] in list(pair.iter()), "mode and rate share one responsive editor"
     assert pair.get("Loaded") == "PairEditor_Loaded" and pair.get("SizeChanged") == "PairEditor_SizeChanged"
-header_actions = next(n for n in group.iter() if uids["FrameRefresh_Mode_Input"] in list(n))
+header_actions = next(n for n in group.iter() if n.get(x+"Name") == "FrameRefreshHeaderActions")
+assert uids["FrameRefresh_Mode_Input"] in list(header_actions.iter())
 assert uids["FrameRefresh_ResetButton"] in list(header_actions), "reset belongs beside mode selection"
 assert "Visibility" not in uids["FrameRefresh_ResetButton"].attrib, "reset is available in both modes"
 assert uids["FrameRefresh_Mode_Input"].tag.endswith("ListBox") and uids["FrameRefresh_Mode_Input"].get("SelectionMode") == "Single"
