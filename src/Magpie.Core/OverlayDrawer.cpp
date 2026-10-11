@@ -1515,7 +1515,9 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	const size_t configuredEffectCount = std::min(
 		ScalingWindow::Get().Options().effects.size(), descriptions.size());
 	auto frameSyncChangeCount = [&]() noexcept -> uint32_t {
-		return uint32_t(_draftFrameRefresh != ScalingWindow::Get().Options().frameRefresh);
+		const auto& options = ScalingWindow::Get().Options();
+		return uint32_t(_draftFrameRefresh != options.frameRefresh ||
+			_parameterSessionSnapshot.simpleFrameRefresh != options.isSimpleFrameRefresh);
 	};
 	uint32_t restartChangeCount = frameSyncChangeCount();
 	for (size_t effectIdx = 0; effectIdx < configuredEffectCount; ++effectIdx) {
@@ -1663,39 +1665,48 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 		}
 		return changed;
 	};
-	static constexpr const wchar_t* contentKeys[]{ L"FrameRefresh_Source/Content", L"FrameRefresh_Auto/Content", L"FrameRefresh_Custom/Content" };
+	static constexpr const wchar_t* contentKeys[]{ L"FrameRefresh_Source/Content", L"FrameRefresh_Custom/Content" };
 	static constexpr const wchar_t* pacingKeys[]{ L"FrameSync_Mode_FrontEdge/Content", L"FrameSync_Mode_Async/Content", L"FrameSync_Mode_Reflex/Content" };
 	static constexpr const wchar_t* cursorKeys[]{ L"FrameRefresh_Responsive/Content", L"FrameRefresh_OriginalOnly/Content", L"FrameRefresh_Supplement/Content" };
 	static constexpr const wchar_t* supplementKeys[]{ L"FrameRefresh_Auto/Content", L"FrameRefresh_Custom/Content" };
 	static constexpr const wchar_t* idleKeys[]{ L"FrameRefresh_Off/Content", L"FrameRefresh_Custom/Content" };
-	if (refreshChoice("##contentMode", L"FrameRefresh_Content/Header", _draftFrameRefresh.contentMode, contentKeys))
+	// The toolbar follows the running session; mode selection belongs to settings.
+	const bool simpleRefresh = ScalingWindow::Get().Options().isSimpleFrameRefresh;
+	int contentMode = _draftFrameRefresh.contentMode == ContentFrameRateMode::Custom ? 1 : 0;
+	if (refreshChoice("##contentMode", L"FrameRefresh_Content/Header", contentMode, contentKeys)) {
+		_draftFrameRefresh.contentMode = contentMode == 1 ? ContentFrameRateMode::Custom : ContentFrameRateMode::Source;
 		_draftFrameRefresh.ContentEdited();
-	ImGui::BeginDisabled(_draftFrameRefresh.contentMode == ContentFrameRateMode::Source);
-	if (refreshChoice("##pacing", L"FrameRefresh_Pacing/Header", _draftFrameRefresh.pacing, pacingKeys))
-		_draftFrameRefresh.ContentEdited();
-	ImGui::EndDisabled();
+	}
+	if (!simpleRefresh) {
+		ImGui::BeginDisabled(_draftFrameRefresh.contentMode == ContentFrameRateMode::Source);
+		if (refreshChoice("##pacing", L"FrameRefresh_Pacing/Header", _draftFrameRefresh.pacing, pacingKeys))
+			_draftFrameRefresh.ContentEdited();
+		ImGui::EndDisabled();
+	}
 	if (_draftFrameRefresh.contentMode == ContentFrameRateMode::Custom &&
 		rate("##contentRate", L"FrameRefresh_ContentRate/Header", _draftFrameRefresh.contentRate))
 		_draftFrameRefresh.ContentEdited();
-	if (refreshChoice("##cursorMode", L"FrameRefresh_Cursor/Header", _draftFrameRefresh.cursorMode, cursorKeys))
-		_draftFrameRefresh.CursorEdited();
-	if (_draftFrameRefresh.cursorMode == CursorRefreshMode::Supplement) {
-		refreshChoice("##supplementMode", L"FrameRefresh_CursorSupplement/Header", _draftFrameRefresh.cursorSupplement, supplementKeys);
-		if (_draftFrameRefresh.cursorSupplement == CursorSupplementMode::Custom)
-			rate("##cursorRate", L"FrameRefresh_CursorRate/Header", _draftFrameRefresh.cursorRate);
+	if (!simpleRefresh) {
+		if (refreshChoice("##cursorMode", L"FrameRefresh_Cursor/Header", _draftFrameRefresh.cursorMode, cursorKeys))
+			_draftFrameRefresh.CursorEdited();
+		if (_draftFrameRefresh.cursorMode == CursorRefreshMode::Supplement) {
+			refreshChoice("##supplementMode", L"FrameRefresh_CursorSupplement/Header", _draftFrameRefresh.cursorSupplement, supplementKeys);
+			if (_draftFrameRefresh.cursorSupplement == CursorSupplementMode::Custom)
+				rate("##cursorRate", L"FrameRefresh_CursorRate/Header", _draftFrameRefresh.cursorRate);
+		}
 	}
-	if (ImGui::CollapsingHeader(_GetResourceString(L"FrameRefresh_Advanced/Header").c_str())) {
-		refreshChoice("##idleMode", L"FrameRefresh_Idle/Header", _draftFrameRefresh.idleEnabled, idleKeys);
-		if (_draftFrameRefresh.idleEnabled) rate("##idleRate", L"FrameRefresh_IdleRate/Header", _draftFrameRefresh.idleRate);
-		ImGui::TextWrapped("%s", _GetResourceString(L"FrameRefresh_Idle/Description").c_str());
-	}
-	if (_draftFrameRefresh.legacyContentLimit > 0 || _draftFrameRefresh.legacySourceTarget >= 0 || _draftFrameRefresh.legacyLimiterOnly || _draftFrameRefresh.legacyResponsiveMinimum)
-		ImGui::TextWrapped("%s", _GetResourceString(L"FrameRefresh_LegacyNotice").c_str());
-	if (_draftFrameRefresh.legacyContentLimit > 0) ImGui::TextWrapped("%s", fmt::format(
-		fmt::runtime(_GetResourceString(L"FrameRefresh_LegacyCapNotice")), _draftFrameRefresh.legacyContentLimit).c_str());
-	if (ImGui::Button(_GetResourceString(L"FrameRefresh_ResetButton/Content").c_str())) {
-		_draftFrameRefresh = {};
-		parameterEdited = needRedraw = true;
+	refreshChoice("##idleMode", L"FrameRefresh_Idle/Header", _draftFrameRefresh.idleEnabled, idleKeys);
+	if (_draftFrameRefresh.idleEnabled) rate("##idleRate", L"FrameRefresh_IdleRate/Header", _draftFrameRefresh.idleRate);
+	ImGui::TextWrapped("%s", _GetResourceString(L"FrameRefresh_Idle/Description").c_str());
+	if (!simpleRefresh) {
+		if (_draftFrameRefresh.legacyContentLimit > 0 || _draftFrameRefresh.legacySourceTarget >= 0 || _draftFrameRefresh.legacyLimiterOnly || _draftFrameRefresh.legacyResponsiveMinimum)
+			ImGui::TextWrapped("%s", _GetResourceString(L"FrameRefresh_LegacyNotice").c_str());
+		if (_draftFrameRefresh.legacyContentLimit > 0) ImGui::TextWrapped("%s", fmt::format(
+			fmt::runtime(_GetResourceString(L"FrameRefresh_LegacyCapNotice")), _draftFrameRefresh.legacyContentLimit).c_str());
+		if (ImGui::Button(_GetResourceString(L"FrameRefresh_ResetButton/Content").c_str())) {
+			_draftFrameRefresh = {};
+			parameterEdited = needRedraw = true;
+		}
 	}
 	ImGui::PopID();
 	auto getDraftValue = [&](size_t effectIdx, const EffectDesc& description,

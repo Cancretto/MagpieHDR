@@ -1212,4 +1212,9 @@
   <data name="Message_ScreenshotBusy" xml:space="preserve"><value>A screenshot is being saved. Try again when it finishes.</value></data>
   <data name="Message_ScreenshotPairSaved" xml:space="preserve"><value>Screenshots saved: {0} and {1}</value></data>
   <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>Saved {0}; {1} could not be saved. See error details.</value></data>
+  <data name="FrameRefresh_Mode.Header" xml:space="preserve"><value>Ayar modu</value></data>
+  <data name="FrameRefresh_Mode.Description" xml:space="preserve"><value>Basit mod diğer yenileme ayarlarını yönetir. Ölçeklendirme yeniden başlatıldığında tüm profillere uygulanır.</value></data>
+  <data name="FrameRefresh_Mode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Ayar modu</value></data>
+  <data name="FrameRefresh_Mode_Simple.Content" xml:space="preserve"><value>Basit</value></data>
+  <data name="FrameRefresh_Mode_Advanced.Content" xml:space="preserve"><value>Gelişmiş</value></data>
 </root>

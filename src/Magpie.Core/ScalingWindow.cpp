@@ -116,7 +116,7 @@ ScalingError ScalingWindow::_StartImpl(HWND hwndSrc, bool& rendererInitializatio
 	}
 	if (!_options.parameterSession) {
 		_options.parameterSession = std::make_shared<EffectParameterSessionState>(
-			_options.effects, _options.frameRefresh);
+			_options.effects, _options.frameRefresh, _options.isSimpleFrameRefresh);
 	}
 	Logger::Get().Info(fmt::format("缩放开始\n\t程序版本: {}\n\tOS 版本: {}\n\t管理员: {}",
 #ifdef MP_VERSION_STRING
@@ -804,7 +804,7 @@ void ScalingWindow::RestartWithEffectParameters(
 	_isSrcRepositioning = false;
 	_options.effects = std::move(effects);
 	// The backend has joined: update the immutable pacing snapshot only now.
-	ApplyFrameRefreshSettings(_options, frameRefresh);
+	ApplyFrameRefreshSettings(_options, frameRefresh, _options.isSimpleFrameRefresh);
 	_options.parameterSession->Desired(_options.effects);
 	Start(hwndSource, std::move(_options));
 	if (Handle() && _renderer) _renderer->RestoreOverlayState(overlayState);

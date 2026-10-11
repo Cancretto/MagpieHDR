@@ -1212,4 +1212,9 @@
   <data name="Message_ScreenshotBusy" xml:space="preserve"><value>A screenshot is being saved. Try again when it finishes.</value></data>
   <data name="Message_ScreenshotPairSaved" xml:space="preserve"><value>Screenshots saved: {0} and {1}</value></data>
   <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>Saved {0}; {1} could not be saved. See error details.</value></data>
+  <data name="FrameRefresh_Mode.Header" xml:space="preserve"><value>அமைப்பு முறை</value></data>
+  <data name="FrameRefresh_Mode.Description" xml:space="preserve"><value>எளிய முறை மற்ற புதுப்பிப்பு அமைப்புகளை நிர்வகிக்கிறது. அளவிடுதலை மீண்டும் தொடங்கியதும் எல்லா சுயவிவரங்களுக்கும் பொருந்தும்.</value></data>
+  <data name="FrameRefresh_Mode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>அமைப்பு முறை</value></data>
+  <data name="FrameRefresh_Mode_Simple.Content" xml:space="preserve"><value>எளிய</value></data>
+  <data name="FrameRefresh_Mode_Advanced.Content" xml:space="preserve"><value>மேம்பட்ட</value></data>
 </root>

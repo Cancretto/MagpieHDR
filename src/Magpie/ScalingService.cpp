@@ -85,6 +85,12 @@ void ScalingService::Initialize() {
 		if (_activeFrameSyncProfile.lock() != profile.runtimeIdentity) return;
 		if (_scalingRuntime) _scalingRuntime->UpdateFrameRefreshSettings(profile.frameRefresh);
 	});
+	_frameRefreshModeChangedRevoker = AppSettings::Get().FrameRefreshModeChanged(auto_revoke, [this] {
+		auto& settings = AppSettings::Get();
+		const Profile* profile = FindProfileByIdentity(settings.DefaultProfile(), settings.Profiles(), _activeFrameSyncProfile);
+		if (profile && _scalingRuntime)
+			_scalingRuntime->UpdateFrameRefreshSettings(profile->frameRefresh, settings.IsSimpleFrameRefresh());
+	});
 	_rtssChangedRevoker = ProfileService::Get().RtssSettingsChanged(auto_revoke, [](const Profile& profile) {
 		// Page edits are saved for the next start. Explicitly leaving management
 		// releases the active session using the policy captured when it began.
@@ -105,6 +111,7 @@ void ScalingService::Uninitialize() {
 	RtssService::Get().End();
 	_frameSyncChangedRevoker.Revoke();
 	_rtssChangedRevoker.Revoke();
+	_frameRefreshModeChangedRevoker.Revoke();
 	_toolbarShortcutsChangedRevoker.Revoke();
 	_scalingRuntime.reset();
 	RtssService::Get().Uninitialize();
@@ -477,7 +484,8 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 
 	options.graphicsCardId = profile.graphicsCardId;
 	options.captureMethod = profile.captureMethod;
-	ApplyFrameRefreshSettings(options, profile.frameRefresh);
+	options.isSimpleFrameRefresh = AppSettings::Get().IsSimpleFrameRefresh();
+	ApplyFrameRefreshSettings(options, profile.frameRefresh, options.isSimpleFrameRefresh);
 	options.multiMonitorUsage = profile.multiMonitorUsage;
 	options.preferredMonitorId = profile.preferredMonitorId;
 	options.destAlignment = profile.destAlignment;
@@ -572,8 +580,9 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 	options.IsWarningsAreErrors(settings.IsWarningsAreErrors());
 	options.IsAllowScalingMaximized(settings.IsAllowScalingMaximized());
 	options.IsSimulateExclusiveFullscreen(settings.IsSimulateExclusiveFullscreen());
-	options.duplicateFrameDetectionMode = settings.DuplicateFrameDetectionMode();
-	options.IsStatisticsForDynamicDetectionEnabled(settings.IsStatisticsForDynamicDetectionEnabled());
+	options.duplicateFrameDetectionMode = options.isSimpleFrameRefresh ?
+		DuplicateFrameDetectionMode::Never : settings.DuplicateFrameDetectionMode();
+	options.IsStatisticsForDynamicDetectionEnabled(!options.isSimpleFrameRefresh && settings.IsStatisticsForDynamicDetectionEnabled());
 	options.IsInlineParams(settings.IsInlineParams());
 	options.IsFP16Disabled(settings.IsFP16Disabled());
 	options.frameSyncProfileIdentity = profile.runtimeIdentity;
@@ -660,7 +669,8 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 		}
 	};
 
-	const auto rtssSession = RtssService::Get().Begin(hWnd, profile.runtimeIdentity, profile.rtss);
+	const auto rtssSession = RtssService::Get().Begin(hWnd, profile.runtimeIdentity,
+		options.isSimpleFrameRefresh ? RtssSettings{} : profile.rtss);
 	options.contentTargetChanged = [rtssSession](HWND source, bool fixed, double baseRate, bool constrained) {
 		App::Get().Dispatcher().TryEnqueue([rtssSession, source, fixed, baseRate, constrained] {
 			RtssService::Get().ContentTargetChanged(rtssSession, source, fixed, baseRate, constrained);
@@ -861,6 +871,12 @@ void ScalingService::_HandleEffectParametersRequest(
 		return;
 	}
 	request.saveState->Complete(request.revision, EffectParametersSaveError::None);
+	if (sessionOptions.isSimpleFrameRefresh != settings.IsSimpleFrameRefresh()) {
+		// Rebuild all session options, including duplicate detection and the RTSS
+		// lifecycle, instead of reusing the old mode's immutable runtime snapshot.
+		_StartScale(request.hwndSource, *frameSyncProfile, sessionOptions.IsWindowedMode(), true);
+		return;
+	}
 	std::vector<EffectOption> effects;
 	for (const EffectItem& item : mode.effects) effects.push_back(static_cast<EffectOption>(item));
 	if (!_scalingRuntime->RestartWithEffectParameters(request.hwndSource,

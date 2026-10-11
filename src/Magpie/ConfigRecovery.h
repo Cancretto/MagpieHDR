@@ -133,6 +133,7 @@ inline Plan Prepare(std::string_view source, std::string_view backup,
 	enumeration(doc, "frameSyncMode", "", 3);
 	enumeration(doc, "theme", "", 3);
 	enumeration(doc, "duplicateFrameDetectionMode", "", 3);
+	check(doc, "simpleFrameRefresh", "", [](const auto& value) { return value.IsBool(); });
 	if (doc.HasMember("windowPos")) {
 		auto& pos = doc["windowPos"];
 		for (const char* key : { "centerX", "centerY", "x", "y" })

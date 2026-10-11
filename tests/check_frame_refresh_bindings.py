@@ -21,9 +21,16 @@ if rtss is not None:
     group.remove(rtss)
 uids = [n.get(x + "Uid", "") for n in group.iter()]
 assert uids.index("FrameRefresh_Content") < uids.index("FrameRefresh_Pacing") < uids.index("FrameRefresh_ContentRate")
-advanced = next(n for n in group.iter() if n.get(x + "Uid") == "FrameRefresh_Advanced")
-assert advanced.get("IsExpanded") == "False"
-assert not any("Pacing" in n.get(x + "Uid", "") for n in advanced.iter())
+assert not any(n.get(x + "Uid") == "FrameRefresh_Advanced" for n in group.iter())
+simple = [n for n in group if n.get("Visibility") == "{x:Bind ViewModel.IsSimpleFrameRefresh, Mode=OneWay}"]
+assert [n.get(x + "Name") for n in simple] == ["SimpleContentCard", "SimpleIdleCard"]
+# The RTSS card was removed above only to scope the existing resource checks.
+assert rtss is not None and rtss.get("Visibility") == "{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}"
+for uid in ("FrameRefresh_Content", "FrameRefresh_Cursor", "FrameRefresh_VRR", "Home_Advanced_DeveloperOptions_DuplicateFrameDetection", "FrameRefresh_Idle"):
+    assert any(n.get(x + "Uid") == uid and n.get("Visibility") == "{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}" for n in group), uid
+for n in group.iter():
+    if n.get(x + "Uid") == "FrameRefresh_Content_Input":
+        assert [c.get(x + "Uid") for c in n] == ["FrameRefresh_Source", "FrameRefresh_Custom"]
 assert next(n for n in group.iter() if n.get(x + "Uid") == "FrameRefresh_Pacing_Input").get("IsEnabled") == "{x:Bind ViewModel.IsContentPacingEnabled, Mode=OneWay}"
 for uid, property_name in {
     "FrameRefresh_ContentRate": "ShowContentFrameRate",
@@ -50,10 +57,15 @@ for name in names:
     assert name in idl and name in header and "ProfileViewModel::" + name + "(" in vm, name
     if name != "ResetFrameRefresh":
         assert f'RaisePropertyChanged(L"{name}")' in vm, name
-for lang in ("en-US", "zh-Hans", "zh-Hant"):
+fallback_root = ET.fromstring(read("src/Magpie/Resources.language-en-US.resw"))
+fallback = {n.get("name"): n.findtext("value") for n in fallback_root.findall("data")}
+for file in (repo / "src/Magpie").glob("Resources.language-*.resw"):
+    lang = file.stem.removeprefix("Resources.language-")
     root = ET.fromstring(read(f"src/Magpie/Resources.language-{lang}.resw"))
     resources = {n.get("name"): n.findtext("value") for n in root.findall("data")}
     assert len(resources) == len(root.findall("data")), lang
+    assert all(k in resources for k in ("FrameRefresh_Mode.Header", "FrameRefresh_Mode.Description", "FrameRefresh_Mode_Simple.Content", "FrameRefresh_Mode_Advanced.Content"))
+    resources = fallback | resources
     for n in group.iter():
         uid = n.get(x + "Uid", "")
         if not uid:
@@ -76,11 +88,19 @@ assert "if (submitted && contentFrame && ActiveFrameSyncBackend() == FrameSyncBa
 assert "_frontendPresentedBaseValid && overlayPending &&" in renderer
 window = read("src/Magpie.Core/ScalingWindow.cpp")
 service = read("src/Magpie/ScalingService.cpp")
-assert "ApplyFrameRefreshSettings(_options, frameRefresh)" in window
-assert "ApplyFrameRefreshSettings(options, profile.frameRefresh)" in service
+assert "ApplyFrameRefreshSettings(_options, frameRefresh, _options.isSimpleFrameRefresh)" in window
+assert "ApplyFrameRefreshSettings(options, profile.frameRefresh, options.isSimpleFrameRefresh)" in service
 settings = read("src/Magpie/AppSettings.cpp")
 assert "_LoadProfile(scaleProfilesArray[0].GetObj(), _defaultProfile, true, legacyParameterFocusSwitching, legacyFrameSync, legacyIdle, migrateLegacyRefresh)" in settings
 assert "_LoadProfile(scaleProfilesArray[i].GetObj(), rule, false, legacyParameterFocusSwitching, legacyFrameSync, legacyIdle, migrateLegacyRefresh)" in settings
 assert "MergeFrameRefreshSettings(mergedFrameRefresh, request.previousFrameRefresh, request.frameRefresh)" in service
 assert "FindProfileByIdentity" in service and "scalingRunId" in service
+overlay = read("src/Magpie.Core/OverlayDrawer.cpp")
+assert "FrameRefresh_Mode" not in overlay, "Toolbar must not expose the global mode selector"
+assert 'L"FrameRefresh_Source/Content", L"FrameRefresh_Custom/Content"' in overlay
+assert "const bool simpleRefresh = ScalingWindow::Get().Options().isSimpleFrameRefresh;" in overlay
+assert "_parameterSessionSnapshot.simpleFrameRefresh != options.isSimpleFrameRefresh" in overlay
+assert "sessionOptions.isSimpleFrameRefresh != settings.IsSimpleFrameRefresh()" in service
+assert "_StartScale(request.hwndSource, *frameSyncProfile, sessionOptions.IsWindowedMode(), true);" in service
+assert "FrameRefreshModeChanged(auto_revoke" in service
 print("Unified refresh UI/model/localization/frontend contracts passed (not native UI/GPU acceptance).")

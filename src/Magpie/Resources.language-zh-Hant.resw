@@ -1729,14 +1729,14 @@
   <data name="FrameRefresh_Reset.Header" xml:space="preserve"><value>還原重新整理預設設定</value></data>
   <data name="Home_FrameRefresh.Header" xml:space="preserve"><value>預設影格率與重新整理</value></data>
   <data name="FrameRefresh.Description" xml:space="preserve"><value>按設定檔儲存，重新啟用縮放後生效。</value></data>
-  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>控制 Magpie 的內容處理影格率；自動模式按顯示更新率和補幀倍率計算。</value></data>
+  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>跟隨來源幀率，或指定 Magpie 內容處理的目標幀率。</value></data>
   <data name="FrameRefresh_Pacing.Description" xml:space="preserve"><value>選擇內容影格的處理節奏。</value></data>
   <data name="FrameRefresh_ContentRate.Description" xml:space="preserve"><value>設定基礎內容處理的目標影格率。</value></data>
   <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>選擇系統游標的更新方式。</value></data>
   <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>選擇自動或自訂的游標補充更新率。</value></data>
   <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>設定游標補充更新的目標最低影格率。</value></data>
   <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>可變更新率、重複影格偵測與閒置重繪。</value></data>
-  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>閒置時重繪目前畫面。</value></data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>閒置時重繪目前畫面；補幀期間不啟用，重繪率受內容目標限制。</value></data>
   <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>設定閒置重繪的目標影格率。</value></data>
   <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>還原內容 60、游標補充 60、閒置重繪 30 FPS，節奏方式為 Front Edge。</value></data>
   <data name="FrameRefresh_Content_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>內容影格率</value></data>
@@ -1911,4 +1911,9 @@
   <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>已儲存 {0}；{1} 儲存失敗，請查看錯誤詳細資訊。</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_model_Option_0" xml:space="preserve"><value>效能</value></data>
   <data name="EffectParam_NvidiaVFX_VFG_model_Option_1" xml:space="preserve"><value>均衡</value></data>
+  <data name="FrameRefresh_Mode.Header" xml:space="preserve"><value>設定模式</value></data>
+  <data name="FrameRefresh_Mode.Description" xml:space="preserve"><value>簡單模式統一管理其餘更新設定。模式全域記憶，重新啟用縮放後生效。</value></data>
+  <data name="FrameRefresh_Mode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>設定模式</value></data>
+  <data name="FrameRefresh_Mode_Simple.Content" xml:space="preserve"><value>簡單</value></data>
+  <data name="FrameRefresh_Mode_Advanced.Content" xml:space="preserve"><value>進階</value></data>
 </root>

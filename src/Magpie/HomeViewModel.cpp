@@ -25,6 +25,9 @@ using namespace Magpie;
 namespace winrt::Magpie::implementation {
 
 HomeViewModel::HomeViewModel() {
+	_frameRefreshModeChangedRevoker = AppSettings::Get().FrameRefreshModeChanged(auto_revoke, [this] {
+		RaisePropertyChanged(L"DefaultFrameRefreshSummary");
+	});
 	_duplicateFrameDetectionModeChangedRevoker = AppSettings::Get().DuplicateFrameDetectionModeChanged(auto_revoke, [this] {
 		RaisePropertyChanged(L"DuplicateFrameDetectionMode");
 		RaisePropertyChanged(L"IsDynamicDection");
@@ -533,10 +536,11 @@ void HomeViewModel::IsVRREnabled(bool value) {
 
 hstring HomeViewModel::DefaultFrameRefreshSummary() const {
 	const auto loader = ResourceLoader::GetForViewIndependentUse(CommonSharedConstants::APP_RESOURCE_MAP_ID);
-	const auto& s = AppSettings::Get().DefaultProfile().frameRefresh;
-	const wchar_t* contentKeys[]{ L"FrameRefresh_Source/Content", L"FrameRefresh_Auto/Content", L"FrameRefresh_Custom/Content" };
+	const auto s = EffectiveFrameRefreshSettings(AppSettings::Get().DefaultProfile().frameRefresh,
+		AppSettings::Get().IsSimpleFrameRefresh());
 	const wchar_t* cursorKeys[]{ L"FrameRefresh_Responsive/Content", L"FrameRefresh_OriginalOnly/Content", L"FrameRefresh_Supplement/Content" };
-	std::wstring content(loader.GetString(contentKeys[uint32_t(s.contentMode)]));
+	std::wstring content(loader.GetString(s.contentMode == ContentFrameRateMode::Custom ?
+		L"FrameRefresh_Custom/Content" : L"FrameRefresh_Source/Content"));
 	if (s.contentMode == ContentFrameRateMode::Custom) content += fmt::format(L" {} FPS", s.contentRate);
 	if (s.legacyContentLimit > 0) content += L" (" + fmt::format(
 		fmt::runtime(std::wstring_view(loader.GetString(L"FrameRefresh_LegacyCapNotice"))), s.legacyContentLimit) + L")";

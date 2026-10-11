@@ -1111,4 +1111,9 @@
   <data name="Message_ScreenshotBusy" xml:space="preserve"><value>A screenshot is being saved. Try again when it finishes.</value></data>
   <data name="Message_ScreenshotPairSaved" xml:space="preserve"><value>Screenshots saved: {0} and {1}</value></data>
   <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>Saved {0}; {1} could not be saved. See error details.</value></data>
+  <data name="FrameRefresh_Mode.Header" xml:space="preserve"><value>Tryb ustawień</value></data>
+  <data name="FrameRefresh_Mode.Description" xml:space="preserve"><value>Tryb prosty zarządza pozostałymi ustawieniami odświeżania. Dotyczy wszystkich profili po ponownym uruchomieniu skalowania.</value></data>
+  <data name="FrameRefresh_Mode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Tryb ustawień</value></data>
+  <data name="FrameRefresh_Mode_Simple.Content" xml:space="preserve"><value>Prosty</value></data>
+  <data name="FrameRefresh_Mode_Advanced.Content" xml:space="preserve"><value>Zaawansowany</value></data>
 </root>

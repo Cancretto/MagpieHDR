@@ -67,6 +67,10 @@ ProfileViewModel::ProfileViewModel(int profileIdx, bool initializePageData)
 		if (profile.runtimeIdentity != _data->runtimeIdentity) return;
 		_NotifyFrameRefreshChanged();
 	});
+	_frameRefreshModeChangedRevoker = AppSettings::Get().FrameRefreshModeChanged(auto_revoke, [this] {
+		_NotifyFrameRefreshChanged();
+		if (IsAdvancedFrameRefresh()) _LoadRtssPreview();
+	});
 	_BuildMonitorOptions();
 	_BuildGraphicsCards();
 	_rtssStatusRevoker = RtssService::Get().StatusChanged(auto_revoke, [this] {
@@ -701,6 +705,9 @@ bool ProfileViewModel::ShowGraphicsCardUnavailableWarning() const noexcept {
 }
 
 void ProfileViewModel::_NotifyFrameRefreshChanged() {
+	RaisePropertyChanged(L"FrameRefreshModeIndex");
+	RaisePropertyChanged(L"IsSimpleFrameRefresh");
+	RaisePropertyChanged(L"IsAdvancedFrameRefresh");
 	RaisePropertyChanged(L"IsVRREnabled");
 	_NotifyRtssChanged();
 	RaisePropertyChanged(L"ContentFrameRateModeIndex");
@@ -725,8 +732,17 @@ void ProfileViewModel::_SaveFrameRefresh() {
 	AppSettings::Get().SaveAsync();
 }
 
+int32_t ProfileViewModel::FrameRefreshModeIndex() const noexcept { return IsSimpleFrameRefresh() ? 0 : 1; }
+void ProfileViewModel::FrameRefreshModeIndex(int32_t value) {
+	if (value < 0 || value > 1) return;
+	AppSettings::Get().IsSimpleFrameRefresh(value == 0);
+}
+bool ProfileViewModel::IsSimpleFrameRefresh() const noexcept { return AppSettings::Get().IsSimpleFrameRefresh(); }
+bool ProfileViewModel::IsAdvancedFrameRefresh() const noexcept { return !IsSimpleFrameRefresh(); }
+
 bool ProfileViewModel::IsVRREnabled() const noexcept { return _data->frameRefresh.vrrEnabled; }
 void ProfileViewModel::IsVRREnabled(bool value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (_data->frameRefresh.vrrEnabled == value) return;
 	_data->frameRefresh.vrrEnabled = value;
 	_SaveFrameRefresh();
@@ -785,16 +801,19 @@ RtssStatus ProfileViewModel::_RtssStatus() const {
 
 int32_t ProfileViewModel::RtssScopeIndex() const noexcept { return int32_t(_data->rtss.scope); }
 void ProfileViewModel::RtssScopeIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 2 || RtssScopeIndex() == value) return;
 	_data->rtss.scope = RtssScope(value); _SaveRtss();
 }
 int32_t ProfileViewModel::RtssRateModeIndex() const noexcept { return int32_t(_data->rtss.rateMode); }
 void ProfileViewModel::RtssRateModeIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 1 || RtssRateModeIndex() == value || (value == 1 && !IsRtssSyncAvailable())) return;
 	_data->rtss.rateMode = RtssRateMode(value); _SaveRtss();
 }
 double ProfileViewModel::RtssCustomRate() const noexcept { return _data->rtss.customRate; }
 void ProfileViewModel::RtssCustomRate(double value) {
+	if (IsSimpleFrameRefresh()) return;
 	// A hidden editor's delayed binding callback must not change the manual preference.
 	if (!IsRtssManaged() || !ShowRtssCustomRate()) return;
 	const auto rate = RtssSettings::EditedRate(value);
@@ -813,6 +832,7 @@ double ProfileViewModel::RtssSyncedRate() const noexcept {
 }
 int32_t ProfileViewModel::RtssExitPolicyIndex() const noexcept { return int32_t(_data->rtss.exitPolicy); }
 void ProfileViewModel::RtssExitPolicyIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 1 || RtssExitPolicyIndex() == value) return;
 	_data->rtss.exitPolicy = RtssExitPolicy(value); _SaveRtss();
 }
@@ -917,10 +937,12 @@ void ProfileViewModel::RefreshRtss() { RtssService::Get().Recheck(); _LoadRtssPr
 void ProfileViewModel::LaunchRtss() { RtssService::Get().Launch(false); }
 void ProfileViewModel::LaunchAfterburner() { RtssService::Get().Launch(true); }
 
-int32_t ProfileViewModel::ContentFrameRateModeIndex() const noexcept { return int32_t(_data->frameRefresh.contentMode); }
+int32_t ProfileViewModel::ContentFrameRateModeIndex() const noexcept {
+	return _data->frameRefresh.contentMode == ContentFrameRateMode::Custom ? 1 : 0;
+}
 void ProfileViewModel::ContentFrameRateModeIndex(int32_t value) {
-	if (value < 0 || value > 2) return;
-	const auto next = ContentFrameRateMode(value);
+	if (value < 0 || value > 1) return;
+	const auto next = value == 1 ? ContentFrameRateMode::Custom : ContentFrameRateMode::Source;
 	if (_data->frameRefresh.contentMode == next) return;
 	_data->frameRefresh.contentMode = next;
 	_data->frameRefresh.ContentEdited();
@@ -938,6 +960,7 @@ void ProfileViewModel::ContentFrameRate(double value) {
 
 int32_t ProfileViewModel::FrameSyncModeIndex() const noexcept { return int32_t(_data->frameRefresh.pacing); }
 void ProfileViewModel::FrameSyncModeIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 2) return;
 	const auto next = FrameSyncMode(value);
 	if (_data->frameRefresh.pacing == next) return;
@@ -948,6 +971,7 @@ void ProfileViewModel::FrameSyncModeIndex(int32_t value) {
 
 int32_t ProfileViewModel::CursorRefreshModeIndex() const noexcept { return int32_t(_data->frameRefresh.cursorMode); }
 void ProfileViewModel::CursorRefreshModeIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 2) return;
 	const auto next = CursorRefreshMode(value);
 	if (_data->frameRefresh.cursorMode == next) return;
@@ -958,6 +982,7 @@ void ProfileViewModel::CursorRefreshModeIndex(int32_t value) {
 
 int32_t ProfileViewModel::CursorSupplementModeIndex() const noexcept { return int32_t(_data->frameRefresh.cursorSupplement); }
 void ProfileViewModel::CursorSupplementModeIndex(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > 1) return;
 	const auto next = CursorSupplementMode(value);
 	if (_data->frameRefresh.cursorSupplement == next) return;
@@ -967,6 +992,7 @@ void ProfileViewModel::CursorSupplementModeIndex(int32_t value) {
 
 double ProfileViewModel::CursorSupplementRate() const noexcept { return double(_data->frameRefresh.cursorRate); }
 void ProfileViewModel::CursorSupplementRate(double value) {
+	if (IsSimpleFrameRefresh()) return;
 	const auto next = FrameRefreshSettings::ValidateEditedRate(value, 60);
 	if (_data->frameRefresh.cursorRate == next) return;
 	_data->frameRefresh.cursorRate = next;
@@ -999,6 +1025,7 @@ int32_t ProfileViewModel::DuplicateFrameDetectionMode() const noexcept {
 	return int32_t(AppSettings::Get().DuplicateFrameDetectionMode());
 }
 void ProfileViewModel::DuplicateFrameDetectionMode(int32_t value) {
+	if (IsSimpleFrameRefresh()) return;
 	if (value < 0 || value > int32_t(::Magpie::DuplicateFrameDetectionMode::Never)) return;
 	const auto mode = ::Magpie::DuplicateFrameDetectionMode(value);
 	AppSettings& settings = AppSettings::Get();
@@ -1013,7 +1040,7 @@ bool ProfileViewModel::ShowFrameRefreshNotice() const noexcept {
 }
 hstring ProfileViewModel::FrameRefreshNotice() const noexcept {
 	const auto loader = ResourceLoader::GetForViewIndependentUse(CommonSharedConstants::APP_RESOURCE_MAP_ID);
-	const auto& s = _data->frameRefresh;
+	const auto s = EffectiveFrameRefreshSettings(_data->frameRefresh, IsSimpleFrameRefresh());
 	std::wstring text;
 	if (s.legacyContentLimit > 0 || s.legacySourceTarget >= 0 || s.legacyLimiterOnly || s.legacyResponsiveMinimum) {
 		text += loader.GetString(L"FrameRefresh_LegacyNotice");
@@ -1030,6 +1057,7 @@ hstring ProfileViewModel::FrameRefreshNotice() const noexcept {
 	return hstring(text);
 }
 void ProfileViewModel::ResetFrameRefresh() {
+	if (IsSimpleFrameRefresh()) return;
 	_data->frameRefresh = {};
 	_SaveFrameRefresh();
 }

@@ -1212,4 +1212,9 @@
   <data name="Message_ScreenshotBusy" xml:space="preserve"><value>A screenshot is being saved. Try again when it finishes.</value></data>
   <data name="Message_ScreenshotPairSaved" xml:space="preserve"><value>Screenshots saved: {0} and {1}</value></data>
   <data name="Message_ScreenshotPartialSaved" xml:space="preserve"><value>Saved {0}; {1} could not be saved. See error details.</value></data>
+  <data name="FrameRefresh_Mode.Header" xml:space="preserve"><value>設定モード</value></data>
+  <data name="FrameRefresh_Mode.Description" xml:space="preserve"><value>シンプルモードでは他の更新設定を自動管理します。モードは全プロファイル共通で、スケーリングの再開始後に適用されます。</value></data>
+  <data name="FrameRefresh_Mode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>設定モード</value></data>
+  <data name="FrameRefresh_Mode_Simple.Content" xml:space="preserve"><value>シンプル</value></data>
+  <data name="FrameRefresh_Mode_Advanced.Content" xml:space="preserve"><value>詳細</value></data>
 </root>

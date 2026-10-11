@@ -1779,14 +1779,14 @@
   <data name="FrameRefresh_Reset.Header" xml:space="preserve"><value>Restore refresh defaults</value></data>
   <data name="Home_FrameRefresh.Header" xml:space="preserve"><value>Default frame rate and refresh</value></data>
   <data name="FrameRefresh.Description" xml:space="preserve"><value>Saved per profile. Re-enable scaling to apply.</value></data>
-  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>Sets Magpie’s content processing rate. Auto uses display refresh and the frame generation multiplier.</value></data>
+  <data name="FrameRefresh_Content.Description" xml:space="preserve"><value>Choose a target rate for Magpie content processing, or follow the source.</value></data>
   <data name="FrameRefresh_Pacing.Description" xml:space="preserve"><value>Selects how content frames are paced.</value></data>
   <data name="FrameRefresh_ContentRate.Description" xml:space="preserve"><value>Sets the target rate for base content processing.</value></data>
   <data name="FrameRefresh_Cursor.Description" xml:space="preserve"><value>Selects how the system cursor is refreshed.</value></data>
   <data name="FrameRefresh_CursorSupplement.Description" xml:space="preserve"><value>Selects automatic or custom supplemental cursor refresh.</value></data>
   <data name="FrameRefresh_CursorRate.Description" xml:space="preserve"><value>Sets the target minimum rate for supplemental cursor refresh.</value></data>
   <data name="FrameRefresh_Advanced.Description" xml:space="preserve"><value>Variable refresh rate, duplicate detection and idle redraw.</value></data>
-  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>Redraws the current image while content is idle.</value></data>
+  <data name="FrameRefresh_Idle.Description" xml:space="preserve"><value>Redraw the current image while idle; inactive during frame generation and limited by the content target.</value></data>
   <data name="FrameRefresh_IdleRate.Description" xml:space="preserve"><value>Sets the target rate for idle redraw.</value></data>
   <data name="FrameRefresh_Reset.Description" xml:space="preserve"><value>Restores content 60, supplemental cursor 60, idle redraw 30 FPS, and Front Edge.</value></data>
   <data name="FrameRefresh_Content_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Content frame rate</value></data>
@@ -1978,4 +1978,9 @@
   <data name="NvidiaVfx_Upscale_Up" xml:space="preserve"><value> -&gt; Bicubic upscale: {}x{}</value></data>
   <data name="NvidiaVfx_Vfg_Process" xml:space="preserve"><value>SDR pre-effects -&gt; VFG -&gt; every real/generated frame -&gt; TrueHDR (when selected) -&gt; presentation</value></data>
   <data name="NvidiaVfx_Vsr_SameSize" xml:space="preserve"><value>Keep input size</value></data>
+  <data name="FrameRefresh_Mode.Header" xml:space="preserve"><value>Settings mode</value></data>
+  <data name="FrameRefresh_Mode.Description" xml:space="preserve"><value>Simple mode manages the other refresh settings. Applies to all profiles after restarting scaling.</value></data>
+  <data name="FrameRefresh_Mode_Input.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Settings mode</value></data>
+  <data name="FrameRefresh_Mode_Simple.Content" xml:space="preserve"><value>Simple</value></data>
+  <data name="FrameRefresh_Mode_Advanced.Content" xml:space="preserve"><value>Advanced</value></data>
 </root>

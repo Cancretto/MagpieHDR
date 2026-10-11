@@ -17,11 +17,9 @@ def read(path):
 xaml = ET.fromstring(read("src/Magpie/ProfilePage.xaml"))
 x = "{http://schemas.microsoft.com/winfx/2006/xaml}"
 group = next(node for node in xaml.iter() if node.get(x + "Uid") == "FrameRefresh")
-advanced = next(node for node in group.iter() if node.get(x + "Uid") == "FrameRefresh_Advanced")
-items = next(node for node in advanced if node.tag.endswith("SettingsExpander.Items"))
-card = next(node for node in items if node.get(x + "Uid") == "FrameRefresh_VRR")
-assert list(items)[0] is card
-assert list(items)[1].get(x + "Uid") == "Home_Advanced_DeveloperOptions_DuplicateFrameDetection"
+card = next(node for node in group if node.get(x + "Uid") == "FrameRefresh_VRR")
+assert card.get("Visibility") == "{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}"
+assert not any(node.get(x + "Uid") == "FrameRefresh_Advanced" for node in group.iter())
 toggle = next(iter(card))
 assert toggle.get("IsOn") == "{x:Bind ViewModel.IsVRREnabled, Mode=TwoWay}"
 assert toggle.get(x + "Uid") == "FrameRefresh_VRR_Input"
@@ -30,14 +28,14 @@ assert "_data->frameRefresh.vrrEnabled" in read("src/Magpie/ProfileViewModel.cpp
 model = read("src/Magpie.Core/include/FrameRefreshSettings.h")
 assert "bool vrrEnabled = false;" in model
 assert "MERGE_REFRESH(vrrEnabled)" in model
-assert "options.isVRREnabled = settings.vrrEnabled;" in model
+assert "options.isVRREnabled = effective.vrrEnabled;" in model
 serialization = read("src/Magpie/ProfileFrameRefresh.h")
 assert 'boolean("vrrEnabled", result.vrrEnabled);' in serialization
 assert 'writer.Key("vrrEnabled"); writer.Bool(s.vrrEnabled);' in serialization
 assert '"vrr"' not in serialization, "Dormant global field was migrated"
 service = read("src/Magpie/ScalingService.cpp")
 assert "options.isVRREnabled = false;" not in service
-assert "ApplyFrameRefreshSettings(options, profile.frameRefresh)" in service
+assert "ApplyFrameRefreshSettings(options, profile.frameRefresh, options.isSimpleFrameRefresh)" in service
 for lang in ("en-US", "zh-Hans", "zh-Hant"):
     nodes = ET.fromstring(read(f"src/Magpie/Resources.language-{lang}.resw")).findall("data")
     values = {node.get("name"): node.findtext("value") for node in nodes}

@@ -112,6 +112,10 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 	bool IsNoGraphicsCard() const noexcept;
 	bool ShowGraphicsCardUnavailableWarning() const noexcept;
 
+	int32_t FrameRefreshModeIndex() const noexcept;
+	void FrameRefreshModeIndex(int32_t value);
+	bool IsSimpleFrameRefresh() const noexcept;
+	bool IsAdvancedFrameRefresh() const noexcept;
 	int32_t ContentFrameRateModeIndex() const noexcept;
 	int32_t RtssScopeIndex() const noexcept;
 	void RtssScopeIndex(int32_t value);
@@ -244,6 +248,7 @@ private:
 	::Magpie::Event<uint32_t>::EventRevoker _dpiChangedRevoker;
 	::Magpie::Event<>::EventRevoker _adaptersChangedRevoker;
 	::Magpie::Event<::Magpie::Profile&>::EventRevoker _frameSyncChangedRevoker;
+	::Magpie::Event<>::EventRevoker _frameRefreshModeChangedRevoker;
 	::Magpie::Event<>::EventRevoker _rtssStatusRevoker;
 	::Magpie::RtssStatus _rtssPreview;
 	uint64_t _rtssPreviewGeneration = 0;

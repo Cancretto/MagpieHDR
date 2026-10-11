@@ -31,7 +31,7 @@ check(uids["Rtss_Rate_Sync"].get("IsEnabled") == "{x:Bind ViewModel.IsRtssSyncAv
 check(uids["Rtss_CustomRate_Input"].get("Minimum") == "15" and uids["Rtss_CustomRate_Input"].get("Maximum") == "360", "integer editor range")
 check("IntegerFormatter" in uids["Rtss_CustomRate_Input"].get("NumberFormatter"), "integer formatter")
 check("Rtss_Advanced" not in uids, "no RTSS inner advanced expander")
-check("FrameRefresh_Advanced" in uids, "existing refresh advanced expander preserved")
+check("FrameRefresh_Advanced" not in uids, "old refresh advanced expander removed")
 items = next(n for n in rtss if n.tag.endswith("SettingsExpander.Items"))
 check([n.get(x + "Uid") for n in items] ==
       ["Rtss_Status", "Rtss_RateMode", "Rtss_CustomRate", "Rtss_ExitPolicy"],
@@ -62,7 +62,8 @@ check("IsEnabled" not in status.attrib, "status/launcher remain available")
 check(uids["Rtss_Tools"] in list(status.iter()), "launcher in status row")
 check(len([n for n in status.iter() if n.tag.endswith("MenuFlyoutItem")]) == 2, "two distinct launch actions")
 check(all(uids[uid].get("Style") == "{StaticResource RtssActionButtonStyle}" for uid in
-          ("Rtss_InitializeMagpieButton", "Rtss_Tools", "Rtss_Recheck")), "shared neutral action style")
+          ("Rtss_InitializeMagpieButton", "Rtss_Recheck")), "shared neutral action style")
+check(uids["Rtss_Tools"].get("Style") == "{StaticResource RtssToolsButtonStyle}", "integrated tools spacing style")
 check("FrameRefreshControlColumnWidth" in ET.tostring(status, encoding="unicode"), "status actions share the standard control column")
 action_style = next(n for n in nodes if n.get(x + "Key") == "RtssActionButtonStyle")
 setters = {n.get("Property"): n.get("Value") for n in action_style}

@@ -203,10 +203,12 @@ struct EffectParameterSessionState {
 		uint64_t revision = 0;
 		bool applying = false;
 		bool applyFailed = false;
+		bool simpleFrameRefresh = false;
 	};
 
 	explicit EffectParameterSessionState(const std::vector<EffectOption>& effects,
-		FrameRefreshSettings frameRefresh = {}) : _snapshot{ effects, effects, frameRefresh, 1 } {}
+		FrameRefreshSettings frameRefresh = {}, bool simpleFrameRefresh = false)
+		: _snapshot{ effects, effects, frameRefresh, 1, false, false, simpleFrameRefresh } {}
 	// Save receipts survive automatic rebuilds too. The revision is allocated
 	// only by the scaling/UI thread; completion itself is atomic.
 	std::shared_ptr<EffectParametersSaveState> saveState = std::make_shared<EffectParametersSaveState>();
@@ -242,10 +244,11 @@ struct EffectParameterSessionState {
 		_snapshot.desired[effect].parameters[parameter] = value;
 		++_snapshot.revision;
 	}
-	void DesiredFrameRefresh(FrameRefreshSettings value) {
+	void DesiredFrameRefresh(FrameRefreshSettings value, std::optional<bool> simpleMode = std::nullopt) {
 		std::scoped_lock lock(_mutex);
-		if (_snapshot.frameRefresh == value) return;
+		if (_snapshot.frameRefresh == value && (!simpleMode || *simpleMode == _snapshot.simpleFrameRefresh)) return;
 		_snapshot.frameRefresh = value;
+		if (simpleMode) _snapshot.simpleFrameRefresh = *simpleMode;
 		++_snapshot.revision;
 	}
 	void Applying(bool applying, bool failed = false) {
@@ -486,6 +489,8 @@ struct ScalingOptions {
 	float minFrameRate = 0.0f;
 	std::optional<float> maxFrameRate;
 	FrameRefreshSettings frameRefresh;
+	// Immutable for this running session; settings-page changes apply on restart.
+	bool isSimpleFrameRefresh = true;
 	// Stable, weak identity of the profile used to start this session.
 	std::weak_ptr<const uint8_t> frameSyncProfileIdentity;
 	bool isFrontEdgeSyncEnabled = true;

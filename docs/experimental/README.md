@@ -1,5 +1,7 @@
 # Magpie 实验分支文档索引
 
+帧率与刷新简单/高级模式：已完成 [TODO](todos/20261011-frame-refresh-modes-TODO.md) 并在 `feature/0610-frame-refresh-modes` 实施，默认简单、全局记忆，高级六项同级；内容自动迁移为跟随源。源码、隔离原生测试和 Core 语法检查通过，产品构建/部署与真实 UI/GPU 验收待后续。见 [实施记录](reviews/20261011-frame-refresh-modes.md)。
+
 当前公开版本为 [Magpie Experimental v0.6.9](https://github.com/SAOG0721/Magpie/releases/tag/v0.6.9-experimental)：[完整中英 Release Note](../RELEASE_NOTES_v0.6.9-experimental.md)、[分发准备记录](reviews/20261002-v0.6.9-release-preparation.md)。默认分支 `experimental` 已同步完整 0.6.9 源码，`version.json` 指向该版本。发布标签及运行包的准确构建提交为 `27c5df91177a29b33be612e98274169f3d2fca49`；后续文档与版本入口更新保留为独立提交。
 
 HDR 兼容模式更新开发中：见[功能文档](design/20261005-hdr-compatibility-update-functional-spec.md)和[开发需求与进度](todos/20261005-hdr-compatibility-update-development-TODO.md)。本轮进行源码和针对性回归，应用完整编译及部署留给后续会话。

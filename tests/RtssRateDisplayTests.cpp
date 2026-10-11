@@ -77,6 +77,8 @@ struct ProfileViewModel {
 	ProfileData data;
 	ProfileData* _data = &data;
 	unsigned saves = 0, notifications = 0;
+	bool simple = false;
+	bool IsSimpleFrameRefresh() const noexcept { return simple; }
 	void _SaveRtss() { ++saves; }
 	void RaisePropertyChanged(const wchar_t*) { ++notifications; }
 	double RtssCustomRate() const noexcept;

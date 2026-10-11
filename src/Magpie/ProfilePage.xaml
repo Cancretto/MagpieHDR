@@ -210,7 +210,39 @@
 					<!-- Keep headers and child rows in the same layout at narrow widths. -->
 					<StaticResource x:Key="SettingsCardWrapNoIconThreshold" ResourceKey="SettingsCardWrapThreshold" />
 				</local:SettingsGroup.Resources>
-				<local:SettingsExpander x:Uid="Rtss_TargetLimit" IsWrapEnabled="True" IsExpanded="True">
+				<local:SettingsCard x:Uid="FrameRefresh_Mode" IsWrapEnabled="True">
+					<ComboBox x:Uid="FrameRefresh_Mode_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.FrameRefreshModeIndex, Mode=TwoWay}">
+						<ComboBoxItem x:Uid="FrameRefresh_Mode_Simple" />
+						<ComboBoxItem x:Uid="FrameRefresh_Mode_Advanced" />
+					</ComboBox>
+				</local:SettingsCard>
+				<local:SettingsCard x:Name="SimpleContentCard" x:Uid="FrameRefresh_Content" IsWrapEnabled="True" Visibility="{x:Bind ViewModel.IsSimpleFrameRefresh, Mode=OneWay}">
+					<StackPanel Width="{StaticResource FrameRefreshControlColumnWidth}" Spacing="8">
+						<ComboBox x:Uid="FrameRefresh_Content_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.ContentFrameRateModeIndex, Mode=TwoWay}">
+							<ComboBoxItem x:Uid="FrameRefresh_Source" />
+							<ComboBoxItem x:Uid="FrameRefresh_Custom" />
+						</ComboBox>
+						<Grid Visibility="{x:Bind ViewModel.ShowContentFrameRate, Mode=OneWay}">
+							<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+							<muxc:NumberBox x:Uid="FrameRefresh_ContentRate_Input" Style="{StaticResource FrameRefreshNumberBoxStyle}" Minimum="15" Maximum="360" SmallChange="1" LargeChange="10" Loaded="NumberBox_Loaded" NumberFormatter="{x:Bind local:App.IntegerFormatter, Mode=OneTime}" Value="{x:Bind ViewModel.ContentFrameRate, Mode=TwoWay}" />
+							<TextBlock Grid.Column="1" Margin="8,0,0,0" Text="FPS" VerticalAlignment="Center" />
+						</Grid>
+					</StackPanel>
+				</local:SettingsCard>
+				<local:SettingsCard x:Name="SimpleIdleCard" x:Uid="FrameRefresh_Idle" IsWrapEnabled="True" Visibility="{x:Bind ViewModel.IsSimpleFrameRefresh, Mode=OneWay}">
+					<StackPanel Width="{StaticResource FrameRefreshControlColumnWidth}" Spacing="8">
+						<ComboBox x:Uid="FrameRefresh_Idle_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.IdleRedrawModeIndex, Mode=TwoWay}">
+							<ComboBoxItem x:Uid="FrameRefresh_Off" />
+							<ComboBoxItem x:Uid="FrameRefresh_Custom" />
+						</ComboBox>
+						<Grid Visibility="{x:Bind ViewModel.ShowIdleRedrawRate, Mode=OneWay}">
+							<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+							<muxc:NumberBox x:Uid="FrameRefresh_IdleRate_Input" Style="{StaticResource FrameRefreshNumberBoxStyle}" Minimum="15" Maximum="360" SmallChange="1" LargeChange="10" Loaded="NumberBox_Loaded" NumberFormatter="{x:Bind local:App.IntegerFormatter, Mode=OneTime}" Value="{x:Bind ViewModel.IdleRedrawRate, Mode=TwoWay}" />
+							<TextBlock Grid.Column="1" Margin="8,0,0,0" Text="FPS" VerticalAlignment="Center" />
+						</Grid>
+					</StackPanel>
+				</local:SettingsCard>
+				<local:SettingsExpander x:Uid="Rtss_TargetLimit" IsWrapEnabled="True" IsExpanded="True" Visibility="{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}">
 					<local:SettingsExpander.HeaderIcon>
 						<FontIcon Glyph="&#xE9D9;" />
 					</local:SettingsExpander.HeaderIcon>
@@ -295,14 +327,13 @@
 						</local:SettingsCard>
 					</local:SettingsExpander.Items>
 				</local:SettingsExpander>
-				<local:SettingsExpander x:Uid="FrameRefresh_Content" IsWrapEnabled="True" IsExpanded="True">
+				<local:SettingsExpander x:Uid="FrameRefresh_Content" IsWrapEnabled="True" IsExpanded="True" Visibility="{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}">
 					<local:SettingsExpander.HeaderIcon>
 						<FontIcon Glyph="&#xE787;" />
 					</local:SettingsExpander.HeaderIcon>
 					<local:SettingsExpander.Content>
 						<ComboBox x:Uid="FrameRefresh_Content_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.ContentFrameRateModeIndex, Mode=TwoWay}">
 							<ComboBoxItem x:Uid="FrameRefresh_Source" />
-							<ComboBoxItem x:Uid="FrameRefresh_Auto" />
 							<ComboBoxItem x:Uid="FrameRefresh_Custom" />
 						</ComboBox>
 					</local:SettingsExpander.Content>
@@ -326,7 +357,7 @@
 						</local:SettingsCard>
 					</local:SettingsExpander.Items>
 				</local:SettingsExpander>
-				<local:SettingsExpander x:Uid="FrameRefresh_Cursor" IsWrapEnabled="True" IsExpanded="{x:Bind ViewModel.ShowCursorSupplement, Mode=OneWay}">
+				<local:SettingsExpander x:Uid="FrameRefresh_Cursor" IsWrapEnabled="True" IsExpanded="{x:Bind ViewModel.ShowCursorSupplement, Mode=OneWay}" Visibility="{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}">
 					<local:SettingsExpander.HeaderIcon>
 						<FontIcon Glyph="&#xECAD;" />
 					</local:SettingsExpander.HeaderIcon>
@@ -356,29 +387,26 @@
 						</local:SettingsCard>
 					</local:SettingsExpander.Items>
 				</local:SettingsExpander>
-				<local:SettingsExpander x:Uid="FrameRefresh_Advanced" IsWrapEnabled="True" IsExpanded="False">
-					<local:SettingsExpander.HeaderIcon>
-						<FontIcon Glyph="&#xE713;" />
-					</local:SettingsExpander.HeaderIcon>
+				<local:SettingsCard x:Uid="FrameRefresh_VRR" IsWrapEnabled="True" Visibility="{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}">
+					<ToggleSwitch x:Uid="FrameRefresh_VRR_Input"
+					              Style="{StaticResource RightAlignedCompactToggleSwitchStyle}"
+					              IsOn="{x:Bind ViewModel.IsVRREnabled, Mode=TwoWay}" />
+				</local:SettingsCard>
+				<local:SettingsCard x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection" IsWrapEnabled="True" Visibility="{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}">
+					<ComboBox x:Uid="FrameRefresh_DuplicateDetection_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.DuplicateFrameDetectionMode, Mode=TwoWay}">
+						<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Always" />
+						<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Dynamic" />
+						<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Never" />
+					</ComboBox>
+				</local:SettingsCard>
+				<local:SettingsExpander x:Uid="FrameRefresh_Idle" IsWrapEnabled="True" IsExpanded="{x:Bind ViewModel.ShowIdleRedrawRate, Mode=OneWay}" Visibility="{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}">
+					<local:SettingsExpander.Content>
+						<ComboBox x:Uid="FrameRefresh_Idle_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.IdleRedrawModeIndex, Mode=TwoWay}">
+							<ComboBoxItem x:Uid="FrameRefresh_Off" />
+							<ComboBoxItem x:Uid="FrameRefresh_Custom" />
+						</ComboBox>
+					</local:SettingsExpander.Content>
 					<local:SettingsExpander.Items>
-						<local:SettingsCard x:Uid="FrameRefresh_VRR" IsWrapEnabled="True">
-							<ToggleSwitch x:Uid="FrameRefresh_VRR_Input"
-							              Style="{StaticResource RightAlignedCompactToggleSwitchStyle}"
-							              IsOn="{x:Bind ViewModel.IsVRREnabled, Mode=TwoWay}" />
-						</local:SettingsCard>
-						<local:SettingsCard x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection" IsWrapEnabled="True">
-							<ComboBox x:Uid="FrameRefresh_DuplicateDetection_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.DuplicateFrameDetectionMode, Mode=TwoWay}">
-								<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Always" />
-								<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Dynamic" />
-								<ComboBoxItem x:Uid="Home_Advanced_DeveloperOptions_DuplicateFrameDetection_Never" />
-							</ComboBox>
-						</local:SettingsCard>
-						<local:SettingsCard x:Uid="FrameRefresh_Idle" IsWrapEnabled="True">
-							<ComboBox x:Uid="FrameRefresh_Idle_Input" Style="{StaticResource FrameRefreshComboBoxStyle}" DropDownOpened="ComboBox_DropDownOpened" SelectedIndex="{x:Bind ViewModel.IdleRedrawModeIndex, Mode=TwoWay}">
-								<ComboBoxItem x:Uid="FrameRefresh_Off" />
-								<ComboBoxItem x:Uid="FrameRefresh_Custom" />
-							</ComboBox>
-						</local:SettingsCard>
 						<local:SettingsCard x:Uid="FrameRefresh_IdleRate" IsWrapEnabled="True" Visibility="{x:Bind ViewModel.ShowIdleRedrawRate, Mode=OneWay}">
 							<Grid Width="{StaticResource FrameRefreshControlColumnWidth}">
 								<Grid.ColumnDefinitions>
@@ -392,7 +420,7 @@
 					</local:SettingsExpander.Items>
 				</local:SettingsExpander>
 				<TextBlock Text="{x:Bind ViewModel.FrameRefreshNotice, Mode=OneWay}" Visibility="{x:Bind ViewModel.ShowFrameRefreshNotice, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="16,4" />
-				<local:SettingsCard x:Uid="FrameRefresh_Reset" IsWrapEnabled="True">
+				<local:SettingsCard x:Uid="FrameRefresh_Reset" IsWrapEnabled="True" Visibility="{x:Bind ViewModel.IsAdvancedFrameRefresh, Mode=OneWay}">
 					<Button x:Uid="FrameRefresh_ResetButton" Click="{x:Bind ViewModel.ResetFrameRefresh}" />
 				</local:SettingsCard>
 			</local:SettingsGroup>

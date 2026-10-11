@@ -185,14 +185,14 @@ void ScalingRuntime::UpdateMainUI(SessionWindowIdentity identity) {
 	});
 }
 
-void ScalingRuntime::UpdateFrameRefreshSettings(FrameRefreshSettings settings) {
+void ScalingRuntime::UpdateFrameRefreshSettings(FrameRefreshSettings settings, std::optional<bool> simpleMode) {
 	if (State() == ScalingState::Idle || State() == ScalingState::Stopping) return;
 	const uint64_t generation = _commandGeneration.load(std::memory_order_acquire);
-	_Dispatcher().TryEnqueue([this, generation, settings]() {
+	_Dispatcher().TryEnqueue([this, generation, settings, simpleMode]() {
 		if (_commandGeneration.load(std::memory_order_acquire) != generation) return;
 		auto& window = ScalingWindow::Get();
 		if (auto session = window.Options().parameterSession) {
-			session->DesiredFrameRefresh(settings);
+			session->DesiredFrameRefresh(settings, simpleMode);
 			if (window) window.RenderOverlay();
 		}
 	});

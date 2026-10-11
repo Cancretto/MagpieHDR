@@ -48,6 +48,9 @@ namespace Magpie {
 		Boolean IsNoGraphicsCard { get; };
 		Boolean ShowGraphicsCardUnavailableWarning { get; };
 
+		Int32 FrameRefreshModeIndex;
+		Boolean IsSimpleFrameRefresh { get; };
+		Boolean IsAdvancedFrameRefresh { get; };
 		Int32 ContentFrameRateModeIndex;
 		Int32 RtssScopeIndex;
 		Int32 RtssRateModeIndex;
