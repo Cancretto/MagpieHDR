@@ -35,10 +35,13 @@ with tempfile.TemporaryDirectory(prefix='magpie-fsr3fg-payload-') as temporary:
         assert (result.returncode == 0) == expected_success, result.stdout + result.stderr
         assert expected_text in result.stdout + result.stderr, result.stdout + result.stderr
 
+    run(False, 'no compiled AMDOF capability marker')
+    # Data-only fixture for the capability scanner; never execute this file.
+    (output / 'Magpie.exe').write_bytes(b'Synthetic AMDOF capability v1: FSR3-FG required input')
     run(True, 'FSR3FG payload matches')
     provider = output / 'amd_fidelityfx_framegeneration_dx12.dll'
     provider.unlink()
     run(False, 'package is missing')
     provider.write_bytes(b'wrong-runtime-fixture')
     run(False, 'runtime differs from SDK 2.3.0')
-print('FSR3FG package fixtures: complete pair accepted; missing and mismatched providers rejected. No runtime execution.')
+print('FSR3FG package fixtures: complete pair with capability accepted; missing capability, missing and mismatched providers rejected. No runtime execution.')
