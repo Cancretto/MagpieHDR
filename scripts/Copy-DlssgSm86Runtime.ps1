@@ -11,6 +11,8 @@ foreach ($record in $contract.Files) {
     Copy-Item -LiteralPath (Join-Path $RuntimeDirectory $record.Name) -Destination (Join-Path $destination $record.Name) -Force
 }
 # Remove only the obsolete FG output owned by the old copy target.
+# Its replacement is the verified, explicitly loaded bundle registered by
+# DlssgSm86Runtime/NgxFeatureDiscovery, not a DLL discovered at the package root.
 $legacy = Join-Path $OutputDirectory 'nvngx_dlssg.dll'
 if (Test-Path -LiteralPath $legacy) { Remove-Item -LiteralPath $legacy }
 & (Join-Path $PSScriptRoot 'Test-DlssgSm86Package.ps1') -PackageDirectory $OutputDirectory

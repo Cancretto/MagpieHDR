@@ -406,6 +406,10 @@ bool DLSSFrameGenerator::Initialize(
 		Logger::Get().Error("DLSSFG community runtime unavailable; see package/adapter diagnostics and restart Magpie if required");
 		return false;
 	}
+	if (!DlssgSm86Runtime::VerifyLoadedPair()) {
+		Logger::Get().Error("DLSSFG stage=BundleValidation failed before NGX initialization");
+		return false;
+	}
 	auto impl = std::make_unique<Impl>();
 	impl->device11 = resources.GetD3DDevice();
 	impl->context11 = resources.GetD3DDC();
@@ -439,6 +443,7 @@ bool DLSSFrameGenerator::Initialize(
 	}
 
 	if (!ngxCore.Acquire(resources, "DLSSFG")) {
+		Logger::Get().Error("DLSSFG stage=NgxDiscoveryOrInit failed; inspect the preceding NGX search paths and Init result");
 		return false;
 	}
 	impl->coreRegistered = true;
@@ -501,6 +506,12 @@ bool DLSSFrameGenerator::Initialize(
 
 	NVSDK_NGX_Result result = NVSDK_NGX_Result_Success;
 	if (!ngxCore.GetCapabilityParameters(&impl->parameters, "DLSSFG")) {
+		Logger::Get().Error("DLSSFG stage=CapabilityParameters failed");
+		return false;
+	}
+	// NGX may load additional modules while populating its capability parameters.
+	if (!DlssgSm86Runtime::VerifyLoadedPair()) {
+		Logger::Get().Error("DLSSFG stage=BundleValidation changed during NGX capability discovery");
 		return false;
 	}
 
@@ -512,24 +523,34 @@ bool DLSSFrameGenerator::Initialize(
 	if (!NGXSucceeded(result) || !available) {
 		int initResult = 0;
 		DWORD initSehCode = 0;
-		GetParameterISafely(
+		const auto initQueryResult = GetParameterISafely(
 			impl->parameters,
 			NVSDK_NGX_Parameter_FrameGeneration_FeatureInitResult,
 			&initResult, &initSehCode);
 		Logger::Get().Error(fmt::format(
-			"DLSS Frame Generation is unavailable (result={:#x}, seh={:#x})",
-			(uint32_t)initResult, sehCode ? sehCode : initSehCode));
+			"DLSSFG stage=CapabilityUnavailable availableQuery={:#x} available={} availableSeh={:#x} "
+			"featureInitQuery={:#x} featureInitResult={:#x} featureInitSeh={:#x}",
+			(uint32_t)result, available, sehCode, (uint32_t)initQueryResult, (uint32_t)initResult, initSehCode));
+		if (NGXSucceeded(initQueryResult) && static_cast<NVSDK_NGX_Result>(initResult) == NVSDK_NGX_Result_FAIL_FeatureNotFound) {
+			Logger::Get().Error("NGX did not discover/initialize the bundled FG feature despite verified mappings; inspect NGX SDK discovery logs. Changing optical flow or multiplier does not repair this stage");
+		}
 		return false;
 	}
 
 	uint32_t maxGeneratedFrames = 1;
 	sehCode = 0;
-	const bool hasMultiFrameCapability = NGXSucceeded(GetParameterUISafely(
+	const auto multiFrameQuery = GetParameterUISafely(
 		impl->parameters,
 		NVSDK_NGX_DLSSG_Parameter_MultiFrameCountMax,
 		&maxGeneratedFrames,
-		&sehCode));
-	if (sehCode) return false;
+		&sehCode);
+	const bool hasMultiFrameCapability = NGXSucceeded(multiFrameQuery);
+	Logger::Get().Info(fmt::format("DLSSFG stage=CapabilityAvailable availableQuery={:#x} MFGQuery={:#x} MFGSeh={:#x}",
+		(uint32_t)result, (uint32_t)multiFrameQuery, sehCode));
+	if (sehCode) {
+		Logger::Get().Error(fmt::format("DLSSFG stage=MfgCapability raised SEH {:#x}; restart Magpie", sehCode));
+		return false;
+	}
 	impl->maxSupportedMultiplier = DlssgSm86Policy::MaxMultiplier(hasMultiFrameCapability, maxGeneratedFrames);
 	if (impl->maxSupportedMultiplier < 2) {
 		Logger::Get().Error("DLSSFG reports zero generated-frame capacity; refusing to promote it to 2x");
@@ -546,7 +567,6 @@ bool DLSSFrameGenerator::Initialize(
 			_requestedSettings.multiplier,
 			impl->maxSupportedMultiplier, impl->multiplier));
 	}
-	if (!DlssgSm86Runtime::VerifyLoadedPair()) return false;
 	for (uint32_t frameIndex = 1;
 		frameIndex < impl->multiplier; ++frameIndex) {
 		if (!CreateInterpolationDisableResources(*impl, frameIndex)) {
@@ -583,10 +603,12 @@ bool DLSSFrameGenerator::Initialize(
 		impl->parameters, &createParams, &sehCode);
 	if (!NGXSucceeded(result) || !impl->feature) {
 		Logger::Get().Error(fmt::format(
-			"NGX_D3D12_CREATE_DLSSG failed ({:#x}, seh={:#x})",
+			"DLSSFG stage=FeatureCreate NGX_D3D12_CREATE_DLSSG failed ({:#x}, seh={:#x})",
 			(uint32_t)result, sehCode));
 		return false;
 	}
+	Logger::Get().Info(fmt::format("DLSSFG stage=FeatureCreated result={:#x} seh={:#x}; GPU execution pending",
+		(uint32_t)result, sehCode));
 
 	hr = impl->commandList12->Close();
 	if (FAILED(hr)) {

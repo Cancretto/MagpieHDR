@@ -12,9 +12,11 @@
 - RTSS 配置接管独立成组，关闭联动或跟随源帧率时也可打开工具管理。10 处数字输入的 FPS／px／x 单位移到框外，简单／高级切换使用实际圆角外框。
 - 原 DLSS FG 效果接入固定版本的社区兼容运行库，保持 2×～4×与旧配置；增加文件身份校验和失败升级回滚。
 - 新增实验性 FSR 3 FG：SDR、固定 2×，默认外部运动估计与重复帧过滤关闭。HDR 与不支持的几何组合明确拒绝。
+- 修复 FSR3 外部运动副本缺少 SRV 绑定的问题，区分缺失／过期运动与资源错误，保留首个呈现错误详情。DLSS 在 NGX 初始化前主动加载并校验内嵌运行库、注册实际搜索目录，增加各阶段诊断。真实插帧画面与运行稳定性仍需实机验证。
+- 统一显示名称为 DLSS FrameGeneration、XeSS FrameGeneration、FSR3 FrameGeneration，保留效果 ID、原有搜索词和配置。
 - 同步 XeSS FG／VFG 审阅记录与 Beta6 已有默认值；VFG 保留性能／均衡两档。
 
-各 GPU 架构的 DLSS 社区路由、FSR3 生成画质／成本、真实游戏和 HDR／VRR 显示仍需逐项验收。首次集成结果见工作区 `reports/0610-beta7-integration-20261011`，刷新／RTSS 更新见 `reports/0610-beta7-refresh-update-20261011`，配置页更新见 `reports/0610-beta7-profile-update-20261011`，本次 RTSS 分组更新见 `reports/0610-beta7-rtss-group-update-20261011`。实际 WinUI 布局、DPI 和 RTSS 目标帧率仍需原生验收。
+各 GPU 架构的 DLSS 社区路由、FSR3 生成画质／成本、真实游戏和 HDR／VRR 显示仍需逐项验收。首次集成结果见工作区 `reports/0610-beta7-integration-20261011`，刷新／RTSS 更新见 `reports/0610-beta7-refresh-update-20261011`，配置页更新见 `reports/0610-beta7-profile-update-20261011`，RTSS 分组更新见 `reports/0610-beta7-rtss-group-update-20261011`，本次 FG 修复的构建与验证见 `reports/0610-beta7-fg-fixes-20261011`。实际 WinUI 布局、DPI 和 RTSS 目标帧率仍需原生验收。
 
 ## English
 
@@ -26,6 +28,8 @@
 - Moves RTSS management into its own group, available even when linkage is disabled or following the source rate. Places FPS/px/x units outside all ten numeric fields and draws a rounded border around the Simple/Advanced selector.
 - Integrates the pinned community runtime into the existing DLSS FG effect, retaining 2x–4x and saved settings, with file verification and update rollback.
 - Adds experimental SDR-only, fixed-2x FSR 3 FG. External motion estimation and duplicate filtering default to off. Unsupported HDR or geometry combinations are rejected.
+- Fixes the SRV binding on FSR3 external-motion copies, validates resource contracts and retains the first presentation error. Primes and verifies the bundled DLSS runtime before NGX initialization, registers its actual directory and adds stage-specific diagnostics. Real generated output and runtime stability still require hardware validation.
+- Unifies display names as DLSS FrameGeneration, XeSS FrameGeneration and FSR3 FrameGeneration while preserving effect IDs, existing search aliases and saved settings.
 - Retains all Beta6 fixes and updates stale XeSS FG/VFG review metadata.
 
 GPU architecture coverage, generated-image quality, performance, real games and display behavior remain separate acceptance work. This is a local test release.

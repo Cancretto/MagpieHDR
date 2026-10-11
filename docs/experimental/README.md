@@ -26,6 +26,10 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [DLSSFG sm86 启动修复源码交接](reviews/20261011-issue37-dlssfg-sm86-startup-fix.md)：原功能分支补齐显式 bundle 加载和 NGX 搜索目录；独立 loader 四场景通过，修改后的 Magpie 编译与真实补帧由后续会话验收。
+
+- [DLSSFG Beta7 启用失败修复 TODO](todos/20261011-issue37-dlssfg-sm86-startup-failure-TODO.md)：`FeatureNotFound` 实机记录与独立加载探针；补齐 bundle 准备和 NGX 搜索路径。
+
 - [Issue 37：DLSSFG 社区兼容接入开发交接](reviews/20261011-issue37-dlssfg-sm86-implementation.md)：默认统一接入、最高 4×；源码候选已写入，编译与实机验收交后续会话。
 - [Issue 37：DLSSFG 社区兼容接入 TODO](todos/20261011-issue37-dlssfg-sm86-unified-TODO.md)：原需求与完整验收清单。
 - **Issue 19：FSR 3 FG 源码集成**：独立分支 `feature/fsr3-frame-generation`，固定 2×、SDR、捕获时间戳优先及捕获接收间隔回退，未限制 WGC。见 [TODO](todos/20261011-issue19-fsr3-frame-generation-TODO.md)、[源码与编译交接](reviews/20261011-fsr3fg-source-development.md)、[效果说明](effects/FSR3FG.md)。本会话没有编译、部署或实机验收。

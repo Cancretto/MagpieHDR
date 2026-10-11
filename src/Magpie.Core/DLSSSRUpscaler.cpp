@@ -1,9 +1,12 @@
 #include "pch.h"
 #include "DLSSSRUpscaler.h"
 #include "DlssgSm86Runtime.h"
+#include "NgxFeatureDiscovery.h"
 #include "DeviceResources.h"
 #include "DirectXHelper.h"
 #include "Logger.h"
+
+namespace Magpie { DLSSSRUpscaler::DLSSSRUpscaler() = default; }
 
 #ifdef MP_ENABLE_DLSS_SR
 #include <nvsdk_ngx.h>
@@ -32,6 +35,7 @@ void DLSSSRUpscaler::_Reset() noexcept {
 		NVSDK_NGX_D3D11_Shutdown1(_device);
 		_ngxInitialized = false;
 	}
+	_featureDiscovery.reset();
 
 	_zeroDepthUav = nullptr;
 	_zeroDepth = nullptr;
@@ -113,13 +117,19 @@ bool DLSSSRUpscaler::Initialize(
 
 	// A stable custom project identifier is permitted by NGX when an NVIDIA
 	// application ID has not been assigned to an integration.
-	DlssgSm86Runtime::Prepare(deviceResources.GetGraphicsAdapter());
+	const bool communityPrepared = DlssgSm86Runtime::Prepare(deviceResources.GetGraphicsAdapter());
+	_featureDiscovery = std::make_unique<NgxFeatureDiscovery>();
+	if (!_featureDiscovery->Initialize(communityPrepared)) {
+		_Reset();
+		return false;
+	}
 	NVSDK_NGX_Result result = NVSDK_NGX_D3D11_Init_with_ProjectID(
 		"7c134ab9-9677-4af5-a2b2-bca943350861",
 		NVSDK_NGX_ENGINE_TYPE_CUSTOM,
 		"Magpie-DLSS-SR-2",
 		L"logs",
-		_device
+		_device,
+		_featureDiscovery->Info()
 	);
 	if (!NGXSucceeded(result)) {
 		Logger::Get().Error(fmt::format("NVSDK_NGX_D3D11_Init failed ({:#x})", (uint32_t)result));
