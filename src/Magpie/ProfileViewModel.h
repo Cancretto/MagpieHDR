@@ -142,6 +142,16 @@ struct ProfileViewModel : ProfileViewModelT<ProfileViewModel>,
 	bool ShowRtssSyncedRate() const noexcept;
 	bool IsRtssSyncAvailable() const noexcept;
 	bool ShowRtssGlobalNotice() const noexcept;
+	hstring RtssStatusTitle() const;
+	hstring RtssStatusDescription() const;
+	hstring RtssStatusGlyph() const;
+	bool IsRtssBusy() const;
+	bool ShowRtssManagement() const;
+	hstring RtssProgramStatus() const;
+	hstring RtssSelfStatus() const;
+	hstring RtssManagementResult() const;
+	bool ShowRtssManagementResult() const;
+	bool CanRecheckRtss() const;
 	hstring RtssStatusText() const;
 	IVector<hstring> RtssStatusSegments() const;
 	hstring RtssSyncText() const;
@@ -261,6 +271,7 @@ private:
 	::Magpie::Event<::Magpie::Profile&>::EventRevoker _frameSyncChangedRevoker;
 	::Magpie::Event<>::EventRevoker _frameRefreshModeChangedRevoker;
 	::Magpie::Event<>::EventRevoker _rtssStatusRevoker;
+	::Magpie::Event<bool>::EventRevoker _scalingStatusRevoker;
 	::Magpie::RtssStatus _rtssPreview;
 	uint64_t _rtssPreviewGeneration = 0;
 

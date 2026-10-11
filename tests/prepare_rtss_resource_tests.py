@@ -14,15 +14,15 @@ getters = []
 start = vm.index("IVector<hstring> ProfileViewModel::RtssStatusSegments() const {")
 end = vm.index("\n}", start) + 2
 getters.append(vm[start:end])
-for name in ("RtssStatusText", "RtssSyncText", "RtssLaunchText", "AfterburnerLaunchText", "RtssInitializeText"):
+for name in ("RtssStatusText", "RtssSyncText", "RtssLaunchText", "AfterburnerLaunchText", "RtssInitializeText",
+             "RtssStatusTitle", "RtssStatusDescription", "RtssProgramStatus", "RtssSelfStatus", "RtssManagementResult"):
     start = vm.index(f"hstring ProfileViewModel::{name}() const {{")
     end = vm.index("\n}", start) + 2
     getters.append(vm[start:end])
-for signature in ("RtssStatus ProfileViewModel::_RtssStatus() const {", "bool ProfileViewModel::CanInitializeMagpie() const {",
-                  "bool ProfileViewModel::ShowRtssInitialize() const {"):
+for signature in ("bool RtssFailed(",):
     start = vm.index(signature)
     end = vm.index("\n}", start) + 2
-    getters.append(vm[start:end].replace("ProfileViewModel::", "StatusViewModel::"))
+    getters.insert(0, vm[start:end])
 
 enum = re.search(r"enum class RtssState \{.*?\};", service, re.S).group()
 status = re.search(r"struct RtssStatus \{.*?\n\};", service, re.S).group()

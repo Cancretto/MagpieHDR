@@ -26,7 +26,8 @@ rtss = uids["FrameRefresh_RateGroup"]
 check([n.get(x+"Uid") for n in uids["Rtss_Mode_Input"]] == ["Rtss_Scope_None", "Rtss_Rate_Sync", "Rtss_Rate_Custom"], "combined management/rate selector")
 check([n.get(x+"Uid") for n in uids["Rtss_Scope_Input"]] == ["Rtss_Scope_Global", "Rtss_Scope_Target"], "scope only contains actual scopes")
 check([n.get(x+"Uid") for n in uids["Rtss_ExitPolicy_Input"]] == ["Rtss_Exit_Keep", "Rtss_Exit_Restore"], "exit semantics preserved")
-check(uids["Rtss_CustomRate"].get("Visibility") == "{x:Bind ViewModel.ShowRtssCustomRate, Mode=OneWay}", "custom number dependency")
+rate_grid = next(n for n in nodes if uids["Rtss_CustomRate_Input"] in list(n))
+check(rate_grid.get("Visibility") == "{x:Bind ViewModel.ShowRtssCustomRate, Mode=OneWay}", "custom number and unit dependency")
 check("FrameRefresh_Advanced" not in uids and "Rtss_Advanced" not in uids, "no nested advanced group")
 options = next(n for n in nodes if n.get(x+"Name") == "RtssOptionsGrid")
 check(options.get("Visibility") == "{x:Bind ViewModel.ShowRtssOptions, Mode=OneWay}", "dependent options hidden when unmanaged/simple")
@@ -37,10 +38,14 @@ status = next(n for n in nodes if n.get(x+"Name") == "RtssStatusCard")
 check("Visibility" not in status.attrib and "IsEnabled" not in status.attrib, "shared status in both modes")
 check(uids["Rtss_Retry"].get("Click") == "{x:Bind ViewModel.RetryRtss}", "retry current session")
 check(uids["Rtss_Download"].get("NavigateUri").startswith("https://www.guru3d.com/"), "explicit external download link")
-check(len([n for n in status.iter() if n.tag.endswith("MenuFlyoutItem")]) == 4, "recheck/self init/tool entries under manage")
-description = next(n for n in status if n.tag.endswith("SettingsCard.Description"))
-check(description[0].get("ItemsSource") == "{x:Bind ViewModel.RtssStatusSegments, Mode=OneWay}", "wrapping status units")
-check(description[0].get("AutomationProperties.LiveSetting") == "Polite", "accessible status updates")
+manage = next(n for n in status if n.get(x+"Name") == "RtssManagement")
+check(not any(n.tag.endswith("MenuFlyoutItem") for n in status.iter()), "management stays inline")
+check(len([n for n in manage.iter() if n.tag.endswith("Button")]) == 4, "recheck/self init/tool entries in management details")
+presentation = status[0]
+texts = {n.get("Text") for n in presentation.iter()}
+check("{x:Bind ViewModel.RtssStatusTitle, Mode=OneWay}" in texts and
+      "{x:Bind ViewModel.RtssStatusDescription, Mode=OneWay}" in texts, "independent status title and detail")
+check(any(n.get("AutomationProperties.LiveSetting") == "Polite" for n in presentation.iter()), "accessible status updates")
 
 idl = read("src/Magpie/ProfileViewModel.idl")
 header = read("src/Magpie/ProfileViewModel.h")

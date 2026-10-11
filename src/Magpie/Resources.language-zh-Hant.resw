@@ -1982,4 +1982,32 @@
   <data name="Rtss_Failure_ProcessExited" xml:space="preserve"><value>RTSS 程序已結束</value></data>
   <data name="Rtss_Status_StartingAfterburner" xml:space="preserve"><value>正在啟動 MSI Afterburner</value></data>
   <data name="Rtss_Status_AfterburnerStartFailed" xml:space="preserve"><value>MSI Afterburner 啟動失敗</value></data>
+  <data name="FrameRefresh_CursorStrategy.Header" xml:space="preserve"><value>重新整理策略</value></data>
+  <data name="Rtss_Management.Header" xml:space="preserve"><value>管理</value></data>
+  <data name="Rtss_Recheck.Content" xml:space="preserve"><value>重新偵測</value></data>
+  <data name="Rtss_ProgramLabel.Text" xml:space="preserve"><value>RTSS 程式</value></data>
+  <data name="Rtss_SelfLabel.Text" xml:space="preserve"><value>Magpie 設定</value></data>
+  <data name="Rtss_Title_WaitingContent" xml:space="preserve"><value>等待固定內容幀率</value></data>
+  <data name="Rtss_Detail_Disabled" xml:space="preserve"><value>不接管目標程式幀率。</value></data>
+  <data name="Rtss_Detail_WaitingContent" xml:space="preserve"><value>內容跟隨來源，同步限幀暫停。</value></data>
+  <data name="Rtss_Detail_WaitingTarget" xml:space="preserve"><value>開始縮放時自動準備 RTSS。</value></data>
+  <data name="Rtss_Detail_Checking" xml:space="preserve"><value>檢查程式與設定介面。</value></data>
+  <data name="Rtss_Detail_Starting" xml:space="preserve"><value>等待 RTSS 啟動完成。</value></data>
+  <data name="Rtss_Detail_Initializing" xml:space="preserve"><value>將 Magpie 自身設定設為不限幀。</value></data>
+  <data name="Rtss_Detail_Applying" xml:space="preserve"><value>套用目標程式限幀設定。</value></data>
+  <data name="Rtss_Detail_NotInstalled" xml:space="preserve"><value>安裝 RTSS 後重新偵測。</value></data>
+  <data name="Rtss_Detail_Global" xml:space="preserve"><value>RTSS 全域設定</value></data>
+  <data name="Rtss_Detail_Target" xml:space="preserve"><value>目前目標程式</value></data>
+  <data name="Rtss_Inventory_Checking" xml:space="preserve"><value>偵測中</value></data>
+  <data name="Rtss_Inventory_Missing" xml:space="preserve"><value>未安裝</value></data>
+  <data name="Rtss_Inventory_Running" xml:space="preserve"><value>執行中</value></data>
+  <data name="Rtss_Inventory_Stopped" xml:space="preserve"><value>已安裝，未執行</value></data>
+  <data name="Rtss_Inventory_Initializing" xml:space="preserve"><value>初始化中</value></data>
+  <data name="Rtss_Inventory_Unlimited" xml:space="preserve"><value>已不限幀</value></data>
+  <data name="Rtss_Inventory_Uninitialized" xml:space="preserve"><value>待初始化</value></data>
+  <data name="Rtss_Inventory_Unknown" xml:space="preserve"><value>待檢查</value></data>
+  <data name="Rtss_Management_Failed" xml:space="preserve"><value>Magpie 初始化未完成</value></data>
+  <data name="Rtss_Management_LaunchFailed" xml:space="preserve"><value>RTSS 啟動失敗</value></data>
+  <data name="Rtss_Management_Started" xml:space="preserve"><value>已啟動</value></data>
+  <data name="Rtss_Detail_RetryReady" xml:space="preserve"><value>已偵測到 RTSS，可重試連動。</value></data>
 </root>

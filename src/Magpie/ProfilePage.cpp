@@ -38,6 +38,14 @@ void ProfilePage::RtssOptionsGrid_SizeChanged(IInspectable const& sender, SizeCh
 	RtssExitLabel().Margin(Thickness{ 0, narrow ? 16.0 : 0.0, 0, 8 });
 }
 
+void ProfilePage::FrameRefreshHeader_SizeChanged(IInspectable const&, SizeChangedEventArgs const& args) {
+	const bool narrow = args.NewSize().Width < 560;
+	Grid::SetColumn(FrameRefreshHeaderActions(), narrow ? 0 : 1);
+	Grid::SetColumnSpan(FrameRefreshHeaderActions(), narrow ? 2 : 1);
+	Grid::SetRow(FrameRefreshHeaderActions(), narrow ? 1 : 0);
+	FrameRefreshHeaderActions().Margin(Thickness{ 0, narrow ? 8.0 : 0.0, 0, 0 });
+}
+
 void ProfilePage::NumberBox_Loaded(IInspectable const& sender, RoutedEventArgs const&) {
 	ControlHelper::NumberBox_Loaded(sender);
 }

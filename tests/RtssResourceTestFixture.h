@@ -43,6 +43,16 @@ struct RtssService {
 		initialized ? RtssInitializationState::Initialized : RtssInitializationState::Uninitialized; }
 	bool IsLaunching() const { return launching; }
 	RtssStatus Status() const { return status; }
+	RtssStatus InventoryStatus() const { return status; }
+	RtssStatus SessionStatus() const { return {}; }
+	RtssStatus ManagementStatus() const { return status; }
+	bool IsRechecking() const { return false; }
+	bool HasSession(std::weak_ptr<const uint8_t>) const { return false; }
+	bool IsLatestStatus(const RtssStatus&, std::weak_ptr<const uint8_t>) const { return false; }
+};
+struct ScalingService {
+	static ScalingService& Get() { static ScalingService service; return service; }
+	bool IsScaling() const { return false; }
 };
 struct ProfileData {
 	RtssSettings rtss;
@@ -63,12 +73,10 @@ struct ProfileViewModel {
 	hstring RtssLaunchText() const;
 	hstring AfterburnerLaunchText() const;
 	hstring RtssInitializeText() const;
-};
-struct StatusViewModel {
-	ProfileData data; ProfileData* _data = &data;
-	RtssStatus _rtssPreview;
-	RtssStatus _RtssStatus() const;
-	bool CanInitializeMagpie() const;
-	bool ShowRtssInitialize() const;
+	hstring RtssStatusTitle() const;
+	hstring RtssStatusDescription() const;
+	hstring RtssProgramStatus() const;
+	hstring RtssSelfStatus() const;
+	hstring RtssManagementResult() const;
 };
 #include "RtssResourceGetters.g.h"
