@@ -69,7 +69,11 @@ for lang in ("en-US", "zh-Hans", "zh-Hant"):
     names = [n.get("name") for n in root.findall("data")]
     assert len(names) == len(set(names)), f"Duplicate resource in {lang}"
     for prefix in new_uids:
-        assert prefix + ".Header" in names and prefix + ".Description" in names
+        assert prefix + ".Header" in names, (lang, prefix)
+        # The cursor strategy is a label-only child of the described cursor group.
+        # Keep description coverage for the existing groups and settings.
+        if prefix != "FrameRefresh_CursorStrategy":
+            assert prefix + ".Description" in names, (lang, prefix)
     assert uid + ".Description" in names
 assert '<DefaultLanguage>en-US</DefaultLanguage>' in read("src/Common.Pre.props")
 idl = read("src/Magpie/ProfileViewModel.idl")
