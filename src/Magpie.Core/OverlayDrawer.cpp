@@ -775,9 +775,9 @@ int OverlayDrawer::_DrawEffectTimings(
 	std::string effectName;
 	if (ScalingWindow::Get().Options().IsDeveloperMode() && drawInfo.desc->flags & EffectFlags::FP16) {
 		// 开发者选项开启时显示效果是否使用 FP16
-		effectName = StrHelper::Concat(GetEffectDisplayName(*drawInfo.desc), " (FP16)");
+		effectName = StrHelper::Concat(drawInfo.label, " (FP16)");
 	} else {
-		effectName = std::string(GetEffectDisplayName(*drawInfo.desc));
+		effectName = drawInfo.label;
 	}
 
 	if (_DrawTimingItem(
@@ -1112,7 +1112,8 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 		ImGui::TextUnformatted(fpsText.c_str());
 		ImGui::PopFont();
 		if (ScalingWindow::Get().Renderer().HasFrameGeneration() && ImGui::IsItemHovered())
-			ImGui::SetTooltip("%s", _GetResourceString(L"Overlay_FG_FrameRateHelp").c_str());
+			ImGui::SetTooltip("%s", _GetResourceString(ScalingWindow::Get().Renderer().PresentationRate().source == ContentFrameCountSource::Submitted ?
+				L"Overlay_FG_SubmittedRateHelp" : L"Overlay_FG_FrameRateHelp").c_str());
 		ImGui::SetWindowFontScale(toolbarScale / _dpiScale);
 
 		ImGui::SameLine();
@@ -2218,12 +2219,14 @@ bool OverlayDrawer::_DrawProfiler(const SmallVector<float>& effectTimings, uint3
 			statistics.second == 0 ? 0.0f : statistics.first * 100.0f / statistics.second).c_str());
 		ImGui::PopFont();
 	}
-	const std::string& frameRateStr = _GetResourceString(ScalingWindow::Get().Renderer().HasFrameGeneration() ?
-		L"Overlay_Profiler_FrameRateWithFG" : L"Overlay_Profiler_FrameRate");
+	const auto rate = renderer.PresentationRate();
+	const bool submittedRate = rate.source == ContentFrameCountSource::Submitted;
+	const std::string& frameRateStr = _GetResourceString(renderer.HasFrameGeneration() ?
+		(submittedRate ? L"Overlay_FG_SubmittedRate" : L"Overlay_Profiler_FrameRateWithFG") : L"Overlay_Profiler_FrameRate");
 	ImGui::TextUnformatted(fmt::format("{}: {}", frameRateStr, _FormatFrameRate(fps)).c_str());
 	if (renderer.HasFrameGeneration()) {
-		const auto rate = renderer.PresentationRate();
-		ImGui::TextUnformatted(fmt::format("{}: {}", _GetResourceString(L"Overlay_FG_GeneratedRate"),
+		ImGui::TextUnformatted(fmt::format("{}: {}", _GetResourceString(submittedRate ?
+			L"Overlay_FG_SubmittedGeneratedRate" : L"Overlay_FG_GeneratedRate"),
 			rate.totalKnown ? std::to_string(rate.generated) : "--").c_str());
 		ImGui::TextUnformatted(fmt::format("{}: {}", _GetResourceString(L"Overlay_FG_IdleSubmissions"),
 			renderer.PresentationRate().idleSubmissions).c_str());
@@ -2235,12 +2238,20 @@ bool OverlayDrawer::_DrawProfiler(const SmallVector<float>& effectTimings, uint3
 	const uint32_t nEffect = (uint32_t)effectDescs.size();
 
 	SmallVector<_EffectDrawInfo, 4> effectDrawInfos(effectDescs.size());
+	bool hasUnmeasuredFG = false;
 
 	{
 		uint32_t idx = 0;
 		for (uint32_t i = 0; i < nEffect; ++i) {
 			_EffectDrawInfo& drawInfo = effectDrawInfos[i];
 			drawInfo.desc = effectDescs[i];
+			drawInfo.label = GetEffectDisplayName(*drawInfo.desc);
+			const auto fg = ClassifyFrameGenerationEffect(drawInfo.desc->name);
+			if (fg == FrameGenerationEffectKind::FSR3 || fg == FrameGenerationEffectKind::XeSSX2 ||
+				fg == FrameGenerationEffectKind::XeSSMultiFrame) {
+				hasUnmeasuredFG = true;
+				drawInfo.label += " (" + _GetResourceString(L"Overlay_FG_InputCopyTiming") + ")";
+			}
 
 			uint32_t nPass = (uint32_t)drawInfo.desc->passes.size();
 			drawInfo.passTimings = { _lastestAvgEffectTimings.begin() + idx, nPass };
@@ -2317,6 +2328,7 @@ bool OverlayDrawer::_DrawProfiler(const SmallVector<float>& effectTimings, uint3
 	// 效果渲染用时
 	const std::string& timingsStr = _GetResourceString(L"Overlay_Profiler_Timings");
 	if (ImGui::CollapsingHeader(timingsStr.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+		if (hasUnmeasuredFG) ImGui::TextWrapped("%s", _GetResourceString(L"Overlay_FG_UnmeasuredTiming").c_str());
 		float effectsTotalTime = 0.0f;
 		for (const _EffectDrawInfo& drawInfo : effectDrawInfos) {
 			effectsTotalTime += drawInfo.totalTime;
@@ -2439,7 +2451,7 @@ bool OverlayDrawer::_DrawProfiler(const SmallVector<float>& effectTimings, uint3
 								itemId,
 								colors[i],
 								_dpiScale,
-								GetEffectDisplayName(*drawInfo.desc),
+								drawInfo.label,
 								drawInfo.totalTime,
 								effectsTotalTime,
 								selectedIdx == (int)i
@@ -2511,7 +2523,7 @@ bool OverlayDrawer::_DrawProfiler(const SmallVector<float>& effectTimings, uint3
 			if (ImGui::BeginTable("total", 1, ImGuiTableFlags_PadOuterX)) {
 				ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthStretch | ImGuiTableColumnFlags_NoResize | ImGuiTableColumnFlags_NoReorder);
 
-				_DrawTimingItem(itemId, _GetResourceString(L"Overlay_Profiler_Timings_Total").c_str(), nullptr, effectsTotalTime);
+				_DrawTimingItem(itemId, _GetResourceString(hasUnmeasuredFG ? L"Overlay_FG_MeasuredTotal" : L"Overlay_Profiler_Timings_Total").c_str(), nullptr, effectsTotalTime);
 
 				ImGui::EndTable();
 			}

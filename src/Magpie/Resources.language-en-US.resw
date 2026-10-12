@@ -2109,4 +2109,12 @@
   <data name="Overlay_FG_IdleSubmissions" xml:space="preserve"><value>Idle redraw submissions/s (R/s)</value></data>
   <data name="Overlay_FG_Waiting" xml:space="preserve"><value>Waiting for new content</value></data>
   <data name="Overlay_FG_GeneratedRate" xml:space="preserve"><value>Reported generated FPS</value></data>
+  <data name="Message_FSR3FGEffectChainUnsupported" xml:space="preserve"><value>FSR3 FG cannot use effect {}: only verified rectangular scaling and sharpening are supported. Remove this effect or select another frame generator.</value></data>
+  <data name="Message_FSR3FGHdrUnsupported" xml:space="preserve"><value>FSR3 FG currently supports SDR only. Remove HDR components and disable HDR compatibility.</value></data>
+  <data name="Overlay_FG_SubmittedRateHelp" xml:space="preserve"><value>Content submissions / real input FPS. Generated submissions exclude CPU-visible resets; GPU scene cuts may still produce copies. These are not SDK presentation reports or measured display FPS. R/s counts redraw submissions separately.</value></data>
+  <data name="Overlay_FG_SubmittedRate" xml:space="preserve"><value>Frame rate (content submitted / real input)</value></data>
+  <data name="Overlay_FG_SubmittedGeneratedRate" xml:space="preserve"><value>Submitted generated FPS</value></data>
+  <data name="Overlay_FG_InputCopyTiming" xml:space="preserve"><value>input copy only</value></data>
+  <data name="Overlay_FG_UnmeasuredTiming" xml:space="preserve"><value>Frame-generation GPU time is unmeasured. Proxy FG rows measure only the input copy; the measured total excludes SDK frame generation.</value></data>
+  <data name="Overlay_FG_MeasuredTotal" xml:space="preserve"><value>Measured total (excludes FG)</value></data>
 </root>

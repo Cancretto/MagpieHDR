@@ -189,6 +189,7 @@
     <ClInclude Include="FSR2Upscaler.h" />
     <ClInclude Include="FSR3FGPresenter.h" />
     <ClInclude Include="FSR3FGPolicy.h" />
+    <ClInclude Include="FrameGuidanceAvailability.h" />
     <ClInclude Include="IdlePresentationClock.h" />
     <ClInclude Include="include\FrameGenerationParameters.h" />
     <ClInclude Include="FSR3FGMotion.h" />

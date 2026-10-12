@@ -1,6 +1,6 @@
 # FSR3 FrameGeneration
 
-状态：实验性功能，固定 2×、仅 SDR。Beta7 已包含初版；本次必选光流与通用空闲重绘改动尚未编译或实机验证，游戏画质、性能及显示验收仍待完成。默认构建开关关闭。
+状态：实验性功能，固定 2×、仅 SDR。Beta7 已包含初版；本修复分支已通过源码、原生隔离测试与 WARP 检查，尚未构建新产品或进行实机验证，游戏画质、性能及显示验收仍待完成。默认构建开关关闭。
 
 ## 使用范围
 
@@ -9,20 +9,20 @@
 - 不限制为 WGC。优先使用捕获时间戳；缺失时使用接受新捕获帧时记录的 CPU 单调时钟作为间隔估计，并明确标记来源。不同捕获方法仍分别待实测。
 - 首版仅支持 SDR / RGBA8 / BT.709。HDR 兼容模式、HDR 转换组件会被明确拒绝，HDR 接入留待单独开发与验收。
 - 必须使用外部光流，默认 AMDOF 质量，保留 NVOF。旧“无”/缺省/非法 method 迁移为 AMDOF 质量；已有合法 AMDOF 性能/质量或 NVOF 选择保留。FSR 自带内部光流仍运行。
-- 重复帧检测统一使用通用设置；移除效果级开关和覆盖。当前允许的外部运动链由 `FSR3FGPolicy.h` 的 `SupportsFSR3FGExternalMotion` 列出：FSR/DLSS/XeSS SR、DLSSNR、VFX Upscale/VSR、基础矩形缩放、FSR EASU/RCAS、帧率过滤及 FSR FG 标记。CRT、几何变形和未知自定义效果会明确拒绝，请从该效果组移除。尚未实现 distortion field。
+- 重复帧检测统一使用通用设置；移除效果级开关和覆盖。当前允许的外部运动链由 `FSR3FGPolicy.h` 的 `SupportsFSR3FGExternalMotion` 列出：FSR/DLSS/XeSS SR、DLSSNR、VFX Upscale/VSR、基础矩形缩放、NIS/NVSharpen、FSR EASU/RCAS、帧率过滤及 FSR FG 标记。CRT、几何变形和未知自定义效果会明确拒绝，请从该效果组移除。尚未实现 distortion field。
 - 支持画面在输出内部的缩放、黑边与不同宽高比映射；内容矩形超出输出的裁剪被拒绝。游戏自己画入图像内部的电影黑边不等于喜鹊的输出黑边。
 - 喜鹊工具栏与可独立绘制的鼠标走单独的 DirectComposition UI 层。游戏 HUD 和捕获中已经烘焙的鼠标仍留在图像中，无法自动分离。
 - 喜鹊限制基础帧输入，AMD 交换链控制插值和真实帧呈现。三种帧同步选择在 FSR FG 下均使用基础帧 Async 限速；不依赖 XeLL、Reflex 或 Anti-Lag。补帧不增加游戏逻辑帧率，也不能据此宣称降低输入延迟。
 
 ## 实验性输入契约
 
-运动向量来自现有 Frame Guidance，方向为当前帧到前帧，单位为像素。后端先适配到最终效果输出，Presenter 再按内容矩形缩放向量，在辅助纹理左上角写入；`generationRect` 表示内容在整个交换链中的位置。首帧或明确 reset 时允许合法零纹理占位；正常插帧须有对应的光流输入。有效的全零光流代表静止，不是错误。缓存重绘不提交新的光流样本。
+运动向量来自现有 Frame Guidance，方向为当前帧到前帧，单位为像素。后端先适配到最终效果输出，Presenter 再按内容矩形缩放向量，在辅助纹理左上角写入；`generationRect` 表示内容在整个交换链中的位置。首帧或明确 reset 时允许合法零纹理占位；正常插帧须有对应的光流输入。provider 运行/resize/同步失败会明确停止，连续缺失不能以 reset 无限直通。有效的全零光流代表静止，不是错误。缓存重绘不提交新的光流样本。
 
 前端在共享槽事务内复制运动纹理，FSR 的稳定副本带有 `D3D11_BIND_SHADER_RESOURCE` 供重映射采样。帧身份匹配但资源格式、布局、绑定或设备不符时明确报错停止；这类内部契约错误不当作普通的暂缺运动数据处理。
 
 深度为独立生成的正向有限平面深度 1.0，不读取 HDR/SR 的深度清除选项。虚拟相机 near=0.1、far=1000、垂直 FOV=60°、右/上/前为单位轴、位置与 jitter 为零。这不等价于真实游戏深度、相机或运动输入。快速运动、遮挡、文字和 HUD 质量必须实测。
 
-源帧 ID、捕获会话、资源代际及捕获时间戳独立于连续 SDK ID。WGC 的原生捕获时间优先；其他捕获方式使用后端在接受新帧时已有的 `_lastCapturedFrameTime`，通过独立元数据字段传给 Presenter。它是接收间隔估计，可能受捕获调度与背压影响，不是游戏渲染时长，也不取自较晚的发布/Present 时刻。日志分别标记 `capture-timestamp`、`capture-admission-estimate` 和首帧 `bootstrap`；时钟来源切换重置一次，两种时钟不混算。重复 UI 刷新不提交基础帧；帧跳跃、会话/资源变化、无效时间、超过 500ms 的间隔、光流/几何变化重置历史。SDK 在首帧或 reset 时可能呈现真实内容的复制帧，它们单独计为 `resetPassThroughs`，不计入 `interpolationDispatches`。
+源帧 ID、捕获会话、资源代际及捕获时间戳独立于连续 SDK ID。WGC 的原生捕获时间优先；其他捕获方式使用后端在接受新帧时已有的 `_lastCapturedFrameTime`，通过独立元数据字段传给 Presenter。它是接收间隔估计，可能受捕获调度与背压影响，不是游戏渲染时长，也不取自较晚的发布/Present 时刻。日志分别标记 `capture-timestamp`、`capture-admission-estimate` 和首帧 `bootstrap`；时钟来源切换重置一次，两种时钟不混算。重复 UI 刷新不提交基础帧；帧跳跃、会话/资源变化、无效时间、超过 500ms 的间隔、光流/几何变化和上游处理版本变化重置历史。SDK 在首帧或 reset 时可能呈现真实内容的复制帧，它们单独计为 `resetPassThroughs`，不计入 `interpolationDispatches`。
 
 `baseSubmits` 是代理交换链提交，`callbackDispatches` / `interpolationDispatches` 是 SDK 命令调度数量，均不是屏幕实际显示帧数。UI 不显示由 `baseFPS × 2` 伪造的实测帧率；显示事件仍需 PresentMon/显示端证据。
 
@@ -34,7 +34,15 @@ DLSS / XeSS / FSR3 / VFG 不再提供 `duplicateFrameFiltering`。旧效果字�
 
 FSR3 在重绘期间通过 SDK 关闭生成，只复制和 Present；不运行 Prepare/内部光流/插帧，不修改捕获时间戳或源帧身份。SDK 呈现序号仍递增，恢复新内容时重置插帧历史。空闲重绘不重跑前后置效果，包括依赖 TIME 的效果；FG 下这些效果仍随新内容推进，普通非 FG 的动态效果语义不变。
 
-工具栏 `R/s` 与性能面板单独显示成功提交的缓存重绘次数；不合入内容/真实 FPS，也不当作屏幕扫描率。无新内容时性能面板显示“等待新画面”。FSR3 的异步内容输出统计未知时继续保留未知状态，不用倍率估算。
+工具栏 `R/s` 与性能面板单独显示成功提交的缓存重绘次数；不合入内容/真实 FPS，也不当作屏幕扫描率。无新内容时性能面板显示“等待新画面”。FSR3 显示“内容提交 / 真实输入”和“已提交生成帧率”，来自本次成功回调及代理 Present 的提交结果；CPU reset 的复制帧不计生成，未知回调保留未知。GPU 内部场景切换仍可能产生复制帧，提交数不等于 SDK 呈现报告、具有新像素的有效中间帧数或屏幕实测帧率。XeSS 保留其 SDK 报告口径。
+
+静止源上的 Live 参数修改会立即发布新处理版本并以非 FG 重绘显示；它不伪造捕获/运动输入、不计真实或生成帧率，后续新输入重置历史。性能面板里的 FSR3/XeSS 时间只测到 D3D11 输入复制，SDK 的 D3D12 补帧耗时显示为未测量，总计明确不含该部分。
+
+## VRR / 垂直同步
+
+固定交换链 SDK 3.1.7 的插帧路径忽略调用者的 tearing flags。为执行应用的 tearing 策略，允许 tearing 时使用 `Present(0, ALLOW_TEARING)`，关闭或环境不允许时使用 `Present(1, 0)`；idle 也遵守该策略。SDK 可能仍在内部创建允许 tearing 的交换链，但同步呈现不发出 tearing 请求。允许 tearing 不等于驱动或显示器已经启用 VRR。
+
+这一适配未修改 SDK DLL；非零 SyncInterval 可能改变基础帧背压和延迟，多显示器、实际刷新节奏和输入延迟仍需实机验收。
 
 ## 构建与依赖（交给构建会话执行）
 

@@ -121,5 +121,29 @@ int main() {
 	Check(!stats.WaitingForContent(start + 2s), "new content clears waiting");
 	const auto resumedRate = stats.Get(start + 3s);
 	Check(resumedRate.total == 2 && resumedRate.real == 1 && resumedRate.generated == 1 && resumedRate.idleSubmissions == 0, "known generated frames stay separate from replays");
+	stats.Reset(ContentFrameCountSource::Submitted);
+	for (int i = 0; i < 60; ++i)
+		stats.Record(2, 1, start + std::chrono::microseconds(i * 1000000 / 60), ContentFrameCountSource::Submitted);
+	const auto submitted = stats.Get(start + 1s);
+	Check(submitted.total == 120 && submitted.real == 60 && submitted.generated == 60 &&
+		submitted.source == ContentFrameCountSource::Submitted, "120/60 submission rate retains provenance");
+	stats.Reset(ContentFrameCountSource::Submitted);
+	stats.Record(1, 1, start, ContentFrameCountSource::Submitted);
+	const auto resetRate = stats.Get(start + 1s);
+	Check(resetRate.totalKnown && resetRate.generated == 0 && resetRate.total == 1, "reset copy is not generated content");
+	stats.Record(std::nullopt, 1, start + 1s, ContentFrameCountSource::Submitted);
+	stats.Record(2, 1, start + 1500ms, ContentFrameCountSource::Submitted);
+	Check(!stats.Get(start + 2s).totalKnown, "missing callback poisons the whole window instead of inventing 2x");
+	stats.RecordIdleSubmission(start + 2s);
+	const auto quiet = stats.Get(start + 3s);
+	Check(quiet.totalKnown && quiet.real == 0 && quiet.total == 0 && quiet.idleSubmissions == 1 &&
+		quiet.source == ContentFrameCountSource::Submitted, "redraw changes only R/s and preserves rate provenance");
+	stats.Reset();
+	stats.Record(2, 1, start);
+	stats.Record(2, 1, start + 500ms, ContentFrameCountSource::Submitted);
+	Check(!stats.Get(start + 1s).totalKnown, "mixed source window cannot claim one complete output count");
+	stats.Reset(ContentFrameCountSource::Submitted);
+	Check(stats.Get(start).real == 0 && stats.Get(start).generated == 0 && !stats.WaitingForContent(start + 10s),
+		"resize/session reset discards old counts and content clock");
 	std::printf("FG settings/idle production policy: %u checks passed (no SDK/display acceptance).\n", checks);
 }

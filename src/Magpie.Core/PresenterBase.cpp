@@ -138,10 +138,10 @@ void PresenterBase::_LogVRRState(std::string_view event) noexcept {
 	if (auto adapter = _deviceResources->GetGraphicsAdapter()) adapter->GetDesc1(&adapterDesc);
 	Logger::Get().Info(fmt::format(
 		"VRR: event={} requested={} tearingSupported={} eligible={} creationFlags=0x{:x} "
-		"syncInterval=0 presentFlags=0x{:x} active=unknown vendorCompatibilityRequested={} "
+		"syncInterval={} presentFlags=0x{:x} active=unknown vendorCompatibilityRequested={} "
 		"reason={} hwnd=0x{:x} monitor=0x{:x} adapterVendor=0x{:x} adapterLuid={:x}:{:x} realForeground=0x{:x}",
 		event, _vrr.Requested(), _vrr.TearingSupported(),
-		_vrr.Reason() == VRRUnavailableReason::None, _vrr.ResizeFlags(), _vrr.PresentFlags(),
+		_vrr.Reason() == VRRUnavailableReason::None, _vrr.ResizeFlags(), _PresentSyncInterval(_vrr.PresentFlags()), _vrr.PresentFlags(),
 		_vrr.Requested() && adapterDesc.VendorId == 0x10de,
 		reason, reinterpret_cast<uintptr_t>(_vrrWindow), reinterpret_cast<uintptr_t>(_vrrMonitor),
 		adapterDesc.VendorId, uint32_t(adapterDesc.AdapterLuid.HighPart), adapterDesc.AdapterLuid.LowPart,
@@ -186,7 +186,7 @@ HRESULT PresenterBase::_PresentWithVRR(IDXGISwapChain4* swapChain, bool retryWit
 	HRESULT hr;
 	{
 		VRRPerformance::PresentScope performance(flags != 0);
-		hr = swapChain->Present(0, flags);
+		hr = swapChain->Present(_PresentSyncInterval(flags), flags);
 	}
 	if (flags && hr == DXGI_ERROR_INVALID_CALL) {
 		// Device loss is deliberately excluded. Latch for this swap-chain session;
@@ -199,7 +199,7 @@ HRESULT PresenterBase::_PresentWithVRR(IDXGISwapChain4* swapChain, bool retryWit
 		// ordinary DXGI endpoint can safely retry the same image once here.
 		if (retryWithoutTearing) {
 			VRRPerformance::PresentScope performance(false);
-			hr = swapChain->Present(0, 0);
+			hr = swapChain->Present(_PresentSyncInterval(0), 0);
 		}
 	}
 	if (FAILED(hr)) NvidiaForegroundCompatibility::Reject("present-failed");

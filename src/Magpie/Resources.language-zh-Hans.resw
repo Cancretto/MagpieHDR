@@ -2109,4 +2109,12 @@
   <data name="Overlay_FG_IdleSubmissions" xml:space="preserve"><value>空闲重绘提交/秒（R/s）</value></data>
   <data name="Overlay_FG_Waiting" xml:space="preserve"><value>等待新画面</value></data>
   <data name="Overlay_FG_GeneratedRate" xml:space="preserve"><value>已报告生成帧率</value></data>
+  <data name="Message_FSR3FGEffectChainUnsupported" xml:space="preserve"><value>FSR3 FG 不支持效果 {}：目前只支持已验证的矩形缩放和锐化。请移除此效果或更换补帧器。</value></data>
+  <data name="Message_FSR3FGHdrUnsupported" xml:space="preserve"><value>FSR3 FG 目前仅支持 SDR。请移除 HDR 组件并关闭 HDR 兼容模式。</value></data>
+  <data name="Overlay_FG_SubmittedRateHelp" xml:space="preserve"><value>内容提交 / 真实输入 FPS。生成提交不含 CPU 已知的重置帧，但 GPU 场景切换仍可能产生复制帧；不等于 SDK 呈现报告或屏幕实测帧率。R/s 单独记录重绘提交。</value></data>
+  <data name="Overlay_FG_SubmittedRate" xml:space="preserve"><value>帧率（内容提交 / 真实输入）</value></data>
+  <data name="Overlay_FG_SubmittedGeneratedRate" xml:space="preserve"><value>已提交生成帧率</value></data>
+  <data name="Overlay_FG_InputCopyTiming" xml:space="preserve"><value>仅输入复制</value></data>
+  <data name="Overlay_FG_UnmeasuredTiming" xml:space="preserve"><value>补帧 GPU 耗时尚未测量。代理补帧行仅统计输入复制；已测总计不含 SDK 补帧耗时。</value></data>
+  <data name="Overlay_FG_MeasuredTotal" xml:space="preserve"><value>已测总计（不含补帧）</value></data>
 </root>

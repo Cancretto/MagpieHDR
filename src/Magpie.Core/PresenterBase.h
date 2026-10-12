@@ -1,5 +1,7 @@
 #pragma once
 #include "FrameGuidanceTypes.h"
+#include "PresentationFrameRate.h"
+#include "FrameGuidanceAvailability.h"
 #include "PresenterFailure.h"
 #include "VRRPresentationPolicy.h"
 #include "VRROutputProbe.h"
@@ -56,10 +58,16 @@ public:
 	std::chrono::steady_clock::time_point LastSubmissionTime() const noexcept { return _lastSubmissionTime; }
 	std::optional<uint32_t> LastPresentedFrameCount() const noexcept { return _lastPresentedFrameCount; }
 
+	virtual ContentFrameCount LastContentFrameCount() const noexcept {
+		return { _lastPresentedFrameCount, ContentFrameCountSource::Reported };
+	}
+
 	// Supplies motion that belongs to the next real base frame. Presenters that
 	// do not consume frame guidance intentionally ignore this call.
 	virtual void SetSourceTiming(uint64_t, uint64_t, uint64_t, int64_t) noexcept {}
 	virtual void SetCaptureAdmissionTime(int64_t) noexcept {}
+	virtual void SetOutputHistoryRevision(uint64_t) noexcept {}
+	virtual void SetFrameGuidanceAvailability(FrameGuidanceAvailability) noexcept {}
 
 	virtual void SetFrameGuidance(
 		ID3D11Texture2D*,
@@ -94,6 +102,7 @@ public:
 protected:
 	virtual bool _Initialize(HWND hwndAttach) noexcept = 0;
 
+	virtual UINT _PresentSyncInterval(UINT) const noexcept { return 0; }
 	void _WaitForGpu() noexcept;
 	void _RefreshVRREnvironment(bool force = false) noexcept;
 	void _LogVRRState(std::string_view event) noexcept;

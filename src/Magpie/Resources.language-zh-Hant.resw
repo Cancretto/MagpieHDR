@@ -2043,4 +2043,12 @@
   <data name="Overlay_FG_IdleSubmissions" xml:space="preserve"><value>閒置重繪提交/秒（R/s）</value></data>
   <data name="Overlay_FG_Waiting" xml:space="preserve"><value>等待新畫面</value></data>
   <data name="Overlay_FG_GeneratedRate" xml:space="preserve"><value>已回報生成影格率</value></data>
+  <data name="Message_FSR3FGEffectChainUnsupported" xml:space="preserve"><value>FSR3 FG 不支援效果 {}：目前僅支援已驗證的矩形縮放和銳化。請移除此效果或更換補幀器。</value></data>
+  <data name="Message_FSR3FGHdrUnsupported" xml:space="preserve"><value>FSR3 FG 目前僅支援 SDR。請移除 HDR 元件並關閉 HDR 相容模式。</value></data>
+  <data name="Overlay_FG_SubmittedRateHelp" xml:space="preserve"><value>內容提交 / 真實輸入 FPS。生成提交不含 CPU 已知的重設影格，但 GPU 場景切換仍可能產生複製影格；不等於 SDK 呈現報告或螢幕實測影格率。R/s 單獨記錄重繪提交。</value></data>
+  <data name="Overlay_FG_SubmittedRate" xml:space="preserve"><value>影格率（內容提交 / 真實輸入）</value></data>
+  <data name="Overlay_FG_SubmittedGeneratedRate" xml:space="preserve"><value>已提交生成影格率</value></data>
+  <data name="Overlay_FG_InputCopyTiming" xml:space="preserve"><value>僅輸入複製</value></data>
+  <data name="Overlay_FG_UnmeasuredTiming" xml:space="preserve"><value>補幀 GPU 耗時尚未測量。代理補幀行僅統計輸入複製；已測總計不含 SDK 補幀耗時。</value></data>
+  <data name="Overlay_FG_MeasuredTotal" xml:space="preserve"><value>已測總計（不含補幀）</value></data>
 </root>
