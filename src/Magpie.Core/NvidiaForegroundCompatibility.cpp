@@ -72,7 +72,7 @@ ForegroundWindowIdentity Identity(HWND window) noexcept {
 	ForegroundWindowIdentity result;
 	result.window = uintptr_t(window);
 	DWORD processId = 0;
-	result.tid = GetWindowThreadProcessId(window, &processId);
+	result.tid = QueryWindowThreadProcessId(window, processId);
 	result.pid = processId;
 	result.atom = GetClassLongPtrW(window, GCW_ATOM);
 	return result;
@@ -80,8 +80,8 @@ ForegroundWindowIdentity Identity(HWND window) noexcept {
 bool Matches(const ForegroundWindowIdentity& value) noexcept {
 	const HWND window = HWND(value.window);
 	DWORD pid = 0;
-	return window && IsWindow(window) && value.tid &&
-		GetWindowThreadProcessId(window, &pid) == value.tid && pid == value.pid &&
+	return window && IsWindow(window) && value.tid && value.pid &&
+		QueryWindowThreadProcessId(window, pid) == value.tid && pid == value.pid &&
 		GetClassLongPtrW(window, GCW_ATOM) == value.atom;
 }
 bool MatchesPair(const ForegroundWindowIdentity& first, const ForegroundWindowIdentity& root) noexcept {
@@ -285,7 +285,7 @@ void LogState(const char* event) noexcept {
 	const HWND real = NvidiaForegroundCompatibility::RealForegroundWindow();
 	const auto targets = targetQueries.load(std::memory_order_relaxed), applied = appliedQueries.load(std::memory_order_relaxed);
 	DWORD pid = 0;
-	GetWindowThreadProcessId(real, &pid);
+	QueryWindowThreadProcessId(real, pid);
 	Logger::Get().Info(fmt::format(
 		"G-SYNC foreground: event={} epoch={} mode={} requested={} installed={} armed={} appliedQueries={} targetQueries={} "
 		"active=unknown reason={} real=0x{:x} realPid={} source=0x{:x} root=0x{:x} output=0x{:x} sourceForeground={} "

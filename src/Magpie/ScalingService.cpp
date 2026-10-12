@@ -280,9 +280,8 @@ static bool IsPopupWindow(HWND hwndPopup, HWND hwndOwner) noexcept {
 
 	DWORD pid1 = 0;
 	DWORD pid2 = 0;
-	GetWindowThreadProcessId(hwndPopup, &pid1);
-	GetWindowThreadProcessId(hwndOwner, &pid2);
-	if (pid1 != pid2) {
+	if (!QueryWindowThreadProcessId(hwndPopup, pid1) ||
+		!QueryWindowThreadProcessId(hwndOwner, pid2) || pid1 != pid2) {
 		return false;
 	}
 

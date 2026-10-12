@@ -20,10 +20,18 @@ struct SourceWindowIdentity {
 	LONG_PTR captureStyle = 0, rootStyle = 0;
 
 	bool Read(HWND source) noexcept {
+		*this = {};
 		capture = source;
 		root = GetAncestor(source, GA_ROOT);
-		captureTid = GetWindowThreadProcessId(capture, &capturePid);
-		rootTid = GetWindowThreadProcessId(root, &rootPid);
+		captureTid = QueryWindowThreadProcessId(capture, capturePid);
+		if (!captureTid) return false;
+		if (root == capture) {
+			rootTid = captureTid;
+			rootPid = capturePid;
+		} else {
+			rootTid = QueryWindowThreadProcessId(root, rootPid);
+			if (!rootTid) return false;
+		}
 		captureClass = GetClassLongPtrW(capture, GCW_ATOM);
 		rootClass = GetClassLongPtrW(root, GCW_ATOM);
 		captureStyle = GetWindowLongPtrW(capture, GWL_STYLE);
@@ -32,12 +40,14 @@ struct SourceWindowIdentity {
 	}
 	bool Matches() const noexcept {
 		DWORD pid = 0;
-		if (!capture || !root || !IsWindow(capture) || !IsWindow(root) || capture == GetDesktopWindow() ||
+		if (!captureTid || !capturePid || !rootTid || !rootPid || !capture || !root ||
+			!IsWindow(capture) || !IsWindow(root) || capture == GetDesktopWindow() ||
 			root == GetDesktopWindow() || (GetWindowLongPtrW(root, GWL_STYLE) & WS_CHILD) ||
 			GetAncestor(capture, GA_ROOT) != root) return false;
-		if (GetWindowThreadProcessId(capture, &pid) != captureTid || pid != capturePid ||
+		if (QueryWindowThreadProcessId(capture, pid) != captureTid || pid != capturePid ||
 			GetClassLongPtrW(capture, GCW_ATOM) != captureClass) return false;
-		return GetWindowThreadProcessId(root, &pid) == rootTid && pid == rootPid &&
+		if (root == capture) return rootTid == captureTid && rootPid == capturePid && rootClass == captureClass;
+		return QueryWindowThreadProcessId(root, pid) == rootTid && pid == rootPid &&
 			GetClassLongPtrW(root, GCW_ATOM) == rootClass;
 	}
 };

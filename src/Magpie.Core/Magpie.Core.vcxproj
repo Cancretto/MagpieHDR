@@ -127,6 +127,7 @@
     <ClInclude Include="SrcTracker.h" />
     <ClInclude Include="include\SourceWindowCoordinator.h" />
     <ClInclude Include="include\SourceWindowRelations.h" />
+    <ClInclude Include="include\WindowIdentity.h" />
     <ClInclude Include="include\ScalingWindowRetirement.h" />
     <ClInclude Include="include\CaptureTargetLifetime.h" />
     <ClInclude Include="StepTimer.h" />

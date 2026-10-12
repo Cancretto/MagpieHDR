@@ -1,5 +1,5 @@
 #pragma once
-#include <windows.h>
+#include "WindowIdentity.h"
 
 namespace Magpie {
 
@@ -13,8 +13,8 @@ struct SessionWindowIdentity {
 	ULONG_PTR atom = 0;
 	bool Matches() const noexcept {
 		DWORD actualPid = 0;
-		return window && IsWindow(window) && tid &&
-			GetWindowThreadProcessId(window, &actualPid) == tid && actualPid == pid &&
+		return window && IsWindow(window) && tid && pid &&
+			QueryWindowThreadProcessId(window, actualPid) == tid && actualPid == pid &&
 			GetClassLongPtrW(window, GCW_ATOM) == atom;
 	}
 };
@@ -23,7 +23,7 @@ inline SessionWindowIdentity RegisterSessionWindow(HWND window) noexcept {
 	SessionWindowIdentity result;
 	result.window = window;
 	if (window) {
-		result.tid = GetWindowThreadProcessId(window, &result.pid);
+		result.tid = QueryWindowThreadProcessId(window, result.pid);
 		result.atom = GetClassLongPtrW(window, GCW_ATOM);
 	}
 	return result;

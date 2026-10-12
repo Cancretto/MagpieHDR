@@ -30,11 +30,11 @@ $syntaxFlags += $syntaxIncludes | Select-Object -Unique | ForEach-Object { "/I$_
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $syntaxLog = Join-Path $OutputDirectory 'syntax.log'
 Set-Content -LiteralPath $syntaxLog -Value 'MSVC /Zs only; no object, library, executable, package or deployment.'
-foreach ($syntaxSource in @('ScalingWindow.cpp', 'ScalingRuntime.cpp', 'Renderer.cpp', 'GraphicsCaptureFrameSource.cpp', 'SrcTracker.cpp', 'ParameterInputHost.cpp', 'CursorManager.cpp')) {
+foreach ($syntaxSource in @('Win32Helper.cpp', 'NvidiaForegroundCompatibility.cpp', 'ScalingWindow.cpp', 'ScalingRuntime.cpp', 'Renderer.cpp', 'GraphicsCaptureFrameSource.cpp', 'SrcTracker.cpp', 'ParameterInputHost.cpp', 'CursorManager.cpp')) {
     Write-Host "Checking $syntaxSource"
     $syntaxResult = & cl.exe @syntaxFlags "$syntaxRepo/src/Magpie.Core/$syntaxSource" 2>&1
     $syntaxCode = $LASTEXITCODE
     $syntaxResult | Tee-Object -FilePath $syntaxLog -Append
     if ($syntaxCode) { throw "Production syntax check failed: $syntaxSource" }
 }
-Write-Host 'All seven production translation units passed /Zs /W4 /WX. No product built.'
+Write-Host 'All nine production translation units passed /Zs /W4 /WX. No product built.'
