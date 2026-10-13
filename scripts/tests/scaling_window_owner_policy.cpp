@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <cassert>
+#include <cstdlib>
 #include <functional>
 #include <chrono>
 #include <array>
@@ -14,6 +15,11 @@ enum class ApiMode { Native, Reject, AppliedDirtyError, Unexpected, DestroyOutpu
 static ApiMode apiMode = ApiMode::Native;
 static DWORD apiError = ERROR_INVALID_PARAMETER;
 static HWND alternate;
+static bool rejectPosition = false;
+static BOOL PositionForTest(HWND window, HWND after, int x, int y, int cx, int cy, UINT flags) {
+    if (rejectPosition) { SetLastError(ERROR_ACCESS_DENIED); return FALSE; }
+    return SetWindowPos(window, after, x, y, cx, cy, flags);
+}
 static LONG_PTR SetOwnerForTest(HWND window, int index, LONG_PTR value) {
     if (index != GWLP_HWNDPARENT) return SetWindowLongPtrW(window, index, value);
     switch (apiMode) {
@@ -50,7 +56,9 @@ static HWINEVENTHOOK HookForTest(DWORD first, DWORD last, HMODULE module, WINEVE
 }
 #define GetWindowThreadProcessId ThreadForTest
 #define SetWinEventHook HookForTest
+#define SetWindowPos PositionForTest
 #include "SourceWindowCoordinator.h"
+#undef SetWindowPos
 #undef SetWinEventHook
 #undef GetWindowThreadProcessId
 #undef GetWindow
@@ -77,13 +85,15 @@ static int transition, focusUpdates;
 static ScalingError startupError;
 static bool startupRendererFailed;
 static uint32_t reportedError;
+static std::vector<std::string> infoMessages;
 struct Logger {
     struct DiagnosticCapture {
         std::string Details() const { return "recovered startup detail"; }
         uint32_t SystemError() const { return 999; }
     };
     static Logger& Get() { static Logger l; return l; }
-    void Info(std::string_view) {} void Warn(std::string_view) {} void Error(std::string_view) {}
+    void Info(std::string_view message) { infoMessages.emplace_back(message); }
+    void Warn(std::string_view) {} void Error(std::string_view) {}
     void Win32Warn(std::string_view) {}
 };
 namespace Win32Helper {
@@ -153,10 +163,108 @@ static void Prepare(HWND source) {
     detachCalls=reports=toasts=shows=0; hung=pending=false; permission=showSucceeded=_isFirstFrame=true;
     reportedContext.clear(); reportedError=0; _startupFailureContext.clear(); _startupFailureSystemError=0;
     _isDestroying=_isSrcRepositioning=_sourceStateCheckDeferred=false;
+    rejectPosition=false; infoMessages.clear();
     _nextSourceStateCheck={}; transition=focusUpdates=0; startupError=ScalingError::NoError; startupRendererFailed=false;
     _options.reportErrorDetails=[](HWND,ScalingError,std::string_view context,uint32_t error) {
         ++reports; reportedContext=context; reportedError=error;
     };
+}
+static HWND NamedWindow(const wchar_t* name) {
+    WNDCLASSW cls{};
+    cls.lpfnWndProc=DefWindowProcW; cls.hInstance=GetModuleHandleW(nullptr); cls.lpszClassName=name;
+    assert(RegisterClassW(&cls));
+    HWND window=CreateWindowExW(WS_EX_NOACTIVATE,name,L"Hidden owner admission fixture",WS_POPUP,
+        -32000,-32000,32,32,nullptr,nullptr,cls.hInstance,nullptr);
+    assert(window); return window;
+}
+static bool Logged(std::string_view text) {
+    return std::ranges::any_of(infoMessages,[&](const auto& message) { return message.find(text)!=std::string::npos; });
+}
+static void CheckUwpOwnerNotApplied() {
+    // These are hidden Win32 fixtures with controlled class/API results, not
+    // real UWP capture or fullscreen acceptance tests.
+    HWND source=NamedWindow(L"ApplicationFrameWindow");
+    for (bool queued : {false,true}) {
+        Prepare(source); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS;
+        auto result=TrySetScalingWindowOwner(output,source);
+        assert(!result.IsApplied() && !result.CanContinueUnowned() && !result.actualOwner);
+        _CompleteFrontendRender(true,queued);
+        assert(_sourceCoordinator.Mode()==WindowCoordinationMode::ManagedUnowned);
+        assert(!pending && reports==0 && detachCalls==0 && toasts==1 && !_isFirstFrame);
+        assert(Logged("reason=uwp-owner-not-applied") && Logged("Scaling output shown:"));
+
+        // A size-change rebuild keeps the identity watch, but retires the old
+        // output and must pass admission again with the current API result.
+        const auto epoch=_sourceCoordinator.Epoch();
+        _sourceCoordinator.RetireOutput(); Close(output); output=Window();
+        assert(_sourceCoordinator.Mode()==WindowCoordinationMode::Preparing);
+        _isFirstFrame=true; apiError=ERROR_INVALID_PARAMETER;
+        _CompleteFrontendRender(true,queued);
+        assert(_sourceCoordinator.Epoch()==epoch && _sourceCoordinator.Mode()==WindowCoordinationMode::ManagedUnowned);
+        assert(reports==0 && toasts==2);
+        _sourceCoordinator.RetireOutput(); Close(output); output=Window();
+        _isFirstFrame=true; apiError=ERROR_SUCCESS;
+        _CompleteFrontendRender(true,queued);
+        assert(_sourceCoordinator.Epoch()==epoch && _sourceCoordinator.Mode()==WindowCoordinationMode::ManagedUnowned);
+        assert(reports==0 && toasts==3);
+        _sourceCoordinator.RetireOutput(); Close(output); output=Window();
+        _isFirstFrame=true; apiError=ERROR_ACCESS_DENIED;
+        _CompleteFrontendRender(true,queued);
+        assert(pending && reports==1 && toasts==3 && _isFirstFrame);
+    }
+    Prepare(source); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS;
+    auto result=TrySetScalingWindowOwner(output,source);
+    assert(!_sourceCoordinator.Accept(output,result,false));
+    permission=false; _CompleteFrontendRender(true,false);
+    assert(reports==1 && reportedError==ERROR_ACCESS_DENIED && toasts==0);
+    Prepare(source); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS; sourceIntegrity=2;
+    _CompleteFrontendRender(true,false);
+    assert(reports==1 && reportedError==ERROR_ACCESS_DENIED && toasts==0); sourceIntegrity=1;
+    for (DWORD code : {DWORD(5),DWORD(1400),DWORD(12345)}) {
+        Prepare(source); apiMode=ApiMode::Reject; apiError=code;
+        _CompleteFrontendRender(true,false);
+        assert(reports==1 && reportedError==code && toasts==0 && _isFirstFrame);
+    }
+    Prepare(source); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS;
+    result=TrySetScalingWindowOwner(output,source);
+    assert(SetWindowLongPtrW(output,GWLP_HWNDPARENT,reinterpret_cast<LONG_PTR>(source))==0);
+    assert(!_sourceCoordinator.Accept(output,result,true));
+    Prepare(source); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS;
+    result=TrySetScalingWindowOwner(output,source);
+    // A relationship changing after the API call must not form an owner cycle.
+    SetWindowLongPtrW(source,GWLP_HWNDPARENT,reinterpret_cast<LONG_PTR>(output));
+    assert(GetWindow(source,GW_OWNER)==output);
+    assert(!_sourceCoordinator.Accept(output,result,true));
+    SetWindowLongPtrW(source,GWLP_HWNDPARENT,0);
+    Prepare(source); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS;
+    result=TrySetScalingWindowOwner(output,source);
+    _sourceCoordinator.Notify(_sourceCoordinator.Epoch(),EVENT_OBJECT_DESTROY,source);
+    assert(!_sourceCoordinator.Accept(output,result,true));
+    Prepare(source); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS;
+    result=TrySetScalingWindowOwner(output,source); Close(output);
+    assert(!_sourceCoordinator.Accept(output,result,true));
+    Prepare(source); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS;
+    result=TrySetScalingWindowOwner(output,source); result.previousOwner=1;
+    assert(!_sourceCoordinator.Accept(output,result,true));
+    Prepare(source); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS; rejectPosition=true;
+    // Force a real ordering operation; an already-correct order needs no API.
+    assert(SetWindowPos(output,HWND_TOPMOST,0,0,0,0,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE));
+    _CompleteFrontendRender(true,false);
+    assert(reports==1 && reportedError==ERROR_ACCESS_DENIED && toasts==0 && _isFirstFrame);
+    assert(!Logged("Scaling output shown:"));
+    // A capture child beneath an ApplicationFrameWindow is outside the
+    // observed top-level case, even though its root has the recognized class.
+    HWND child=Window(source); Prepare(child); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS;
+    _CompleteFrontendRender(true,false); assert(reports==1 && toasts==0); Close(child);
+    Prepare(source); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS;
+    result=TrySetScalingWindowOwner(output,source); Close(source);
+    assert(!_sourceCoordinator.Accept(output,result,true));
+    for (const auto* name : {L"Windows.UI.Core.CoreWindow",L"WinUIDesktopWin32WindowClass"}) {
+        HWND other=NamedWindow(name); Prepare(other); apiMode=ApiMode::Reject; apiError=ERROR_SUCCESS;
+        _CompleteFrontendRender(true,false); assert(reports==1 && toasts==0); Close(other);
+    }
+    _sourceCoordinator.Reset(); Close(output); apiMode=ApiMode::Native;
+    std::cout << "PASS: UWP owner-not-applied admission, rebuild, restrictions and first-display failures" << std::endl;
 }
 static void CheckParameterLayers() {
     HWND root=Window(), child=Window(root), view=Window(), host=Window(nullptr,view), other=Window();
@@ -208,6 +316,8 @@ static void CheckParameterLayers() {
     std::cout << "PASS: native source/root and host identity, both output owner modes, host layers follow actual output, preserve root styles and remain below external windows\n";
 }
 int main() {
+    _set_error_mode(_OUT_TO_STDERR);
+    _set_abort_behavior(0,_WRITE_ABORT_MSG | _CALL_REPORTFAULT);
     CheckParameterLayers();
     // Existing identity/coordinator code must also work when the PID-output
     // query fails. Native thread/process queries resolve our offscreen windows.
@@ -245,6 +355,7 @@ int main() {
         Prepare(source); apiMode=ApiMode::Reject; apiError=code;
         result=TrySetScalingWindowOwner(output,source);
         assert(result.systemError==code && !result.actualOwner && result.previousOwner==0);
+        if(code==0) assert(result.status==ScalingWindowOwnerStatus::NotApplied);
         assert(result.CanContinueUnowned()==(code==87));
         assert(_EstablishWindowCoordination()==(code==87));
         assert(detachCalls==0 && GetWindow(output,GW_OWNER)==nullptr);
@@ -374,5 +485,6 @@ int main() {
     oldTarget.Retire(); std::thread callback([&]{ oldTarget.Close(); }); callback.join();
     assert(oldTarget.IsClosed() && !newTarget.IsClosed());
     newTarget.Close(); assert(newTarget.IsClosed());
+    CheckUwpOwnerNotApplied();
     std::cout << "PASS: owner capabilities, production admission/first-frame gate, identities, lifecycle signals, popup/topmost/Z-order and stale Closed" << std::endl;
 }

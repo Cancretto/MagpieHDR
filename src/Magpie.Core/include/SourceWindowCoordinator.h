@@ -5,6 +5,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -109,7 +110,11 @@ public:
 			(GetWindowLongPtrW(output, GWL_STYLE) & WS_CHILD)) return false;
 		if (result.IsApplied() && result.actualOwner == _source.root && GetWindow(output, GW_OWNER) == _source.root) {
 			_mode = WindowCoordinationMode::NativeOwned;
-		} else if (permissionChecked && result.CanContinueUnowned() && !result.actualOwner && !GetWindow(output, GW_OWNER)) {
+		} else if (permissionChecked && !result.actualOwner && !GetWindow(output, GW_OWNER) &&
+			(result.CanContinueUnowned() || _CanManageUnappliedUwpOwner(output, result))) {
+			// Class/relationship queries must not let a retired source or an
+			// output whose owner changed pass the compatibility admission gate.
+			if (!Ready() || !IsWindow(output) || GetWindow(output, GW_OWNER)) return false;
 			_mode = WindowCoordinationMode::ManagedUnowned;
 		} else return false;
 		_output = output;
@@ -167,6 +172,21 @@ public:
 	}
 
 private:
+	bool _CanManageUnappliedUwpOwner(HWND output, const ScalingWindowOwnerResult& result) const noexcept {
+		if (result.status != ScalingWindowOwnerStatus::NotApplied || result.systemError != ERROR_SUCCESS ||
+			result.previousOwner != 0 || _source.capture != _source.root) return false;
+		// Observed on fullscreen ApplicationFrameWindow sources. Do not extend
+		// a zero-error fallback to arbitrary Win32/WinUI windows or capture children.
+		wchar_t rootClass[64]{};
+		if (!GetClassNameW(_source.root, rootClass, ARRAYSIZE(rootClass)) ||
+			std::wstring_view(rootClass) != L"ApplicationFrameWindow") return false;
+		// The source owner chain can change after TrySetScalingWindowOwner.
+		HWND ancestor = _source.root;
+		for (unsigned i = 0; ancestor; ++i, ancestor = GetWindow(ancestor, GW_OWNER)) {
+			if (ancestor == output || i == 64) return false;
+		}
+		return true;
+	}
 	void _ResetAfterFailure() noexcept { const DWORD error = GetLastError(); Reset(); SetLastError(error); }
 	struct Registration { HWINEVENTHOOK hook; SourceWindowCoordinator* instance; uint64_t epoch; DWORD started; };
 	static inline thread_local std::vector<Registration> _registrations;

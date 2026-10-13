@@ -92,7 +92,7 @@ static ScalingError CheckCapturePrerequisites(CaptureMethod method) noexcept {
 static std::string DescribeScalingWindowOwner(const char* step, HWND window, HWND source, HWND owner,
 	const ScalingWindowOwnerResult& result) noexcept {
 	return fmt::format("Scaling window owner: step={} status={} system={} sourceClass={} outputClass={} "
-		"output={:#x} requested={:#x} actual={:#x} continueUnowned={} rawReturn={:#x} outputStyle={:#x} ownerStyle={:#x}", step, result.StatusName(),
+		"output={:#x} requested={:#x} actual={:#x} unownedByErrorCode={} rawReturn={:#x} outputStyle={:#x} ownerStyle={:#x}", step, result.StatusName(),
 		result.systemError, StrHelper::UTF16ToUTF8(Win32Helper::GetWindowClassName(source)),
 		StrHelper::UTF16ToUTF8(Win32Helper::GetWindowClassName(window)),
 		reinterpret_cast<uintptr_t>(window), reinterpret_cast<uintptr_t>(owner), reinterpret_cast<uintptr_t>(result.actualOwner),
@@ -484,8 +484,11 @@ bool ScalingWindow::_EstablishWindowCoordination() noexcept {
 					context = "Managed coordination preparation failed before first display: " + context;
 					error = ScalingError::ScalingWindowCreationFailed;
 				} else {
-					Logger::Get().Info(fmt::format("Window coordination admitted: run={} epoch={} mode={}",
-						RunId(), _sourceCoordinator.Epoch(), _sourceCoordinator.ModeName()));
+					Logger::Get().Info(fmt::format("Window coordination admitted: run={} epoch={} mode={} "
+						"reason={} identityVerified=true permissionVerified=true",
+						RunId(), _sourceCoordinator.Epoch(), _sourceCoordinator.ModeName(),
+						result.IsApplied() ? "native-owner" :
+						result.CanContinueUnowned() ? "owner-rejected" : "uwp-owner-not-applied"));
 					if (_sourceCoordinator.Mode() == WindowCoordinationMode::NativeOwned &&
 						!AttachThreadInput(GetCurrentThreadId(), GetWindowThreadProcessId(root, nullptr), FALSE)) {
 						Logger::Get().Win32Warn("Detach source input queue after setting window owner failed");
@@ -732,11 +735,13 @@ void ScalingWindow::_CompleteFrontendRender(
 ) noexcept {
 	if (submitted && _isFirstFrame) {
 		Logger::Get().Info(fromDLSSFGQueue ?
-			"First frontend frame submitted by DLSSFG FIFO; showing scaling window" :
-			"First frontend frame submitted by regular renderer; showing scaling window");
+			"First frontend frame submitted by DLSSFG FIFO; preparing first display" :
+			"First frontend frame submitted by regular renderer; preparing first display");
 		// Both regular and DLSSFG first frames enter the same admission gate.
 		if (!_Show()) return;
 		_isFirstFrame = false;
+		Logger::Get().Info(fmt::format("Scaling output shown: run={} epoch={} mode={}",
+			RunId(), _sourceCoordinator.Epoch(), _sourceCoordinator.ModeName()));
 		// 缩放已开始，给用户一个确认；失败路径已有错误提示
 		ShowToast(GetLocalizedString(L"Message_ScalingStarted"));
 		const auto& notice = _renderer->MotionConfigurationNotice();

@@ -6,6 +6,7 @@ namespace Magpie {
 enum class ScalingWindowOwnerStatus {
 	Applied,
 	Rejected,
+	NotApplied,
 	InvalidWindow,
 	InvalidOwner,
 	ChildWindow,
@@ -28,6 +29,7 @@ struct ScalingWindowOwnerResult {
 		switch (status) {
 		case ScalingWindowOwnerStatus::Applied: return "applied";
 		case ScalingWindowOwnerStatus::Rejected: return "rejected";
+		case ScalingWindowOwnerStatus::NotApplied: return "owner-not-applied";
 		case ScalingWindowOwnerStatus::InvalidWindow: return "invalid-output";
 		case ScalingWindowOwnerStatus::InvalidOwner: return "invalid-source";
 		case ScalingWindowOwnerStatus::ChildWindow: return "child-output";
@@ -91,8 +93,12 @@ inline ScalingWindowOwnerResult TrySetScalingWindowOwner(HWND window, HWND owner
 		return result(ScalingWindowOwnerStatus::Applied, systemError);
 	}
 	if (owner && !actualOwner) {
-		// Only the observed capability refusal is eligible. Permission, invalid
-		// handles, zero-error ambiguity and unknown errors must remain failures.
+		// A zero error does not prove that the relationship was established.
+		// Keep this distinct from both Applied and the error-87 fallback. Only
+		// the coordinator can admit a verified UWP source for this outcome.
+		if (systemError == ERROR_SUCCESS) {
+			return result(ScalingWindowOwnerStatus::NotApplied, systemError);
+		}
 		return result(systemError == ERROR_INVALID_PARAMETER && !(ownerStyle & WS_CHILD)
 			? ScalingWindowOwnerStatus::Rejected : ScalingWindowOwnerStatus::ApiFailure, systemError);
 	}
