@@ -40,8 +40,8 @@ void ScalingModesService::AddScalingMode(std::wstring_view name, int copyFrom) {
 	} else {
 		scalingModes.emplace_back(scalingModes[copyFrom]).name = uniqueName;
 		auto& copy = scalingModes.back();
-		copy.runtimeIdentity = std::make_shared<const uint8_t>(0);
-		for (auto& effect : copy.effects) effect.runtimeIdentity = std::make_shared<const uint8_t>(0);
+		copy.runtimeIdentity = std::make_shared<const uint8_t>(uint8_t{0});
+		for (auto& effect : copy.effects) effect.runtimeIdentity = std::make_shared<const uint8_t>(uint8_t{0});
 	}
 
 	for (auto& effect : scalingModes.back().effects) {

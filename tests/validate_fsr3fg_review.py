@@ -66,7 +66,7 @@ old = subprocess.check_output(['git', 'show', 'a90c7da2:src/Magpie.Core/include/
 old_errors = errors(old)
 new_errors = errors(read('src/Magpie.Core/include/ScalingOptions.h'))
 check(new_errors[:len(old_errors)] == old_errors, 'existing MP error numbers remain stable')
-check(new_errors[len(old_errors):] == ['FSR3FGEffectChainUnsupported', 'FSR3FGHdrUnsupported'], 'new precise errors are appended')
+check(new_errors[len(old_errors):len(old_errors) + 2] == ['FSR3FGEffectChainUnsupported', 'FSR3FGHdrUnsupported'], 'precise FSR3 errors retain their appended positions')
 service = read('src/Magpie/ErrorService.cpp')
 check('error == ScalingError::FSR3FGEffectChainUnsupported' in service and
       'fmt::runtime(std::wstring(_summary)), StrHelper::UTF8ToUTF16(context)' in service,

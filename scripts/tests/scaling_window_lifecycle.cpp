@@ -13,6 +13,7 @@
 #include <vector>
 #include <fmt/format.h>
 #include "ScalingSessionLifetime.h"
+#include "DlssNrStatus.h"
 #include "ScalingWindowRetirement.h"
 #include "ReflexController.h"
 static bool failDetach;
@@ -103,6 +104,7 @@ struct Options {
 class TestRenderer {
 public:
     TestRenderer() : _sessionLifetime(std::make_shared<ScalingSessionLifetime>(10)) {
+        _dlssNrSession->Begin(_dlssNrRunId, {true});
         _reflex.Initialize(std::make_unique<TestDriver>());
         _frameSyncConsumedEvent.value=CreateEventW(nullptr,TRUE,FALSE,nullptr);
         _backendThread=std::thread([this]{ MSG m; PeekMessageW(&m,nullptr,0,0,PM_NOREMOVE);
@@ -120,6 +122,9 @@ public:
     std::mutex _effectParameterMailboxMutex;
     std::vector<int> _effectParameterMailbox;
     std::shared_ptr<ScalingSessionLifetime> _sessionLifetime;
+    std::shared_ptr<DlssNrSessionState> _dlssNrSession = std::make_shared<DlssNrSessionState>();
+    uint32_t _dlssNrRunId = 10;
+    std::function<void(uint32_t, uint32_t, const DlssNrStatus&)> _dlssNrStatusChanged;
     std::shared_ptr<SceneScreenshotRequest> _sceneScreenshotRequest;
     void _FailScreenshotRequest(const std::shared_ptr<SceneScreenshotRequest>& request, const char*, uint32_t code) {
         assert(code == ERROR_CANCELLED);

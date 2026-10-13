@@ -54,12 +54,14 @@ code=r'''
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 #include "ScalingModeNames.h"
+#include "FrameGenerationParameters.h"
 namespace winrt { struct auto_revoke_t{}; inline constexpr auto_revoke_t auto_revoke{}; }
 #include "event.inc"
 using hstring=std::wstring;
@@ -67,13 +69,16 @@ static void Require(bool value,const char* message) { if (!value) throw std::run
 namespace Magpie {
 struct FixtureEffect {
  int value;
- std::shared_ptr<const uint8_t> runtimeIdentity = std::make_shared<const uint8_t>(0);
+ std::wstring name;
+ std::map<std::wstring, float> parameters;
+ bool isRecoveryInvalid = false;
+ std::shared_ptr<const uint8_t> runtimeIdentity = std::make_shared<const uint8_t>(uint8_t{0});
  FixtureEffect(int v):value(v){}
  operator int() const { return value; }
  bool operator==(const FixtureEffect& other) const { return value == other.value; }
 };
 struct ScalingMode { std::wstring name; std::vector<FixtureEffect> effects;
- std::shared_ptr<const uint8_t> runtimeIdentity = std::make_shared<const uint8_t>(0); };
+ std::shared_ptr<const uint8_t> runtimeIdentity = std::make_shared<const uint8_t>(uint8_t{0}); };
 struct Profile { int scalingMode=-1; };
 enum class ScalingError { NoError,DuplicateScalingModeNames };
 enum class EffectAddedWay { Add, Duplicate, Import };
