@@ -19,6 +19,7 @@
 #include "EffectHelper.h"
 #include "EffectDrawer.h"
 #include "HdrComponentRuntime.h"
+#include "OverlayColor.h"
 #include "GroupAHdrRoutes.h"
 #include "GroupBHdrRoutes.h"
 #include "EffectProtocolCatalogC.h"
@@ -671,6 +672,11 @@ void Renderer::OnSourceFocusChanged() noexcept {
 
 bool Renderer::MessageHandler(UINT msg, WPARAM wParam, LPARAM lParam) noexcept {
 	if (msg == WM_DISPLAYCHANGE && _presenter) _presenter->OutputEnvironmentChanged(true);
+	if ((msg == WM_DISPLAYCHANGE || msg == WM_SETTINGCHANGE) &&
+		ScalingWindow::Get().Options().IsHdrCompatibilityEnabled()) {
+		_overlayWhiteMonitor = nullptr;
+		++_overlayActionRevision;
+	}
 	// WndProc records ImGui input, marks the overlay dirty and invalidates cached
 	// display qualification; it does not enumerate outputs here. A true return
 	// value tells the outer message pump to end this batch after a queued
@@ -1144,7 +1150,7 @@ bool Renderer::_FrontendRender(
 		// capacity and base-texture waits have already completed at this point.
 		// Drain samples only when drawing the overlay. Front Edge Sync retries
 		// above must leave them available for the frame that actually draws it.
-		_overlayDrawer.Draw(_stepTimer.FPS(), _effectsProfiler.GetTimings(), drawOffset);
+		_DrawOverlay(frameTex.get(), sourceMetadata, drawOffset);
 		VRRPerformance::Record(VRRPerformance::Event::OverlayDraw);
 		if (!stableBaseOnly && !idleRedraw && _frontendBaseNeedsPresent) {
 			_cursorDrawer.ObserveContent({ sourceMetadata.frameId, sourceMetadata.captureSequence,
@@ -1259,8 +1265,15 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 			PresentationFrameRate::Clock::now(), sample.source);
 		if (!generatedFrame && (!count || *count > 0)) _lastCountedRealFrameId = _frontendCaptureFrameId;
 	}
+	bool overlayColorChanged = false;
 	if (submitted) {
 		if (!stableBaseOnly && _frontendPresentedBaseTexture) {
+			const bool hdrOutput = ScalingWindow::Get().Options().IsHdrCompatibilityEnabled();
+			overlayColorChanged = uiInIndependentLayer &&
+				ResolveOverlayWhiteScale(hdrOutput, DXGI_FORMAT_R16G16B16A16_FLOAT,
+					_frontendFrameMetadata, _overlayMonitorSdrWhiteNits) !=
+				ResolveOverlayWhiteScale(hdrOutput, DXGI_FORMAT_R16G16B16A16_FLOAT,
+					_frontendPresentedFrameMetadata, _overlayMonitorSdrWhiteNits);
 			d3dDC->CopyResource(
 				_frontendPresentedBaseTexture.get(), _frontendBaseTexture.get());
 			VRRPerformance::Record(VRRPerformance::Event::StableCopy);
@@ -1306,13 +1319,32 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 			_frontendFrameMetadata.captureSequence, _frontendFrameMetadata.resourceGeneration },
 			_frontendFrameMetadata.generated);
 	}
+	// Keep color work pending even if BeginOverlayFrame cannot provide a target.
+	// The revision is acknowledged only by a successful independent UI commit.
+	if (overlayColorChanged) ++_overlayActionRevision;
 	if (submitted && uiInIndependentLayer &&
-		(_HasPendingOverlayAction() || _isPassThroughActive || _cursorDrawer.NeedRedraw() || _cursorDrawer.IsBackgroundDependent() ||
+		(overlayColorChanged || _HasPendingOverlayAction() || _isPassThroughActive || _cursorDrawer.NeedRedraw() || _cursorDrawer.IsBackgroundDependent() ||
 			_overlayDrawer.NeedRedraw(_stepTimer.FPS()))) {
-		_FrontendOverlayRender(_cursorDrawer.HasOriginalRefreshPending() ||
+		_FrontendOverlayRender(overlayColorChanged || _cursorDrawer.HasOriginalRefreshPending() ||
 			_isPassThroughActive || _cursorDrawer.IsBackgroundDependent());
 	}
 	return submitted;
+}
+
+void Renderer::_DrawOverlay(ID3D11Texture2D* target, const HdrFrameMetadata& frame, POINT drawOffset) noexcept {
+	const auto& window = ScalingWindow::Get();
+	const bool hdrOutput = window.Options().IsHdrCompatibilityEnabled();
+	D3D11_TEXTURE2D_DESC desc{};
+	if (hdrOutput) {
+		target->GetDesc(&desc);
+		const HMONITOR monitor = MonitorFromWindow(window.Handle(), MONITOR_DEFAULTTONEAREST);
+		if (!_overlayWhiteMonitor || _overlayWhiteMonitor != monitor) {
+			_overlayWhiteMonitor = monitor;
+			_overlayMonitorSdrWhiteNits = Win32Helper::GetMonitorSdrWhiteNits(monitor);
+		}
+	}
+	_overlayDrawer.Draw(_stepTimer.FPS(), _effectsProfiler.GetTimings(), drawOffset,
+		ResolveOverlayWhiteScale(hdrOutput, desc.Format, frame, _overlayMonitorSdrWhiteNits));
 }
 
 bool Renderer::_FrontendOverlayRender(bool contentChanged) noexcept {
@@ -1347,7 +1379,7 @@ bool Renderer::_FrontendOverlayRender(bool contentChanged) noexcept {
 	ID3D11RenderTargetView* target = frameRtv.get();
 	d3dDC->OMSetRenderTargets(1, &target, nullptr);
 	// XeSS draws its UI in this independent layer, not in _FrontendRender.
-	_overlayDrawer.Draw(_stepTimer.FPS(), _effectsProfiler.GetTimings(), drawOffset);
+	_DrawOverlay(frameTex.get(), _frontendPresentedFrameMetadata, drawOffset);
 	VRRPerformance::Record(VRRPerformance::Event::OverlayDraw);
 	_cursorDrawer.Draw(frameTex.get(), drawOffset,
 		cursorBackground);

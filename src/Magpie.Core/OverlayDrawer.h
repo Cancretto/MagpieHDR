@@ -22,7 +22,8 @@ public:
 	void Draw(
 		uint32_t fps,
 		const SmallVector<float>& effectTimings,
-		POINT drawOffset
+		POINT drawOffset,
+		float hdrWhiteScale
 	) noexcept;
 	void ClearStates() noexcept;
 	void OnPresentSucceeded() noexcept;
@@ -197,6 +198,7 @@ private:
 	} _hardwareInfo;
 
 	ImGuiImpl _imguiImpl;
+	bool _isHdrOverlay = false;
 
 	uint32_t _lastFPS = std::numeric_limits<uint32_t>::max();
 	std::string _lastFrameRateText;

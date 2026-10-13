@@ -224,6 +224,8 @@ private:
 	uint32_t _FrontendDiagnosticReasons() noexcept;
 	OverlayPresentationClock _overlayPresentationClock;
 	HMONITOR _overlayMonitor = nullptr;
+	HMONITOR _overlayWhiteMonitor = nullptr;
+	float _overlayMonitorSdrWhiteNits = 0;
 	uint64_t _overlayActionRevision = 0;
 	uint64_t _presentedOverlayActionRevision = 0;
 	bool _HasPendingOverlayAction() const noexcept {
@@ -247,6 +249,7 @@ private:
 		bool idleRedraw = false
 	) noexcept;
 	bool _FrontendOverlayRender(bool contentChanged = false) noexcept;
+	void _DrawOverlay(ID3D11Texture2D* target, const HdrFrameMetadata& frame, POINT drawOffset) noexcept;
 	enum class FrontendBaseResult { Ready, Retry, Dropped };
 	FrontendBaseResult _UpdateFrontendBase(uint32_t sharedTextureSlot) noexcept;
 	bool _OpenFrontendSharedTextures() noexcept;

@@ -161,7 +161,7 @@ struct DeviceResources {};
 struct ImGuiBackend {
     bool Initialize(DeviceResources&) { return true; }
     bool BuildFonts() { return true; }
-    void RenderDrawData(ImDrawData&, POINT) {}
+    void RenderDrawData(ImDrawData&, POINT, float) {}
 };
 struct Logger {
     static Logger& Get() { static Logger l; return l; }

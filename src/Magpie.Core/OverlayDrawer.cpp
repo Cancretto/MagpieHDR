@@ -102,7 +102,8 @@ bool OverlayDrawer::Initialize(DeviceResources& deviceResources, OverlayOptions&
 void OverlayDrawer::Draw(
 	uint32_t fps,
 	const SmallVector<float>& effectTimings,
-	POINT drawOffset
+	POINT drawOffset,
+	float hdrWhiteScale
 ) noexcept {
 	// This method is called only after Presenter::BeginFrame has provided a valid
 	// back buffer. Build and draw one complete ImGui frame in the same frontend
@@ -140,6 +141,15 @@ void OverlayDrawer::Draw(
 	}
 
 	_imguiImpl.NewFrame(_overlayOptions->windows, fittsLawAdjustment, _dpiScale);
+	_isHdrOverlay = hdrWhiteScale > 0;
+	if (_isHdrOverlay) {
+		// Block HDR highlights without changing glyph coverage or fade animation.
+		for (ImGuiCol color : { ImGuiCol_WindowBg, ImGuiCol_PopupBg }) {
+			ImVec4 background = ImGui::GetStyle().Colors[color];
+			background.w = 1;
+			ImGui::PushStyleColor(color, background);
+		}
+	}
 	if (!_isEffectParametersVisible || _imguiImpl.FrameInputCanceled()) {
 		_parameterResetGesture.Clear();
 	}
@@ -184,7 +194,7 @@ void OverlayDrawer::Draw(
 		ImGui::SetNextWindowPos({ ImGui::GetIO().DisplaySize.x - margin,
 			ImGui::GetIO().DisplaySize.y - margin }, ImGuiCond_Always, { 1.0f, 1.0f });
 		// The explicit background alpha overrides ImGui's style alpha.
-		ImGui::SetNextWindowBgAlpha(0.72f * comparisonAlpha);
+		ImGui::SetNextWindowBgAlpha((_isHdrOverlay ? 1.0f : 0.72f) * comparisonAlpha);
 		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, comparisonAlpha);
 		if (ImGui::Begin("##passThroughStatus", nullptr,
 			ImGuiWindowFlags_NoDecoration |
@@ -202,7 +212,9 @@ void OverlayDrawer::Draw(
 	}
 #endif
 
-	_imguiImpl.Draw(drawOffset);
+	// ImGui validates the style stack at EndFrame (inside Draw/Render).
+	if (_isHdrOverlay) ImGui::PopStyleColor(2);
+	_imguiImpl.Draw(drawOffset, hdrWhiteScale);
 	_overlayDirty = needRedraw || needsLayoutFollowUp ||
 		ImGui::IsAnyMouseDown() || ImGui::IsAnyItemActive();
 
@@ -898,7 +910,7 @@ bool OverlayDrawer::_DrawToolbar(uint32_t fps, int& itemId) noexcept {
 
 	_lastToolbarAlpha = _CalcToolbarAlpha();
 	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, _lastToolbarAlpha);
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, (ImU32)ImColor(15, 15, 15, 180));
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, (ImU32)ImColor(15, 15, 15, _isHdrOverlay ? 255 : 180));
 	const ImVec2 originalWindowPadding = ImGui::GetStyle().WindowPadding;
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 6 * toolbarScale,0.0f });
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, { 1.0f, 1.0f });

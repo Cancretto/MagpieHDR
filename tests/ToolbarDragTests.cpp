@@ -13,6 +13,7 @@
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
 #include "ToolbarPlacement.h"
+#include "../src/Magpie.Core/PresentationFrameRate.h"
 #include <cassert>
 #include <chrono>
 #include <functional>
@@ -69,6 +70,8 @@ struct Cursor {
 	HCURSOR CursorHandle() const { return (HCURSOR)1; }
 };
 struct RendererMock {
+	bool HasFrameGeneration() const { return false; }
+	PresentationRateSnapshot PresentationRate() const { return {}; }
 	RECT dest{ 100, 200, 2020, 1280 };
 	const RECT& DestRect() const { return dest; }
 	bool passThrough = false;
@@ -116,6 +119,7 @@ struct InputMock {
 	}
 };
 struct OverlayDrawer {
+	bool _isHdrOverlay = false;
 	ToolbarPlacement _toolbarPlacement;
 	InputMock _imguiImpl;
 	float _dpiScale = 1, _lastToolbarAlpha = 1;
@@ -463,6 +467,17 @@ void ImGuiToolbarTests() {
 		drawer._toolbarPlacement.state.docks.ForMode(windowed)=dock;
 		sourceCanMinimize=minimize; drawer.frameRateText=format;
 		Frame(drawer,{-100,-100});
+	}
+	for (bool hdr : {false,true,false}) {
+		drawer._isHdrOverlay=hdr;
+		Frame(drawer,{-100,-100});
+		const auto* toolbar=ImGui::FindWindowByName("##toolbar");
+		unsigned maxBackgroundAlpha=0;
+		for (const auto& vertex : toolbar->DrawList->VtxBuffer) {
+			if ((vertex.col & ~IM_COL32_A_MASK)==(IM_COL32(15,15,15,0) & ~IM_COL32_A_MASK))
+				maxBackgroundAlpha=std::max(maxBackgroundAlpha,(vertex.col >> IM_COL32_A_SHIFT) & 255u);
+		}
+		assert(maxBackgroundAlpha==(hdr ? 255u : 180u));
 	}
 	ImGui::DestroyContext();
 }

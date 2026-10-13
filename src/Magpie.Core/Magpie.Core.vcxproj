@@ -63,6 +63,7 @@
   <ItemGroup>
     <ClInclude Include="RTXVideoHdr.h" />
     <ClInclude Include="HdrComponentRuntime.h" />
+    <ClInclude Include="OverlayColor.h" />
     <ClInclude Include="HdrDisplayPreflight.h" />
     <ClInclude Include="include\HdrComponents.h" />
     <ClInclude Include="HdrEffectBoundary.h" />

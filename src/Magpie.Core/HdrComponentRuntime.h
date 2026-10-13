@@ -21,6 +21,10 @@ inline void ApplyHdrComponentOutputColor(HdrFrameMetadata& metadata,
 	const auto& stage = plan.stages[index];
 	if (stage.kind == HdrComponentKind::None) return;
 	const auto settings = HdrComponentTransform(plan, index);
+	metadata.overlayReferenceWhiteNits = stage.outputHdr ? settings.sdrWhiteNits : 0;
+	if (stage.kind == HdrComponentKind::SdrToHdr && stage.pairIndex == size_t(-1)) {
+		metadata.overlayReferenceWhiteNits *= settings.exposure;
+	}
 	auto& color = metadata.color;
 	color.primaries = HdrColorPrimaries::Rec709;
 	color.transfer = stage.outputHdr ? HdrTransferFunction::Linear : HdrTransferFunction::SRGB;

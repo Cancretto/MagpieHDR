@@ -107,6 +107,9 @@ struct HdrFrameMetadata {
 	// Effect history epoch and non-capture redraw travel with the published color.
 	uint64_t outputHistoryRevision = 0;
 	bool contentRedraw = false;
+	// UI paper white travels with processed/published pixels. Legacy native SDR
+	// mapping applies exposure; paired restoration does not. Zero is unspecified.
+	float overlayReferenceWhiteNits = 0;
     bool IsValid() const noexcept;
 };
 
