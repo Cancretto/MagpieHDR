@@ -395,6 +395,7 @@ if (Test-Path -LiteralPath $parameterInputGuide) {
 }
 
 foreach ($guide in @(
+    @{ source = 'docs/DLSSNR-TROUBLESHOOTING.md'; target = 'DLSSNR-TROUBLESHOOTING.md' },
     @{ source = 'docs/experimental/effects/DLSSNR-MULTIPASS.md'; target = 'DLSSNR-MULTIPASS.md' },
     @{ source = 'docs/experimental/effects/XESSFG.md'; target = 'XESSFG.md' },
     @{ source = 'docs/experimental/design/XESSFG-COMPATIBILITY-NOTICE.md'; target = 'XESSFG-COMPATIBILITY-NOTICE.md' }

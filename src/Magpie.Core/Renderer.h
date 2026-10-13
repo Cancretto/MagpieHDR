@@ -286,6 +286,11 @@ private:
 	ID3D11Texture2D* _ResizeEffects() noexcept;
 
 	void _BuildEffectParameterRuntimeInfos() noexcept;
+	void _SetDlssNrStatus(uint32_t index, DlssNrState state, DlssNrFailure failure = {}) noexcept;
+	std::vector<DlssNrStatus> _dlssNrStatuses;
+	uint32_t _dlssNrRunId = 0;
+	std::shared_ptr<DlssNrSessionState> _dlssNrSession;
+	std::function<void(uint32_t, uint32_t, const DlssNrStatus&)> _dlssNrStatusChanged;
 	void _ApplyPendingEffectParameters() noexcept;
 	void _UpdateFrameRateLimits() noexcept;
 

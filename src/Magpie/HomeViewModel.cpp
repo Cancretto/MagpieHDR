@@ -38,6 +38,8 @@ HomeViewModel::HomeViewModel() {
 			RaisePropertyChanged(L"DefaultFrameRefreshSummary");
 	});
 	_issueChangedRevoker = ErrorService::Get().Changed(auto_revoke, [this] {
+		RaisePropertyChanged(L"ShowDlssNrStatus");
+		RaisePropertyChanged(L"DlssNrStatusSummary");
 		RaisePropertyChanged(L"ShowRecentIssue");
 		RaisePropertyChanged(L"RecentIssueSummary");
 		RaisePropertyChanged(L"RecentIssueSeverity");
@@ -62,6 +64,19 @@ HomeViewModel::HomeViewModel() {
 			}
 		}
 	);
+}
+
+bool HomeViewModel::ShowDlssNrStatus() const { return !ErrorService::Get().DlssNrSummary().empty(); }
+hstring HomeViewModel::DlssNrStatusSummary() const { return hstring(ErrorService::Get().DlssNrSummary()); }
+void HomeViewModel::OpenDlssNrEffects() {
+	if (const auto root = App::Get().RootPage()) {
+		auto context = ErrorService::Get().DlssNrContext();
+		if (const auto session = ErrorService::Get().DlssNrSession()) {
+			const auto snapshot = session->Read();
+			for (uint32_t i = 0; i < snapshot.effects.size(); ++i) if (snapshot.effects[i].Failed()) { context.effectIndex = i; break; }
+		}
+		root->NavigateToIssueEffects(context);
+	}
 }
 
 bool HomeViewModel::ShowRecentIssue() const noexcept {
@@ -107,14 +122,16 @@ fire_and_forget HomeViewModel::ShowRecentIssueDetails() noexcept {
 		dialog.Title(box_value(loader.GetString(L"ErrorDetails_Title")));
 		StackPanel content;
 		content.Spacing(12);
-		content.Children().Append(text);
+
 		TextBlock actionStatus;
 		actionStatus.TextWrapping(TextWrapping::Wrap);
 		if (action != IssueAction::None) {
 			Button remedy;
 			const wchar_t* actionKey = action == IssueAction::RetrySave ? L"ErrorDetails_RetrySave" :
 				action == IssueAction::Profile ? L"ErrorDetails_OpenProfile" :
-				action == IssueAction::Effects ? L"ErrorDetails_OpenEffects" : L"ErrorDetails_OpenConfigDirectory";
+				action == IssueAction::Effects ? L"ErrorDetails_OpenEffects" :
+				action == IssueAction::ProgramDirectory ? L"DlssNr_OpenDirectory" :
+				action == IssueAction::RecoveryGuide ? L"DlssNr_OpenGuide" : L"ErrorDetails_OpenConfigDirectory";
 			remedy.Content(box_value(loader.GetString(actionKey)));
 			remedy.Click([action, issueContext, weakDialog = make_weak(dialog), weakRoot = root->get_weak(), loader,
 				weakStatus = make_weak(actionStatus)](const IInspectable& sender, const RoutedEventArgs&) {
@@ -139,7 +156,12 @@ fire_and_forget HomeViewModel::ShowRecentIssueDetails() noexcept {
 					else actionStatus.Text(loader.GetString(L"ErrorDetails_ProfileChanged"));
 				} else if (action == IssueAction::Effects) {
 					dialog.Hide();
-					root->NavigateToScalingModes();
+					root->NavigateToIssueEffects(issueContext);
+				} else if (action == IssueAction::ProgramDirectory || action == IssueAction::RecoveryGuide) {
+					const auto directory = Win32Helper::GetExePath().parent_path();
+					const auto path = action == IssueAction::RecoveryGuide ? directory / L"DLSSNR-TROUBLESHOOTING.md" : directory;
+					if (!Win32Helper::ShellOpen(path.c_str())) actionStatus.Text(hstring(
+						std::wstring(loader.GetString(L"DlssNr_OpenFailed")) + L"\n" + path.native()));
 				} else if (!Win32Helper::ShellOpen(AppSettings::Get().ConfigDir().c_str())) {
 					actionStatus.Text(hstring(std::wstring(loader.GetString(L"ErrorDetails_OpenConfigFailed")) + L"\n" + AppSettings::Get().ConfigDir().native()));
 				}
@@ -147,7 +169,49 @@ fire_and_forget HomeViewModel::ShowRecentIssueDetails() noexcept {
 			content.Children().Append(remedy);
 			content.Children().Append(actionStatus);
 		}
-		dialog.Content(content);
+		if (issueContext.dlssNrStatus) {
+			if (action != IssueAction::Profile && issueContext.hasProfile && issueContext.dlssNrStatus->failure.reason == DlssNrReason::UnsupportedAdapter) {
+				Button profile;
+				profile.Content(box_value(loader.GetString(L"ErrorDetails_OpenProfile")));
+				profile.Click([weakRoot = root->get_weak(), weakDialog = make_weak(dialog), weakStatus = make_weak(actionStatus), issueContext, loader](const IInspectable&, const RoutedEventArgs&) {
+					if (const auto root = weakRoot.get()) {
+						if (root->NavigateToIssueProfile(issueContext.profileName, issueContext.profilePath, issueContext.profileClass)) {
+							if (const auto dialog = weakDialog.get()) dialog.Hide();
+						} else if (const auto status = weakStatus.get()) status.Text(loader.GetString(L"ErrorDetails_ProfileChanged"));
+					}
+				});
+				content.Children().Append(profile);
+			}
+			if (action != IssueAction::Effects) {
+				Button effects;
+				effects.Content(box_value(loader.GetString(L"ErrorDetails_OpenEffects")));
+				effects.Click([weakRoot = root->get_weak(), weakDialog = make_weak(dialog), issueContext](const IInspectable&, const RoutedEventArgs&) {
+					if (const auto root = weakRoot.get()) {
+						if (const auto dialog = weakDialog.get()) dialog.Hide();
+						root->NavigateToIssueEffects(issueContext);
+					}
+				});
+				content.Children().Append(effects);
+			}
+			for (const bool guide : { false, true }) {
+				if ((guide && action == IssueAction::RecoveryGuide) || (!guide && action == IssueAction::ProgramDirectory)) continue;
+				Button button;
+				button.Content(box_value(loader.GetString(guide ? L"DlssNr_OpenGuide" : L"DlssNr_OpenDirectory")));
+				button.Click([guide, weakStatus = make_weak(actionStatus), loader](const IInspectable&, const RoutedEventArgs&) {
+					const auto directory = Win32Helper::GetExePath().parent_path();
+					const auto path = guide ? directory / L"DLSSNR-TROUBLESHOOTING.md" : directory;
+					if (!Win32Helper::ShellOpen(path.c_str())) if (auto status = weakStatus.get())
+						status.Text(hstring(std::wstring(loader.GetString(L"DlssNr_OpenFailed")) + L"\n" + path.native()));
+				});
+				content.Children().Append(button);
+			}
+		}
+		content.Children().Append(text);
+		ScrollViewer viewport;
+		viewport.MaxHeight(480);
+		viewport.VerticalScrollBarVisibility(ScrollBarVisibility::Auto);
+		viewport.Content(content);
+		dialog.Content(viewport);
 		dialog.PrimaryButtonText(loader.GetString(L"ErrorDetails_Copy"));
 		dialog.SecondaryButtonText(loader.GetString(L"ErrorDetails_OpenLogs"));
 		dialog.CloseButtonText(loader.GetString(L"ErrorDetails_Close"));

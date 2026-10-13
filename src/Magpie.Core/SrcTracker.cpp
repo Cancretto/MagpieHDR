@@ -58,8 +58,11 @@ ScalingError SrcTracker::Set(HWND hWnd, const ScalingOptions& options, bool& isI
 	// 检查 integrity level
 	{
 		DWORD windowIL;
-		if (!Win32Helper::GetWindowIntegrityLevel(hWnd, windowIL) ||
-			windowIL > Win32Helper::GetCurrentProcessIntegrityLevel()) {
+		if (!Win32Helper::GetWindowIntegrityLevel(hWnd, windowIL)) {
+			Logger::Get().Error("Cannot query source window integrity level");
+			return ScalingError::WindowIntegrityQueryFailed;
+		}
+		if (windowIL > Win32Helper::GetCurrentProcessIntegrityLevel()) {
 			Logger::Get().Error("不支持缩放 IL 更高的窗口");
 			return ScalingError::LowIntegrityLevel;
 		}

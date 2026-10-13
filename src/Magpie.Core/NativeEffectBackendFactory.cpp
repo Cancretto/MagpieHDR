@@ -23,6 +23,9 @@
 #include "OpticalFlowSettings.h"
 #include "DeviceResources.h"
 #include "StrHelper.h"
+#include "Win32Helper.h"
+#include <winver.h>
+#pragma comment(lib, "version.lib")
 
 namespace Magpie {
 
@@ -36,13 +39,36 @@ static std::string DescribeNativeFailure(DeviceResources& resources, ID3D11Textu
 		outDesc.Width, outDesc.Height, static_cast<int>(outDesc.Format));
 	if (auto* adapter = resources.GetGraphicsAdapter()) {
 		DXGI_ADAPTER_DESC1 desc{};
-		if (SUCCEEDED(adapter->GetDesc1(&desc))) result += "\nGPU: " + StrHelper::UTF16ToUTF8(desc.Description);
+		if (SUCCEEDED(adapter->GetDesc1(&desc))) result += fmt::format("\nGPU: {} / PCI={:04X}:{:04X} subsystem={:08X} revision={} LUID={:08X}:{:08X}",
+			StrHelper::UTF16ToUTF8(desc.Description), desc.VendorId, desc.DeviceId, desc.SubSysId, desc.Revision,
+			static_cast<uint32_t>(desc.AdapterLuid.HighPart), desc.AdapterLuid.LowPart);
 		LARGE_INTEGER driver{};
 		if (SUCCEEDED(adapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &driver)))
 			result += fmt::format(" / Driver: {}.{}.{}.{}", HIWORD(driver.HighPart), LOWORD(driver.HighPart),
 				HIWORD(driver.LowPart), LOWORD(driver.LowPart));
 	}
 	if (!diagnostic.Details().empty()) result += "\n" + diagnostic.Details();
+	return result;
+}
+
+// Read once at backend creation, not during Draw. No compatibility rule is
+// inferred from a filename, display name, or an unverified version threshold.
+static std::string DlssNrEnvironment(DeviceResources& resources, ID3D11Texture2D* input,
+	ID3D11Texture2D* output, const Logger::DiagnosticCapture& diagnostic) {
+	std::string result = DescribeNativeFailure(resources, input, output, diagnostic);
+	const auto path = Win32Helper::GetExePath().parent_path() / L"nvngx_dlssnr.dll";
+	result += "\nRequested DLSSNR DLL (on disk): " + StrHelper::UTF16ToUTF8(path.native());
+	DWORD unused = 0;
+	const DWORD size = GetFileVersionInfoSizeW(path.c_str(), &unused);
+	std::vector<uint8_t> data(size);
+	VS_FIXEDFILEINFO* version = nullptr;
+	UINT length = 0;
+	if (size && GetFileVersionInfoW(path.c_str(), 0, size, data.data()) &&
+		VerQueryValueW(data.data(), L"\\", reinterpret_cast<void**>(&version), &length) &&
+		length >= sizeof(VS_FIXEDFILEINFO) && version->dwSignature == 0xFEEF04BD) {
+		result += fmt::format(" / FileVersion: {}.{}.{}.{}", HIWORD(version->dwFileVersionMS),
+			LOWORD(version->dwFileVersionMS), HIWORD(version->dwFileVersionLS), LOWORD(version->dwFileVersionLS));
+	} else result += " / FileVersion: unavailable";
 	return result;
 }
 
@@ -119,24 +145,28 @@ NativeEffectBackendResult CreateNativeEffectBackend(
 		input->GetDesc(&endpoint);
 		auto backend = std::make_unique<DLSSNRMultiPass>();
 		Logger::DiagnosticCapture diagnostic;
-		if (!backend->Initialize(resources, ngxCore, input, output, option,
-			hdrEnabled && endpoint.Format == DXGI_FORMAT_R16G16B16A16_FLOAT)) {
-			if (NgxRuntimeGuard::IsFaulted()) {
-				return { true, nullptr, ScalingError::NgxRestartRequired };
-			}
+		DXGI_ADAPTER_DESC1 adapter{};
+		const bool nonNvidia = resources.GetGraphicsAdapter() &&
+			SUCCEEDED(resources.GetGraphicsAdapter()->GetDesc1(&adapter)) && adapter.VendorId != 0x10DE;
+		const bool initialized = !nonNvidia && backend->Initialize(resources, ngxCore, input, output, option,
+			hdrEnabled && endpoint.Format == DXGI_FORMAT_R16G16B16A16_FLOAT);
+		const auto environment = DlssNrEnvironment(resources, input, output, diagnostic) + "\n" +
+			(backend->LibraryInfo().empty() ? "DLSSNR loaded module: not reached or unavailable" : backend->LibraryInfo());
+		if (!initialized) {
 			const bool multiPass = DLSSNRPassCount([&](std::string_view name, float fallback) {
 				const auto it = option.parameters.find(std::string(name));
 				return it == option.parameters.end() ? fallback : it->second;
 			}) > 1;
-			const std::string status = fmt::format(
-				"DLSSNR STATUS: Feature=18 created=false path=unavailable fallback={}\n",
-				multiPass ? "none-multipass-rejected" : "pass-through");
-			Logger::Get().Warn(status);
-			OutputDebugStringA(status.c_str());
-			return { multiPass, nullptr, ScalingError::NoError,
-				DescribeNativeFailure(resources, input, output, diagnostic), diagnostic.SystemError() };
+			const bool stopped = multiPass || NgxRuntimeGuard::IsFaulted();
+			const auto failure = nonNvidia
+				? DlssNrFailure{ DlssNrStage::Initialize, DlssNrReason::UnsupportedAdapter, DlssNrCodeKind::None, 0, "Selected adapter is not NVIDIA" }
+				: backend->GetDlssNrFailure();
+			Logger::Get().Warn(fmt::format("DLSSNR STATUS: Feature=18 created=false fallback={}",
+				stopped ? "none-chain-stopped" : "pass-through"));
+			return { stopped, nullptr, stopped ? ScalingError::DlssNrStopped : ScalingError::DlssNrUnavailable,
+				environment, 0, failure, environment };
 		}
-		return { true, std::move(backend) };
+		return { true, std::move(backend), ScalingError::NoError, {}, 0, {}, environment };
 	}
 
 

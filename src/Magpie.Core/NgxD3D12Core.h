@@ -1,5 +1,7 @@
 #pragma once
 #include <d3d12.h>
+#include <cstdint>
+#include <string>
 
 struct NVSDK_NGX_Parameter;
 
@@ -10,6 +12,12 @@ class NgxFeatureDiscovery;
 
 // Renderer-session owner for the process-global NGX D3D12 Core state. Feature
 // consumers may own independent queues, but share this device and final shutdown.
+struct NgxCallFailure {
+	enum class Kind { Unknown, HResult, Ngx, Seh, Win32 } kind = Kind::Unknown;
+	uint32_t code = 0;
+	std::string operation;
+};
+
 class NgxD3D12Core {
 public:
 	NgxD3D12Core();
@@ -19,6 +27,7 @@ public:
 
 	bool Acquire(DeviceResources& resources, std::string_view consumer) noexcept;
 	void Release(std::string_view consumer) noexcept;
+	const NgxCallFailure& LastFailure() const noexcept { return _lastFailure; }
 	ID3D12Device* Device() const noexcept { return _device.get(); }
 
 	bool AllocateParameters(
@@ -35,6 +44,7 @@ public:
 	) noexcept;
 
 private:
+	NgxCallFailure _lastFailure;
 	void _Shutdown() noexcept;
 
 	winrt::com_ptr<ID3D12Device> _device;

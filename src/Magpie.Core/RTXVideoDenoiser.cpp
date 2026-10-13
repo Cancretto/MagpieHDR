@@ -509,6 +509,6 @@ bool RTXVideoDenoiser::ApplyParameters(const EffectOption&, std::span<const std:
 
 namespace Magpie {
 EffectParameterApplyMode RTXVideoDenoiser::GetParameterApplyMode(std::string_view name) const noexcept {
-	return name == "strength" ? EffectParameterApplyMode::Live : EffectParameterApplyMode::Unavailable;
+	return name == "strength" ? EffectParameterApplyMode::Live : EffectParameterApplyMode::Restricted;
 }
 }

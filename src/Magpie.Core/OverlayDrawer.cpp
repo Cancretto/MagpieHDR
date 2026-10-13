@@ -1512,6 +1512,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 	Renderer& renderer = ScalingWindow::Get().Renderer();
 	const std::vector<const EffectDesc*>& descriptions = renderer.ActiveEffectDescs();
 	const auto& runtimeInfos = renderer.EffectParameterRuntimeInfos();
+	const auto nrSnapshot = ScalingWindow::Get().Options().dlssNrSession->Read();
 	if (!_effectParametersInitialized) {
 		_InitEffectParameterValues();
 	}
@@ -1762,6 +1763,18 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 			hdrPlan.stages[effectIdx].pairIndex != size_t(-1))
 			ImGui::TextWrapped("%s", EffectParameterLocalization::HdrPairSource(hdrPlan.stages[effectIdx].pairIndex).c_str());
 
+		const DlssNrStatus* nrStatus = description.name == "DLSSNR\\DLSSNR_AI_Filter" && effectIdx < nrSnapshot.effects.size()
+			? &nrSnapshot.effects[effectIdx] : nullptr;
+		if (nrStatus) {
+			ImGui::TextWrapped("%s", _GetResourceString(DlssNrStateKey(nrStatus->state)).c_str());
+			if (nrStatus->Failed()) {
+				ImGui::TextWrapped("%s", _GetResourceString(DlssNrReasonKey(nrStatus->failure.reason)).c_str());
+				ImGui::TextWrapped("%s", _GetResourceString(DlssNrAdviceKey(*nrStatus)).c_str());
+				if (ImGui::Button(_GetResourceString(L"DlssNr_OpenHelp").c_str())) {
+					if (const auto& open = ScalingWindow::Get().Options().openDlssNrHelp) open(static_cast<uint32_t>(effectIdx));
+				}
+			}
+		}
 		std::string currentGroup;
 		// 仅在 _DEBUG 下读取（参数元数据一致性告警），release 下以 maybe_unused 抑制 ClangCL -Werror
 		[[maybe_unused]] uint32_t validCount = 0;
@@ -1789,9 +1802,13 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 			const bool hasValueStorage =
 				effectIdx < _draftEffectParameterValues.size() &&
 				parameterIdx < _draftEffectParameterValues[effectIdx].size();
-			const bool backendUnavailable = info &&
-				info->applyMode == EffectParameterApplyMode::Unavailable;
-			bool parameterValid = !backendUnavailable && hasValueStorage && info &&
+			const bool backendUnavailable = (nrStatus && nrStatus->Failed()) || (info &&
+				info->applyMode == EffectParameterApplyMode::Unavailable);
+			const bool restricted = info && info->applyMode == EffectParameterApplyMode::Restricted;
+			const wchar_t* unavailableKey = backendUnavailable ? L"Overlay_EffectParameters_BackendUnavailable" : restricted
+				? (nrStatus ? L"DlssNr_Parameter_HdrRestricted" : L"Overlay_EffectParameters_Restricted")
+				: L"Overlay_EffectParameters_Invalid";
+			bool parameterValid = !backendUnavailable && !restricted && hasValueStorage && info &&
 				info->name == parameter.name &&
 				IsEffectParameterDescriptorValid(parameter);
 			float placeholderValue = parameter.constant.index() == 0
@@ -1822,7 +1839,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 			}
 			const bool isLive = parameterValid &&
 				isSessionLive(effectIdx, parameterIdx);
-			std::string badge = backendUnavailable ?
+			std::string badge = restricted ? _GetResourceString(L"Overlay_EffectParameters_RestrictedBadge") : backendUnavailable ?
 				_GetResourceString(L"Overlay_EffectParameters_Unavailable") : parameterValid
 				? _GetResourceString(info->automaticRestart ? L"Overlay_EffectParameters_AutoRestart" : isLive
 					? L"Overlay_EffectParameters_Live"
@@ -1842,7 +1859,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 			const std::string& label =
 				parameter.label.empty() ? parameter.name : parameter.label;
 			if (parameterValid) ++validCount;
-			else if (!backendUnavailable) ++invalidCount;
+			else if (!backendUnavailable && !restricted) ++invalidCount;
 
 			ImGui::PushID(itemId++);
 			ImGui::BeginDisabled(!parameterValid || !parameterEnabled);
@@ -1955,8 +1972,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 				std::string help = EffectParameterLocalization::Tooltip(effectName, parameter, parameterEnabled);
 				if (effectName != "DLSSNR\\DLSSNR_AI_Filter") {
 					if (!parameterValid) {
-						help += "\n" + _GetResourceString(backendUnavailable
-							? L"Overlay_EffectParameters_BackendUnavailable" : L"Overlay_EffectParameters_Invalid");
+						help += "\n" + _GetResourceString(unavailableKey);
 					} else if (info->automaticRestart) {
 						help += "\n" + _GetResourceString(L"Overlay_EffectParameters_Reason_AutoRestart");
 					} else if (!isLive) {
@@ -1977,8 +1993,7 @@ bool OverlayDrawer::_DrawEffectParameters(int& itemId) noexcept {
 				}
 				if (!parameterValid) {
 					_imguiImpl.Tooltip(_GetResourceString(
-						backendUnavailable ? L"Overlay_EffectParameters_BackendUnavailable" :
-						L"Overlay_EffectParameters_Invalid").c_str(), _dpiScale);
+						unavailableKey).c_str(), _dpiScale);
 				} else if (info->automaticRestart) {
 					_imguiImpl.Tooltip(_GetResourceString(L"Overlay_EffectParameters_Reason_AutoRestart").c_str(),
 						_dpiScale, resetHint.empty() ? nullptr : resetHint.c_str());

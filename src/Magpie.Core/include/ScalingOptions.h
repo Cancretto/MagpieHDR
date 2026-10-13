@@ -12,6 +12,7 @@
 #include "OverlayWindowGeometry.h"
 #include "ToolbarPlacement.h"
 #include "ScreenshotContent.h"
+#include "DlssNrStatus.h"
 #include <mutex>
 #include <functional>
 
@@ -178,7 +179,8 @@ FrameGenerationChainValidation ValidateFrameGenerationChain(
 enum class EffectParameterApplyMode : uint8_t {
 	Unavailable,
 	Live,
-	RestartRequired
+	RestartRequired,
+	Restricted
 };
 
 enum class EffectParameterRestartReason : uint8_t {
@@ -433,7 +435,9 @@ enum class ScalingError {
 	RtxHdrUnavailable,
 	DuplicateScalingModeNames,
 	FSR3FGEffectChainUnsupported,
-	FSR3FGHdrUnsupported
+	FSR3FGHdrUnsupported,
+	WindowIntegrityQueryFailed,
+	DlssNrStopped
 };
 
 struct ScalingFlags {
@@ -496,6 +500,9 @@ struct ScalingOptions {
 	}
 	uint32_t scalingModeIdx = 0;
 	std::shared_ptr<EffectParameterSessionState> parameterSession;
+	std::shared_ptr<DlssNrSessionState> dlssNrSession = std::make_shared<DlssNrSessionState>();
+	std::function<void(uint32_t runId, uint32_t effectIndex, const DlssNrStatus&)> dlssNrStatusChanged;
+	std::function<void(uint32_t effectIndex)> openDlssNrHelp;
 	std::wstring scalingModeName;
 	uint32_t flags = ScalingFlags::AdjustCursorSpeed;
 	Cropping cropping{};

@@ -255,7 +255,7 @@ bool NvidiaVfxImageBackend::DrawNvidiaVfxCudaInput(const NativeEffectDrawContext
 }
 EffectParameterApplyMode NvidiaVfxImageBackend::GetParameterApplyMode(std::string_view name) const noexcept {
 	if (_kind == NvidiaVfxImageKind::TrueHdr) return name == "contrast" || name == "saturation" || name == "middleGray" || name == "peakNits" || name == "debanding"
-		? EffectParameterApplyMode::Live : EffectParameterApplyMode::Unavailable;
+		? EffectParameterApplyMode::Live : EffectParameterApplyMode::Restricted;
 	if (_kind == NvidiaVfxImageKind::Upscale) return name == "sharpness" ? EffectParameterApplyMode::Live : EffectParameterApplyMode::RestartRequired;
 	return name == "strength" ? EffectParameterApplyMode::Live : EffectParameterApplyMode::RestartRequired;
 }

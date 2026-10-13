@@ -280,10 +280,22 @@ static double GetDisplayRefreshRate(HWND window) noexcept {
 }
 
 Renderer::Renderer() noexcept :
-	_sessionLifetime(std::make_shared<ScalingSessionLifetime>(ScalingWindow::RunId())) {}
+	_sessionLifetime(std::make_shared<ScalingSessionLifetime>(ScalingWindow::RunId())) {
+	_dlssNrRunId = ScalingWindow::RunId();
+	const auto& options = ScalingWindow::Get().Options();
+	std::vector<bool> enabled;
+	for (const auto& effect : options.effects) enabled.push_back(effect.name == "DLSSNR\\DLSSNR_AI_Filter");
+	_dlssNrSession = options.dlssNrSession;
+	_dlssNrStatusChanged = options.dlssNrStatusChanged;
+	_dlssNrSession->Begin(_dlssNrRunId, enabled);
+	_dlssNrStatuses = options.dlssNrSession->Read().effects;
+	if (options.dlssNrStatusChanged) options.dlssNrStatusChanged(_dlssNrRunId, UINT32_MAX, {});
+}
 
 void Renderer::BeginShutdown() noexcept {
 	_sessionLifetime->RequestStop();
+	if (_dlssNrSession->End(_dlssNrRunId) && _dlssNrStatusChanged)
+		_dlssNrStatusChanged(_dlssNrRunId, UINT32_MAX, {});
 	{
 		std::scoped_lock lock(_effectParameterMailboxMutex);
 		_effectParameterMailbox.clear();
@@ -2133,6 +2145,11 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 			_ngxD3D12Core,
 			_effectDrawers[i].GetTexture(0),
 			_effectDrawers[i].GetOutputTexture(), hdrInput);
+		if (effects[i].name == "DLSSNR\\DLSSNR_AI_Filter") {
+			_dlssNrStatuses[i].environment = nativeBackend.dlssNrEnvironment;
+			if (!nativeBackend.backend) _SetDlssNrStatus(i,
+				nativeBackend.recognized ? DlssNrState::Stopped : DlssNrState::Skipped, nativeBackend.dlssNrFailure);
+		}
 		if (nativeBackend.recognized && !nativeBackend.backend) {
 			_backendInitError = nativeBackend.error == ScalingError::NoError
 				? ScalingError::NativeEffectInitFailed : nativeBackend.error;
@@ -2147,12 +2164,7 @@ ID3D11Texture2D* Renderer::_BuildEffects() noexcept {
 			ConfigureHdrBackendProtocol(effects[i].name, *_nativeEffectBackends[i],
 				initialHdrFrame.metadata, true);
 		}
-		if (effects[i].name == "DLSSNR\\DLSSNR_AI_Filter" && !_nativeEffectBackends[i] &&
-			options.reportErrorDetails) {
-			options.reportErrorDetails(ScalingWindow::Get().SrcTracker().Handle(),
-				ScalingError::DlssNrUnavailable, effects[i].name + "\n" + nativeBackend.diagnostic,
-				nativeBackend.systemError);
-		}
+
 
 		ApplyHdrComponentOutputColor(initialHdrFrame.metadata, _runtimeHdrComponents, i);
 		initialHdrFrame = MakePipelineInputFrame(inOutTexture, initialHdrFrame.metadata,
@@ -2265,6 +2277,19 @@ void Renderer::_UpdateHdrEffectBoundaryContexts() noexcept {
 	_pipelineOutputMetadata = inputFrame.metadata;
 }
 
+void Renderer::_SetDlssNrStatus(uint32_t index, DlssNrState state, DlssNrFailure failure) noexcept {
+	if (index >= _dlssNrStatuses.size()) return;
+	auto& status = _dlssNrStatuses[index];
+	const bool restart = NgxRuntimeGuard::IsFaulted();
+	if (state == DlssNrState::Skipped && restart) state = DlssNrState::Stopped;
+	if (status.state == state && status.failure == failure && status.restartRequired == restart) return;
+	status.state = state;
+	status.failure = std::move(failure);
+	status.restartRequired = restart;
+	if (_dlssNrSession->Update(_dlssNrRunId, index, status) && _dlssNrStatusChanged)
+		_dlssNrStatusChanged(_dlssNrRunId, index, status);
+}
+
 void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 	_effectParameterRuntimeInfos.clear();
 	_effectParameterRuntimeInfos.resize(_effectDescs.size());
@@ -2286,10 +2311,10 @@ void Renderer::_BuildEffectParameterRuntimeInfos() noexcept {
 				const auto& plan = ScalingWindow::Get().Options().hdrComponents;
 				const bool pairedParameter = parameter.name != "mode" && plan.enabled &&
 					plan.stages[effectIdx].pairIndex != static_cast<size_t>(-1);
-				info.applyMode = pairedParameter ? EffectParameterApplyMode::Unavailable : EffectParameterApplyMode::RestartRequired;
+				info.applyMode = pairedParameter ? EffectParameterApplyMode::Restricted : EffectParameterApplyMode::RestartRequired;
 				info.restartReason = pairedParameter ? EffectParameterRestartReason::None : EffectParameterRestartReason::ResourceRecreation;
 			} else if (!hdrEnabled && isHdrOnlyParameter) {
-				info.applyMode = EffectParameterApplyMode::Unavailable;
+				info.applyMode = EffectParameterApplyMode::Restricted;
 				info.restartReason = EffectParameterRestartReason::None;
 			} else if (isHdrOnlyParameter) {
 				info.applyMode = EffectParameterApplyMode::RestartRequired;
@@ -2339,6 +2364,8 @@ bool Renderer::QueueEffectParameterUpdate(
 		parameterIdx >= _effectParameterRuntimeInfos[effectIdx].size()) {
 		return false;
 	}
+	const auto nr = ScalingWindow::Get().Options().dlssNrSession->Read();
+	if (effectIdx < nr.effects.size() && nr.effects[effectIdx].Failed()) return false;
 	const EffectParameterRuntimeInfo& info =
 		_effectParameterRuntimeInfos[effectIdx][parameterIdx];
 	if (info.applyMode != EffectParameterApplyMode::Live) {
@@ -2411,6 +2438,7 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 	bool anySucceeded = false;
 	for (uint32_t effectIdx = 0; effectIdx < byEffect.size(); ++effectIdx) {
 		if (_sessionLifetime->IsStopping()) return;
+		const bool nrFailed = effectIdx < _dlssNrStatuses.size() && _dlssNrStatuses[effectIdx].Failed();
 		std::vector<PendingEffectParameterUpdate>& effectUpdates = byEffect[effectIdx];
 		if (effectUpdates.empty()) {
 			continue;
@@ -2419,7 +2447,7 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 		EffectOption candidate = _runtimeEffectOptions[effectIdx];
 		std::vector<std::string> changedNames;
 		changedNames.reserve(effectUpdates.size());
-		bool valid = effectIdx < _effectDescs.size() &&
+		bool valid = !nrFailed && effectIdx < _effectDescs.size() &&
 			effectIdx < _effectParameterRuntimeInfos.size();
 		for (PendingEffectParameterUpdate& update : effectUpdates) {
 			if (!valid || update.parameterIdx >= _effectDescs[effectIdx].params.size() ||
@@ -2491,7 +2519,7 @@ void Renderer::_ApplyPendingEffectParameters() noexcept {
 						effectIdx, previousOption, parameter.name, update.value, previous);
 				}
 			}
-			if (options.reportErrorDetails) {
+			if (options.reportErrorDetails && !nrFailed) {
 				std::string context = _runtimeEffectOptions[effectIdx].name;
 				for (const auto& name : changedNames) context += " / " + name;
 				options.reportErrorDetails(ScalingWindow::Get().SrcTracker().Handle(),
@@ -2712,7 +2740,11 @@ ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
 					const auto it = effects[i].parameters.find(std::string(name));
 					return it == effects[i].parameters.end() ? fallback : it->second;
 				});
+				auto failure = _nativeEffectBackends[i]->GetDlssNrFailure();
+				failure.stage = DlssNrStage::Resize;
+				_SetDlssNrStatus(i, count > 1 ? DlssNrState::Stopped : DlssNrState::Skipped, std::move(failure));
 				if (count > 1) {
+					_backendInitError = ScalingError::DlssNrStopped;
 					Logger::Get().Error("Resize DLSSNR Multi Pass failed; stopping the complete chain");
 					return nullptr;
 				}
@@ -2727,6 +2759,8 @@ ID3D11Texture2D* Renderer::_ResizeEffects() noexcept {
 			Logger::Get().Error(fmt::format("Resize native effect {} failed", effects[i].name));
 			return nullptr;
 		}
+		if (effects[i].name == "DLSSNR\\DLSSNR_AI_Filter" && _nativeEffectBackends[i])
+			_SetDlssNrStatus(i, DlssNrState::Starting);
 	}
 
 	// 处理追加的 Bicubic
@@ -4043,7 +4077,19 @@ void Renderer::_BackendRender(
 				.zeroFrameGuidance = guidance.zero
 			};
 			FrameTrace::Scope traceNative(FrameTrace::Event::NativeEffect, i);
+			const bool nrFailureAlreadyReported = nr && i < _dlssNrStatuses.size() && _dlssNrStatuses[i].Failed();
 			const bool nativeDrawSucceeded = _nativeEffectBackends[i]->Draw(drawContext);
+			if (nr) {
+				const bool processing = nativeDrawSucceeded && _nativeEffectBackends[i]->IsDlssNrProcessing();
+				const int count = DLSSNRPassCount([&](std::string_view name, float fallback) {
+					const auto& values = _runtimeEffectOptions[i].parameters;
+					const auto it = values.find(std::string(name));
+					return it == values.end() ? fallback : it->second;
+				});
+				_SetDlssNrStatus(i, processing ? DlssNrState::Running :
+					count > 1 ? DlssNrState::Stopped : DlssNrState::Skipped,
+					processing ? DlssNrFailure{} : _nativeEffectBackends[i]->GetDlssNrFailure());
+			}
 			if (ScalingWindow::Get().Options().IsHdrCompatibilityEnabled() && isNewCaptureFrame && _capturedFrameId <= 2) {
 				_LogHdrTextureStats(drawContext.input, fmt::format("effect-{}-input", i));
 				_LogHdrTextureStats(drawContext.output, fmt::format("effect-{}-backend-output", i));
@@ -4060,7 +4106,7 @@ void Renderer::_BackendRender(
 				});
 				if (count > 1) {
 					_FailColorPipeline(_runtimeEffectOptions[i].name + "\nMulti Pass evaluation failed",
-						NgxRuntimeGuard::IsFaulted() ? ScalingError::NgxRestartRequired : ScalingError::DlssNrUnavailable);
+						ScalingError::DlssNrStopped);
 					return;
 				}
 			}
@@ -4070,7 +4116,7 @@ void Renderer::_BackendRender(
 				if (effectDrawer.GetOutputTexture()) {
 					effectDrawer.GetOutputTexture()->GetDesc(&outputDesc);
 				}
-				Logger::Get().Error(fmt::format(
+				if (!nrFailureAlreadyReported) Logger::Get().Error(fmt::format(
 					"Native effect Draw failed: effect={} route={} profile={} "
 					"inputFormat={} outputFormat={} fallback=marker-pass",
 					_runtimeEffectOptions[i].name,

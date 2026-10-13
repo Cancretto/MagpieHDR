@@ -12,7 +12,7 @@ public:
 	bool Draw(const NativeEffectDrawContext& context) noexcept override;
 	EffectParameterApplyMode GetParameterApplyMode(std::string_view name) const noexcept override {
 		return name == "contrast" || name == "saturation" || name == "middleGray" || name == "peakNits"
-			? EffectParameterApplyMode::Live : EffectParameterApplyMode::Unavailable;
+			? EffectParameterApplyMode::Live : EffectParameterApplyMode::Restricted;
 	}
 	bool ApplyLiveParameters(const EffectOption&, std::span<const std::string>) noexcept override;
 private:

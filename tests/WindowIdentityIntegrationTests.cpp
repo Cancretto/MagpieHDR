@@ -53,7 +53,7 @@ struct Win32Helper {
 		wchar_t name[256]{}; GetClassNameW(hwnd, name, 256); return name;
 	}
 };
-enum class ScalingError { NoError, LowIntegrityLevel };
+enum class ScalingError { NoError, LowIntegrityLevel, WindowIntegrityQueryFailed };
 struct CommonSharedConstants { static constexpr auto SCALING_WINDOW_CLASS_NAME = L"MagpieIdentityTestNoOutput"; };
 static std::string ProfileName(const std::wstring& name) { return name == L"fixture.exe" ? "fixture.exe" : ""; }
 #include "WindowIdentityIntegration.inc"
@@ -75,7 +75,7 @@ int main() {
 	assert(IsPopupWindow(popup.get(), source.get()));
 	denyThread = true;
 	assert(!IsPopupWindow(popup.get(), source.get())); // Two zero PIDs cannot match.
-	assert(CheckSourceIntegrity(source.get()) == ScalingError::LowIntegrityLevel);
+	assert(CheckSourceIntegrity(source.get()) == ScalingError::WindowIntegrityQueryFailed);
 	assert(legacyCalls == 1);
 	denyThread = false; denyProcess = true;
 	assert(!Win32Helper::GetWindowProcessHandle(source.get()) && legacyCalls == 2);

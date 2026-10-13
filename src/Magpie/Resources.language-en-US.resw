@@ -1331,7 +1331,9 @@
   <data name="Message_FrameGenerationInitFailed" xml:space="preserve"><value>Frame generation did not start. Open details and follow the failed step. If a runtime is missing, validation failed, or a restart is required, restore the complete installation package and restart Magpie. You can also use a group without frame generation.</value></data>
   <data name="Message_OverlayInitFailed" xml:space="preserve"><value>The toolbar or cursor overlay could not initialize. Extract the full release package again and enable the effect group again. If it persists, share the details and log.</value></data>
   <data name="Message_SharedTextureOpenFailed" xml:space="preserve"><value>The graphics device could not share the frame output. Try the same GPU for capture and output, or disable frame generation; update the driver if it persists.</value></data>
-  <data name="Message_DlssNrUnavailable" xml:space="preserve"><value>DLSSNR is not processing the image; the image continues to display and other effects keep their order. Open details to check the DLSSNR initialization failure, then enable the group again after resolving it. DLSSNR parameters remain unavailable until it starts successfully.</value></data>
+  <data name="Message_DlssNrUnavailable" xml:space="preserve">
+    <value>DLSSNR has been skipped while the effect group continues. Open the details for the detected reason and recovery steps; confirm “DLSSNR is running” after recovery.</value>
+  </data>
   <data name="Message_FrameGenerationDisabled" xml:space="preserve"><value>Frame generation was disabled for this session after repeated failures. Original frames will continue. Try a lower multiplier or different optical flow settings, then restart the effect group.</value></data>
   <data name="Message_ConfigurationWriteFailed" xml:space="preserve"><value>Recent changes have not been saved to disk. Keep Magpie open and check the configuration path and cause in View details. Resolve the problem, then click Retry save. Exit after saving succeeds.</value></data>
   <data name="Message_EffectParameterConflict" xml:space="preserve"><value>The group or parameters changed elsewhere. This panel’s changes did not overwrite them. Disable and re-enable the group to load the latest settings before adjusting again.</value></data>
@@ -1341,7 +1343,9 @@
   <data name="Message_ScreenshotEncodeFailed" xml:space="preserve"><value>The image could not be encoded as a screenshot. Re-enable the effect group and click Take Screenshot on the toolbar again. If it still fails, copy the details and include the logs.</value></data>
   <data name="Message_ScreenshotReadbackFailed" xml:space="preserve"><value>The frame could not be read from the GPU. Restart the effect group and try again; if it persists, try a smaller output size or fewer effects and share the details and log.</value></data>
   <data name="Overlay_EffectParameters_Unavailable" xml:space="preserve"><value>Unavailable</value></data>
-  <data name="Overlay_EffectParameters_BackendUnavailable" xml:space="preserve"><value>DLSSNR is passing through because its backend did not initialize. Check Home → Most recent issue, then restart the effect group.</value></data>
+  <data name="Overlay_EffectParameters_BackendUnavailable" xml:space="preserve">
+    <value>The effect is not processing frames. See its status and next steps above; parameter edits cannot restore it.</value>
+  </data>
   <data name="Message_SourceWindowClosed" xml:space="preserve"><value>The target window has closed. Open it again, bring it to the foreground and enable the effect group.</value></data>
   <data name="Message_SourceWindowUnresponsive" xml:space="preserve"><value>The target window is not responding. Wait for it to respond, or restart that application before enabling the effect group.</value></data>
   <data name="Message_SourceWindowTooSmall" xml:space="preserve"><value>The visible capture area is smaller than 64 × 64 pixels. Enlarge the target window and move it fully onto the screen, then retry.</value></data>
@@ -2117,4 +2121,110 @@
   <data name="Overlay_FG_InputCopyTiming" xml:space="preserve"><value>input copy only</value></data>
   <data name="Overlay_FG_UnmeasuredTiming" xml:space="preserve"><value>Frame-generation GPU time is unmeasured. Proxy FG rows measure only the input copy; the measured total excludes SDK frame generation.</value></data>
   <data name="Overlay_FG_MeasuredTotal" xml:space="preserve"><value>Measured total (excludes FG)</value></data>
+  <data name="DlssNr_State_Disabled" xml:space="preserve">
+    <value>DLSSNR is not running (effect group is closed).</value>
+  </data>
+  <data name="DlssNr_State_Starting" xml:space="preserve">
+    <value>DLSSNR is starting; waiting for a successfully processed frame.</value>
+  </data>
+  <data name="DlssNr_State_Running" xml:space="preserve">
+    <value>DLSSNR is running.</value>
+  </data>
+  <data name="DlssNr_State_Skipped" xml:space="preserve">
+    <value>DLSSNR has been skipped; the effect group continues without DLSSNR processing.</value>
+  </data>
+  <data name="DlssNr_State_Stopped" xml:space="preserve">
+    <value>The effect group has stopped; DLSSNR is not processing frames.</value>
+  </data>
+  <data name="DlssNr_Reason_Adapter" xml:space="preserve">
+    <value>The selected rendering GPU is not an NVIDIA adapter.</value>
+  </data>
+  <data name="DlssNr_Reason_Missing" xml:space="preserve">
+    <value>nvngx_dlssnr.dll was not found in the program directory.</value>
+  </data>
+  <data name="DlssNr_Reason_Load" xml:space="preserve">
+    <value>The DLSSNR library could not be loaded. The library or one of its dependencies may be incompatible.</value>
+  </data>
+  <data name="DlssNr_Reason_Exports" xml:space="preserve">
+    <value>The loaded DLSSNR library lacks required interfaces.</value>
+  </data>
+  <data name="DlssNr_Reason_Compatibility" xml:space="preserve">
+    <value>NGX rejected this combination of system, graphics API, GPU and library. The result does not identify which component is incompatible.</value>
+  </data>
+  <data name="DlssNr_Reason_Version" xml:space="preserve">
+    <value>NGX requires a newer driver or feature library; it did not identify which one.</value>
+  </data>
+  <data name="DlssNr_Reason_Memory" xml:space="preserve">
+    <value>The graphics API or NGX reported insufficient memory.</value>
+  </data>
+  <data name="DlssNr_Reason_Access" xml:space="preserve">
+    <value>Access failed at the operation shown in the details. This does not by itself mean Magpie needs administrator rights.</value>
+  </data>
+  <data name="DlssNr_Reason_Fault" xml:space="preserve">
+    <value>NGX encountered an exception and is disabled for the rest of this Magpie process.</value>
+  </data>
+  <data name="DlssNr_Reason_Build" xml:space="preserve">
+    <value>This Magpie build does not include DLSSNR support.</value>
+  </data>
+  <data name="DlssNr_Reason_Unknown" xml:space="preserve">
+    <value>DLSSNR failed at the step shown in the details. The available result does not establish the cause.</value>
+  </data>
+  <data name="DlssNr_Advice_Restart" xml:space="preserve">
+    <value>Exit Magpie completely from the system tray, reopen it, then enable the effect group. Disabling and enabling the group alone cannot reset NGX. Confirm that DLSSNR shows “running”; if it fails again, copy the diagnostics for a report.</value>
+  </data>
+  <data name="DlssNr_Advice_Files" xml:space="preserve">
+    <value>Open the program directory and recovery guide. Exit Magpie, restore the complete matching runtime from the package for this version, then reopen Magpie and enable the group. Confirm “DLSSNR is running”; if it still fails, copy the diagnostics.</value>
+  </data>
+  <data name="DlssNr_Advice_Adapter" xml:space="preserve">
+    <value>Open the affected profile and inspect Rendering GPU. Select a compatible NVIDIA GPU only if one is available; otherwise remove DLSSNR from this effect group. Enable the group again and check its status.</value>
+  </data>
+  <data name="DlssNr_Advice_Version" xml:space="preserve">
+    <value>Check the detected GPU, driver and DLL version in the details against the requirements of this version’s runtime package. Update only the component that does not meet those requirements, reopen Magpie and enable the group. If the requirements are unclear or the failure persists, copy the diagnostics.</value>
+  </data>
+  <data name="DlssNr_Advice_Memory" xml:space="preserve">
+    <value>Close other GPU-intensive applications, lower the source resolution, or open this effect group and reduce DLSSNR Multi Pass to 1 if it is higher. Enable the group again and confirm “running”. If it still fails, copy the diagnostics.</value>
+  </data>
+  <data name="DlssNr_Advice_Access" xml:space="preserve">
+    <value>Check the operation and path in the details. For library reads, restore readable runtime files; for NGX data writes, use a user-writable program directory. Reopen Magpie and enable the group. If no path or cause is identified, copy the diagnostics instead of changing permissions blindly.</value>
+  </data>
+  <data name="DlssNr_Advice_Unknown" xml:space="preserve">
+    <value>Open the details and check the actual GPU and runtime file against this version’s package instructions. Enable the group once more and confirm “DLSSNR is running”. If it fails again, copy the diagnostics and report the failing step; temporarily remove DLSSNR to use the other effects.</value>
+  </data>
+  <data name="DlssNr_Parameter_HdrRestricted" xml:space="preserve">
+    <value>This parameter is available only in the SDR DLSSNR path. HDR processing can still be running; see the status above.</value>
+  </data>
+  <data name="Overlay_EffectParameters_Restricted" xml:space="preserve">
+    <value>This parameter is not available for the current effect or processing mode, or is controlled by a paired HDR component. This is not a backend failure.</value>
+  </data>
+  <data name="Message_DlssNrStopped" xml:space="preserve">
+    <value>The effect group stopped because DLSSNR failed. Open the details, follow the detected recovery steps, then enable the group again and confirm its status.</value>
+  </data>
+  <data name="Message_WindowIntegrityQueryFailed" xml:space="preserve">
+    <value>Magpie could not query the source window’s permissions, so the effect group was not started. Return to the target application, wait until it is responsive, then enable the group again. If it still fails, copy the diagnostics and logs; higher target permissions have not been confirmed.</value>
+  </data>
+  <data name="Home_DlssNrStatus.Title" xml:space="preserve">
+    <value>Current DLSSNR session</value>
+  </data>
+  <data name="ErrorDetails_OpenEffectsButton.Content" xml:space="preserve">
+    <value>Open affected effect group</value>
+  </data>
+  <data name="DlssNr_OpenHelp" xml:space="preserve">
+    <value>Open status and recovery steps</value>
+  </data>
+  <data name="DlssNr_OpenGuide" xml:space="preserve">
+    <value>Open recovery guide</value>
+  </data>
+  <data name="DlssNr_OpenDirectory" xml:space="preserve">
+    <value>Open program directory</value>
+  </data>
+  <data name="DlssNr_OpenFailed" xml:space="preserve">
+    <value>Could not open the location. Use the path below to open it manually.</value>
+  </data>
+  <data name="ErrorDetails_EffectsChanged" xml:space="preserve">
+    <value>The recorded effect group or its effect order has changed, or its name is ambiguous. The list is open; locate the group using the name in the diagnostics. No other group was selected.</value>
+  </data>
+  <data name="ErrorDetails_EffectsLocated" xml:space="preserve">
+    <value>Affected effect group: {}{}</value>
+  </data>
+  <data name="Overlay_EffectParameters_RestrictedBadge" xml:space="preserve"><value>Restricted</value></data>
 </root>

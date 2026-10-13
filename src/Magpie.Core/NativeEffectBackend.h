@@ -45,6 +45,8 @@ public:
 		return {};
 	}
 	virtual bool Drain() noexcept { return true; }
+	virtual DlssNrFailure GetDlssNrFailure() const { return {}; }
+	virtual bool IsDlssNrProcessing() const noexcept { return false; }
 	virtual NvidiaVfxRuntimeMeasurements TakeNvidiaVfxMeasurements() noexcept { return {}; }
 	virtual bool SupportsNvidiaVfxCudaInput(ID3D11Texture2D*) const noexcept { return false; }
 	virtual bool DrawNvidiaVfxCudaInput(const NativeEffectDrawContext&,
