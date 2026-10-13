@@ -1298,7 +1298,9 @@
   <data name="Message_FrameGenerationInitFailed" xml:space="preserve"><value>補幀尚未啟動。請開啟詳細資料依失敗步驟處理；若提示執行階段程式庫缺失、驗證失敗或需要重新啟動，請先還原完整安裝套件並重新啟動喜鵲。也可先使用不含補幀的效果組。</value></data>
   <data name="Message_OverlayInitFailed" xml:space="preserve"><value>工具列或游標疊加層初始化失敗。請重新解壓縮完整發行套件後再次啟用效果組；若仍失敗，請提供詳細資料與記錄。</value></data>
   <data name="Message_SharedTextureOpenFailed" xml:space="preserve"><value>圖形裝置無法共用輸出畫面。請嘗試讓擷取與輸出使用同一顯示卡，或關閉補幀；若仍失敗，請更新顯示卡驅動程式。</value></data>
-  <data name="Message_DlssNrUnavailable" xml:space="preserve"><value>DLSSNR 尚未參與影像處理，畫面會繼續顯示，其他效果依原順序處理。請開啟詳細資料查看 DLSSNR 的失敗步驟，處理後重新啟用效果組；恢復前，DLSSNR 參數暫時無法調整。</value></data>
+  <data name="Message_DlssNrUnavailable" xml:space="preserve">
+    <value>DLSSNR 已略過，效果組繼續執行。請開啟詳細資料查看已偵測到的原因和復原步驟；復原後確認「DLSSNR 正在執行」。</value>
+  </data>
   <data name="Message_FrameGenerationDisabled" xml:space="preserve"><value>補幀連續失敗，已在本次執行中停用，原始幀會繼續顯示。請嘗試降低倍率或更換光流設定，然後重新啟用效果組。</value></data>
   <data name="Message_ConfigurationWriteFailed" xml:space="preserve"><value>最近的修改尚未儲存至磁碟。請先保持 Magpie 開啟，在「檢視詳細資料」中核對設定檔路徑與失敗原因；處理後按「重試儲存」。儲存成功後再結束。</value></data>
   <data name="Message_EffectParameterConflict" xml:space="preserve"><value>效果組或參數已在其他位置更新，本面板的修改未覆寫儲存。請停用並重新啟用效果組，載入最新設定後再調整。</value></data>
@@ -1308,7 +1310,9 @@
   <data name="Message_ScreenshotEncodeFailed" xml:space="preserve"><value>目前畫面尚未能編碼為截圖。請重新啟用效果組後再次按工具列「截圖」；若仍失敗，請複製詳細資料並附上記錄。</value></data>
   <data name="Message_ScreenshotReadbackFailed" xml:space="preserve"><value>無法從顯示卡讀取擷取畫面。請重新啟用效果組後重試；若仍失敗，可嘗試降低輸出尺寸、減少效果器，並提供詳細資料與記錄。</value></data>
   <data name="Overlay_EffectParameters_Unavailable" xml:space="preserve"><value>無法使用</value></data>
-  <data name="Overlay_EffectParameters_BackendUnavailable" xml:space="preserve"><value>DLSSNR 後端未初始化，目前僅透傳。請檢視首頁 → 最近一次問題，處理後重新啟用效果組。</value></data>
+  <data name="Overlay_EffectParameters_BackendUnavailable" xml:space="preserve">
+    <value>效果目前未處理畫面。請查看上方狀態和處理步驟；調整參數不能使其恢復。</value>
+  </data>
   <data name="Message_SourceWindowClosed" xml:space="preserve"><value>目標視窗已關閉。請重新開啟，將其切到前景後再啟用效果組。</value></data>
   <data name="Message_SourceWindowUnresponsive" xml:space="preserve"><value>目標視窗暫時沒有回應。請等待其恢復，或重新啟動目標程式後再啟用效果組。</value></data>
   <data name="Message_SourceWindowTooSmall" xml:space="preserve"><value>可見擷取區域小於 64 × 64 像素。請放大目標視窗，並將其完整移入螢幕後重試。</value></data>
@@ -2051,4 +2055,110 @@
   <data name="Overlay_FG_InputCopyTiming" xml:space="preserve"><value>僅輸入複製</value></data>
   <data name="Overlay_FG_UnmeasuredTiming" xml:space="preserve"><value>補幀 GPU 耗時尚未測量。代理補幀行僅統計輸入複製；已測總計不含 SDK 補幀耗時。</value></data>
   <data name="Overlay_FG_MeasuredTotal" xml:space="preserve"><value>已測總計（不含補幀）</value></data>
+  <data name="DlssNr_State_Disabled" xml:space="preserve">
+    <value>DLSSNR 未執行（效果組已關閉）。</value>
+  </data>
+  <data name="DlssNr_State_Starting" xml:space="preserve">
+    <value>DLSSNR 正在啟動，等待首個成功處理的畫面。</value>
+  </data>
+  <data name="DlssNr_State_Running" xml:space="preserve">
+    <value>DLSSNR 正在執行。</value>
+  </data>
+  <data name="DlssNr_State_Skipped" xml:space="preserve">
+    <value>DLSSNR 已略過；效果組繼續顯示畫面，但未套用 DLSSNR 處理。</value>
+  </data>
+  <data name="DlssNr_State_Stopped" xml:space="preserve">
+    <value>效果組已停止；DLSSNR 未處理畫面。</value>
+  </data>
+  <data name="DlssNr_Reason_Adapter" xml:space="preserve">
+    <value>目前選取的算繪顯示卡不是 NVIDIA 顯示卡。</value>
+  </data>
+  <data name="DlssNr_Reason_Missing" xml:space="preserve">
+    <value>已確認程式目錄中缺少 nvngx_dlssnr.dll。</value>
+  </data>
+  <data name="DlssNr_Reason_Load" xml:space="preserve">
+    <value>DLSSNR 執行檔案載入失敗；尚不能確定是檔案本身還是其相依元件不相容。</value>
+  </data>
+  <data name="DlssNr_Reason_Exports" xml:space="preserve">
+    <value>已載入的 DLSSNR 檔案缺少所需介面。</value>
+  </data>
+  <data name="DlssNr_Reason_Compatibility" xml:space="preserve">
+    <value>NGX 不支援目前系統、圖形介面、顯示卡與執行檔案的組合；尚不能單獨歸因於顯示卡或 DLL。</value>
+  </data>
+  <data name="DlssNr_Reason_Version" xml:space="preserve">
+    <value>NGX 要求更新驅動程式或功能執行庫；傳回結果未指明是哪一項。</value>
+  </data>
+  <data name="DlssNr_Reason_Memory" xml:space="preserve">
+    <value>圖形介面或 NGX 傳回記憶體資源不足。</value>
+  </data>
+  <data name="DlssNr_Reason_Access" xml:space="preserve">
+    <value>詳細資料中的操作存取失敗；這不等於已確認需要系統管理員權限。</value>
+  </data>
+  <data name="DlssNr_Reason_Fault" xml:space="preserve">
+    <value>NGX 發生例外，已在本次 Magpie 處理程序中被保護性停用。</value>
+  </data>
+  <data name="DlssNr_Reason_Build" xml:space="preserve">
+    <value>目前 Magpie 組建未包含 DLSSNR 支援。</value>
+  </data>
+  <data name="DlssNr_Reason_Unknown" xml:space="preserve">
+    <value>DLSSNR 在詳細資料所示步驟失敗，現有結果還不足以確定原因。</value>
+  </data>
+  <data name="DlssNr_Advice_Restart" xml:space="preserve">
+    <value>請從系統匣完全結束 Magpie，重新開啟後啟用效果組；僅重新啟用效果組不能解除 NGX 保護。確認此處顯示「正在執行」；再次失敗時請複製診斷並回報。</value>
+  </data>
+  <data name="DlssNr_Advice_Files" xml:space="preserve">
+    <value>開啟程式目錄和復原說明。完全結束 Magpie，依本版本說明還原完整相容的執行檔案，再開啟 Magpie 並啟用效果組。確認「DLSSNR 正在執行」；仍失敗時複製診斷並回報。</value>
+  </data>
+  <data name="DlssNr_Advice_Adapter" xml:space="preserve">
+    <value>開啟本次設定檔，檢查「渲染顯示卡」。僅在有相容 NVIDIA 顯示卡時改選該顯示卡；否則在此效果組中移除 DLSSNR。重新啟用效果組並檢查狀態。</value>
+  </data>
+  <data name="DlssNr_Advice_Version" xml:space="preserve">
+    <value>在詳細資料中核對實際顯示卡、驅動程式和 DLL 版本，並對照本版本執行套件要求；只更新不符合要求的元件。重新開啟 Magpie 並啟用效果組，確認「正在執行」。要求不明確或仍失敗時，複製診斷回報。</value>
+  </data>
+  <data name="DlssNr_Advice_Memory" xml:space="preserve">
+    <value>先關閉其他占用顯示記憶體的程式、降低來源畫面解析度，或開啟此效果組，將大於 1 的 DLSSNR Multi Pass 層數減為 1。重新啟用後確認「正在執行」；仍失敗時複製診斷回報。</value>
+  </data>
+  <data name="DlssNr_Advice_Access" xml:space="preserve">
+    <value>先查看詳細資料中的失敗操作和路徑。讀取執行檔案失敗時還原可讀取的檔案；NGX 資料寫入失敗時使用目前使用者可寫的程式目錄。重新開啟 Magpie 並啟用效果組。未明確路徑或原因時，複製診斷回報，不盲目修改權限。</value>
+  </data>
+  <data name="DlssNr_Advice_Unknown" xml:space="preserve">
+    <value>開啟詳細資料，依本版本執行套件說明核對實際顯示卡和執行檔案。重新啟用一次效果組，確認「DLSSNR 正在執行」。再次失敗時，複製診斷並回報失敗步驟；可暫時移除 DLSSNR 後使用其他效果。</value>
+  </data>
+  <data name="DlssNr_Parameter_HdrRestricted" xml:space="preserve">
+    <value>此參數僅適用於 SDR DLSSNR 路徑。HDR 處理仍可正常執行，實際狀態見上方。</value>
+  </data>
+  <data name="Overlay_EffectParameters_Restricted" xml:space="preserve">
+    <value>此參數不適用於目前效果器或處理模式，或由配對 HDR 元件控制；這不代表後端故障。</value>
+  </data>
+  <data name="Message_DlssNrStopped" xml:space="preserve">
+    <value>DLSSNR 失敗，效果組已停止。請開啟詳細資料，依偵測到的原因處理後重新啟用效果組，並確認執行狀態。</value>
+  </data>
+  <data name="Message_WindowIntegrityQueryFailed" xml:space="preserve">
+    <value>無法查詢來源視窗權限，效果組未啟動。請切回目標程式，待視窗可正常操作後重新啟用效果組；仍失敗時複製診斷並附記錄回報。目前未確認目標程式權限較高。</value>
+  </data>
+  <data name="Home_DlssNrStatus.Title" xml:space="preserve">
+    <value>目前 DLSSNR 工作階段</value>
+  </data>
+  <data name="ErrorDetails_OpenEffectsButton.Content" xml:space="preserve">
+    <value>開啟相關效果組</value>
+  </data>
+  <data name="DlssNr_OpenHelp" xml:space="preserve">
+    <value>開啟狀態與處理步驟</value>
+  </data>
+  <data name="DlssNr_OpenGuide" xml:space="preserve">
+    <value>開啟復原說明</value>
+  </data>
+  <data name="DlssNr_OpenDirectory" xml:space="preserve">
+    <value>開啟程式目錄</value>
+  </data>
+  <data name="DlssNr_OpenFailed" xml:space="preserve">
+    <value>無法開啟位置，請使用下方路徑手動開啟。</value>
+  </data>
+  <data name="ErrorDetails_EffectsChanged" xml:space="preserve">
+    <value>記錄中的效果組或效果順序已改變，或存在同名。已開啟清單，請依診斷中的組名尋找；未自動選取其他組。</value>
+  </data>
+  <data name="ErrorDetails_EffectsLocated" xml:space="preserve">
+    <value>相關效果組：{}{}</value>
+  </data>
+  <data name="Overlay_EffectParameters_RestrictedBadge" xml:space="preserve"><value>正常受限</value></data>
 </root>

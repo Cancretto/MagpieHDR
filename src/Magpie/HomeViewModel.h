@@ -8,6 +8,9 @@ namespace winrt::Magpie::implementation {
 
 struct HomeViewModel : HomeViewModelT<HomeViewModel>, wil::notify_property_changed_base<HomeViewModel> {
 	HomeViewModel();
+	bool ShowDlssNrStatus() const;
+	hstring DlssNrStatusSummary() const;
+	void OpenDlssNrEffects();
 	bool ShowRecentIssue() const noexcept;
 	void ShowRecentIssue(bool value);
 	hstring RecentIssueSummary() const noexcept;

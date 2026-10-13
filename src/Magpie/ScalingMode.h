@@ -10,6 +10,7 @@ struct EffectItem {
 	std::pair<float, float> scale = { 1.0f,1.0f };
 	bool isRecoveryInvalid = false;
 	std::string recoveryOriginal;
+	std::shared_ptr<const uint8_t> runtimeIdentity = std::make_shared<const uint8_t>(0);
 
 	bool HasScale() const noexcept {
 		return scalingType != ScalingType::Normal ||
@@ -28,6 +29,8 @@ struct ScalingMode {
 	std::string hdrMigrationBackup;
 	bool hdrMigrationInvalid = false;
 	std::string hdrMigrationRecovery;
+	// Session-only identity for diagnostic navigation; never serialized.
+	std::shared_ptr<const uint8_t> runtimeIdentity = std::make_shared<const uint8_t>(0);
 };
 
 }

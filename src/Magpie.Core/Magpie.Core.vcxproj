@@ -98,6 +98,7 @@
     <ClInclude Include="include\EffectDesc.h" />
     <ClInclude Include="include\EffectFrameState.h" />
     <ClInclude Include="include\EffectParameterValue.h" />
+    <ClInclude Include="include\DlssNrStatus.h" />
     <ClInclude Include="include\ScalingOptions.h" />
     <ClInclude Include="include\SourceWindowGeometry.h" />
     <ClInclude Include="include\ScalingSessionLifetime.h" />

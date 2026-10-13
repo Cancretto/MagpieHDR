@@ -34,6 +34,12 @@
 					</local:WrapPanel>
 				</local:SimpleStackPanel>
 			</muxc:InfoBar>
+			<muxc:InfoBar x:Name="DlssNrStatusCard" x:Uid="Home_DlssNrStatus"
+			              x:Load="{x:Bind ViewModel.ShowDlssNrStatus, Mode=OneWay}"
+			              IsOpen="True" IsClosable="False" Severity="Informational"
+			              Message="{x:Bind ViewModel.DlssNrStatusSummary, Mode=OneWay}">
+				<Button x:Uid="ErrorDetails_OpenEffectsButton" Click="{x:Bind ViewModel.OpenDlssNrEffects}" />
+			</muxc:InfoBar>
 			<muxc:InfoBar x:Name="RecentIssueCard"
 			              x:Uid="Home_RecentIssue"
 			              x:Load="{x:Bind ViewModel.ShowRecentIssue, Mode=OneWay}"

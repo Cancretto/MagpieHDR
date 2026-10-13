@@ -6,6 +6,7 @@
 #include "ErrorService.h"
 #include "Logger.h"
 #include "MainWindow.h"
+#include "RootPage.h"
 #include "ProfileService.h"
 #include "ProfileIdentity.h"
 #include "DLSSNRDetailParameters.h"
@@ -248,8 +249,14 @@ static IssueContext MakeIssueContext(HWND window, const Profile& profile) {
 	result.profileClass = profile.classNameRule;
 	result.captureMethod = profile.captureMethod;
 	const auto& modes = AppSettings::Get().ScalingModes();
-	if (profile.scalingMode >= 0 && static_cast<size_t>(profile.scalingMode) < modes.size())
+	if (profile.scalingMode >= 0 && static_cast<size_t>(profile.scalingMode) < modes.size()) {
 		result.scalingModeName = modes[profile.scalingMode].name;
+		result.scalingModeIdentity = modes[profile.scalingMode].runtimeIdentity;
+		for (const auto& effect : modes[profile.scalingMode].effects) {
+			result.effectNames.push_back(effect.name);
+			result.effectIdentities.push_back(effect.runtimeIdentity);
+		}
+	}
 	wchar_t title[512]{};
 	GetWindowTextW(window, title, static_cast<int>(std::size(title)));
 	result.windowTitle = title;
@@ -617,12 +624,37 @@ ScalingError ScalingService::_StartScaleImpl(HWND hWnd, const Profile& profile, 
 		ToastService::Get().ShowMessageOnWindow({}, msg, hwndTarget);
 	};
 
-	const IssueContext issueContext = MakeIssueContext(hWnd, profile);
+	IssueContext issueContext = MakeIssueContext(hWnd, profile);
+	issueContext.dlssNrSession = options.dlssNrSession;
+	ErrorService::Get().BeginScalingSession(options.dlssNrSession, issueContext);
+	options.dlssNrStatusChanged = [issueContext](uint32_t runId, uint32_t index, const DlssNrStatus& status) {
+		ErrorService::Get().DlssNrStatusChanged(runId, index, status, issueContext);
+	};
+	options.openDlssNrHelp = [issueContext](uint32_t index) {
+		App::Get().Dispatcher().TryEnqueue([issueContext, index] {
+			if (issueContext.dlssNrSession != ErrorService::Get().DlssNrSession()) return;
+			const auto snapshot = issueContext.dlssNrSession->Read();
+			if (index >= snapshot.effects.size()) return;
+			IssueContext context = issueContext;
+			context.runId = snapshot.runId;
+			context.effectIndex = index;
+			context.dlssNrStatus = snapshot.effects[index];
+			if (context.dlssNrStatus->Failed()) ErrorService::Get().Report(
+				context.dlssNrStatus->state == DlssNrState::Stopped ? ScalingError::DlssNrStopped : ScalingError::DlssNrUnavailable,
+				{}, nullptr, 0, context);
+			App::Get().ShowMainWindow();
+			if (const auto root = App::Get().RootPage()) root->NavigateToHome();
+		});
+	};
 	options.showError = [issueContext](HWND target, ScalingError error) noexcept {
-		ErrorService::Get().Report(error, {}, target, 0, issueContext);
+		auto context = issueContext;
+		context.runId = context.dlssNrSession->Read().runId;
+		ErrorService::Get().Report(error, {}, target, 0, std::move(context));
 	};
 	options.reportErrorDetails = [issueContext](HWND target, ScalingError error, std::string_view context, uint32_t systemError) noexcept {
-		ErrorService::Get().Report(error, std::string(context), target, systemError, issueContext);
+		auto issue = issueContext;
+		issue.runId = issue.dlssNrSession->Read().runId;
+		ErrorService::Get().Report(error, std::string(context), target, systemError, std::move(issue));
 	};
 
 	options.save = [](const ScalingOptions& options, HWND /*hwndScaling*/) noexcept {

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "RootPage.h"
+#include "ScalingModesPage.h"
 #if __has_include("RootPage.g.cpp")
 #include "RootPage.g.cpp"
 #endif
@@ -408,6 +409,16 @@ bool RootPage::NavigateToIssueProfile(std::wstring_view name, std::wstring_view 
 	auto nv = RootNavigationView();
 	nv.SelectedItem(nv.MenuItems().GetAt(static_cast<uint32_t>(selected + int(FIRST_PROFILE_ITEM_IDX))));
 	return true;
+}
+
+void RootPage::NavigateToHome() {
+	RootNavigationView().SelectedItem(RootNavigationView().MenuItems().GetAt(0));
+}
+
+void RootPage::NavigateToIssueEffects(const ::Magpie::IssueContext& context) {
+	NavigateToScalingModes();
+	if (const auto page = ContentFrame().Content().try_as<winrt::Magpie::ScalingModesPage>())
+		get_self<ScalingModesPage>(page)->RevealIssueTarget(context);
 }
 
 void RootPage::NavigateToScalingModes() {

@@ -106,7 +106,10 @@ bool NgxD3D12Core::Acquire(
 	DeviceResources& resources,
 	std::string_view consumer
 ) noexcept {
+	_lastFailure = { NgxCallFailure::Kind::Unknown, 0, "Acquire NGX Core" };
 	if (NgxRuntimeGuard::IsFaulted()) {
+		_lastFailure = { NgxRuntimeGuard::FaultCode() == ERROR_INVALID_STATE ? NgxCallFailure::Kind::Win32 : NgxCallFailure::Kind::Seh,
+			NgxRuntimeGuard::FaultCode(), "NGX process protection" };
 		Logger::Get().Error("NGX initialization blocked after an earlier fault; restart Magpie");
 		return false;
 	}
@@ -115,6 +118,7 @@ bool NgxD3D12Core::Acquire(
 			resources.GetGraphicsAdapter(), D3D_FEATURE_LEVEL_11_0,
 			IID_PPV_ARGS(_device.put()));
 		if (FAILED(hr)) {
+			_lastFailure = { NgxCallFailure::Kind::HResult, static_cast<uint32_t>(hr), "D3D12CreateDevice" };
 			Logger::Get().ComError("Create shared NGX D3D12 device failed", hr);
 			return false;
 		}
@@ -127,7 +131,11 @@ bool NgxD3D12Core::Acquire(
 		DWORD sehCode = 0;
 		const NVSDK_NGX_Result result = InitCoreSafely(
 			_featureDiscovery->ApplicationDirectory(), _device.get(), _featureDiscovery->Info(), &sehCode);
-		if (!LogNgxResult("Init", consumer, result, sehCode)) return false;
+		if (!LogNgxResult("Init", consumer, result, sehCode)) {
+			_lastFailure = { sehCode ? NgxCallFailure::Kind::Seh : NgxCallFailure::Kind::Ngx,
+				sehCode ? sehCode : static_cast<uint32_t>(result), "NVSDK_NGX_D3D12_Init_with_ProjectID" };
+			return false;
+		}
 		_initialized = true;
 		Logger::Get().Info(fmt::format("NGX D3D12 Core initialized once for Renderer session; FG search directory registered={}",
 			_featureDiscovery->CommunityRegistered()));
@@ -162,12 +170,16 @@ bool NgxD3D12Core::AllocateParameters(
 	NVSDK_NGX_Parameter** parameters,
 	std::string_view consumer
 ) noexcept {
+	_lastFailure = { NgxCallFailure::Kind::Unknown, 0, "Allocate NGX parameters" };
 	if (!_initialized || !parameters) return false;
 	DWORD sehCode = 0;
 	const NVSDK_NGX_Result result =
 		AllocateParametersSafely(parameters, &sehCode);
-	if (!LogNgxResult("AllocateParameters", consumer, result, sehCode) ||
-		!*parameters) return false;
+	if (!LogNgxResult("AllocateParameters", consumer, result, sehCode) || !*parameters) {
+		_lastFailure = { sehCode ? NgxCallFailure::Kind::Seh : NgxCallFailure::Kind::Ngx,
+			sehCode ? sehCode : static_cast<uint32_t>(result), "NVSDK_NGX_D3D12_AllocateParameters" };
+		return false;
+	}
 	++_activeParameterBlocks;
 	return true;
 }

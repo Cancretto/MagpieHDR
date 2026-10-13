@@ -320,8 +320,9 @@
 		                        Orientation="Vertical">
 			<muxc:InfoBar x:Uid="ScalingModes_DuplicateNames" IsClosable="False"
 			              IsOpen="{x:Bind ViewModel.HasDuplicateNames, Mode=OneWay}" Severity="Warning" />
+			<muxc:InfoBar x:Name="IssueTargetNotice" IsOpen="False" IsClosable="True" Severity="Informational" />
 			<!--  Padding 是为了缓解一个动画 bug  -->
-			<ListView Padding="0,0,0,44"
+			<ListView x:Name="ScalingModeList" Padding="0,0,0,44"
 			          ItemsSource="{x:Bind ViewModel.ScalingModes, Mode=OneTime}"
 			          SelectionMode="None"
 			          TabNavigation="Local">
@@ -482,7 +483,7 @@
 								</Grid>
 							</local:SimpleStackPanel>
 							<local:SettingsExpander.Items>
-							<ListView ItemsSource="{x:Bind Effects, Mode=OneTime}"
+							<ListView x:Name="IssueEffectList" ItemsSource="{x:Bind Effects, Mode=OneTime}"
 								          SelectionMode="None"
 								          TabNavigation="Local">
 									<ListView.ItemContainerTransitions>
