@@ -15,7 +15,7 @@ struct NvidiaVfxExecutionPlan {
 // temporal semantics have been checked; never silently move a user's effects.
 inline bool NvidiaVfxPostEffectSupported(std::string_view name) noexcept {
 	return name == NVIDIA_VFX_TRUE_HDR_ID || name == NVIDIA_VFX_VFG_ID ||
-		name == "Bicubic" || name == "Bilinear" || name == "CAS\\CAS" || name == "RCAS\\RCAS";
+		name == "Bicubic" || name == "Bilinear" || name == "CAS\\CAS" || name == "FSR\\FSR_RCAS";
 }
 template<class Effects> NvidiaVfxExecutionPlan PlanNvidiaVfxExecution(const Effects& effects,
 	const HdrComponentPlan& colors) noexcept {

@@ -4,6 +4,11 @@
 
 ## 中文
 
+- 新增 DLSSNR 持续状态与分类恢复引导：区分未运行、启动中、运行中、单层跳过及多层停止，保留原始失败和环境信息；正常参数限制与后端故障分开显示。
+- 更新 165 个内置效果器的双语说明、分类和参数提示，修正 VFG 后置白名单中的 FSR RCAS 实际 ID。
+- HDR 工具栏和浮窗根据已提交画面的参考白适配亮度，范围 160～300 nits，并提高底板不透明度；普通 SDR 路径保留。
+- 对经过窗口身份、权限与关系复核的 UWP ApplicationFrameWindow 全屏源，允许受限的无原生 owner 启动路径。真实播放器兼容性仍待验收。
+
 - 修复受影响游戏窗口的进程身份查询：常规 PID/TID 查询失败时，通过窗口线程的最小查询权限恢复进程身份，并复核窗口有效性。接入启动、窗口协调、NVIDIA 前台兼容及 RTSS 目标解析。实际权限校验保持生效。
 - FSR3 支持 NIS 和 NVSharpen 的矩形效果组合，继续限制 SDR 和单个 FG；不支持的效果链与 HDR 配置显示独立错误。
 - FSR3 显示成功提交的内容/生成帧计数，并标记 Submitted 口径。该数值不等于显示 FPS 或有效新中间画面数；未知回调仍保留未知。FSR3/XeSS 输入复制耗时与尚未测量的 SDK 补帧成本明确区分。
@@ -13,6 +18,11 @@
 
 ## English
 
+- Adds persistent DLSSNR state and cause-specific recovery guidance, preserving original failures and environment details.
+- Updates bilingual descriptions and parameter help for 165 built-in effects; corrects the installed FSR RCAS ID in the VFG post-effect policy.
+- Adapts HDR overlay white to the presented scene within 160–300 nits, with opaque backgrounds; retains the SDR path.
+- Admits narrowly verified fullscreen UWP ApplicationFrameWindow sources without a native owner relationship. Real-player acceptance remains pending.
+
 - Recovers source process identity through a limited thread query when the normal PID/TID query fails, then revalidates the window. Startup, coordination, NVIDIA foreground compatibility and RTSS share the fix; existing privilege checks remain enforced.
 - Allows rectangular NIS/NVSharpen chains with SDR FSR3 FG and reports unsupported chains/HDR separately.
 - Reports successful FSR3 content submissions with a Submitted label. Counts do not establish display FPS or unique interpolated images. Unknown callback results remain unknown, and input-copy cost is separate from unmeasured SDK FG cost.
@@ -21,4 +31,4 @@
 
 ## 验证边界
 
-本轮构建、隔离回归、资源和部署记录见工作区 `reports/0610-beta8-integration-20261013`。真实 Helldivers 2/GameGuard 启动与捕获、NIS+FSR3 画质、静止/恢复、VRR/HDR/多屏和性能验收仍需实机执行。Beta7 保留为回退版本。
+首次 Beta8 构建记录见 `reports/0610-beta8-integration-20261013`；本次功能更新见 `reports/0610-beta8-feature-update-20261013`。真实 Helldivers 2/GameGuard 启动与捕获、NIS+FSR3 画质、静止/恢复、VRR/HDR/多屏和性能验收仍需实机执行。Beta7 保留为回退版本。

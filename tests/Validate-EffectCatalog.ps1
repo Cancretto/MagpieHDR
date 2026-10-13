@@ -3,6 +3,10 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 & (Join-Path $repoRoot 'scripts/Generate-EffectCatalog.ps1') -Check
 $review = & (Join-Path $repoRoot 'scripts/Read-EffectCatalogReview.ps1')
+function Get-CanonicalHash([string]$Path) {
+    $bytes = [Text.Encoding]::UTF8.GetBytes([Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($Path)).Replace("`r`n", "`n"))
+    [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))
+}
 if ($review.effects.Count -ne 165 -or $review.families.Count -ne 13 -or $review.subfamilies.Count -ne 2) { throw 'Current review coverage differs.' }
 foreach ($entry in $review.effects) {
     if ($entry.review.status -ne 'source-reviewed') { throw "Unreviewed effect: $($entry.id)" }
@@ -15,6 +19,17 @@ foreach ($entry in $review.effects) {
     }
     foreach ($path in $entry.review.runtimeEvidence) {
         if (!(Test-Path -LiteralPath (Join-Path $repoRoot $path) -PathType Leaf)) { throw "Missing review evidence: $path" }
+    }
+    # Native markers alone cannot establish backend behaviour. When recorded,
+    # require a complete hash set, normalized for Git's Windows line endings.
+    $hashes = $entry.review.runtimeEvidenceSha256
+    if ($entry.id -match '^(NvidiaVFX|RTXVideo|FSR3FG)\\' -and !$hashes) { throw "Missing native review hashes: $($entry.id)" }
+    if ($hashes) {
+        $paths = @($hashes.PSObject.Properties.Name)
+        if (!$paths.Count -or @(Compare-Object @($entry.review.runtimeEvidence) $paths).Count) { throw "Incomplete backend evidence: $($entry.id)" }
+        foreach ($path in $paths) {
+            if ((Get-CanonicalHash (Join-Path $repoRoot $path)) -ine $hashes.$path) { throw "Backend changed since description review: $($entry.id) / $path" }
+        }
     }
     foreach ($language in @('zh-Hans', 'en-US')) {
         if ($entry.$language.summary.Contains("`n") -or $entry.$language.summary.Length -gt 90) { throw "Summary is too long: $language $($entry.id)" }
@@ -46,6 +61,15 @@ for ($i = 0; $i -lt $catalog.effects.Count; ++$i) {
         if (!$translated.$field) { throw "Missing English $field for $($source.id)" }
         if ($translated.$field -match '[\u3400-\u9fff]') { throw "Chinese text remains in English $field for $($source.id)" }
     }
+    # Subcategory names are localized; they must refer to the same slot, not
+    # merely to any valid category label in each language.
+    $zhCategory = $catalog.categories | Where-Object id -eq $source.category
+    $enCategory = $englishCatalog.categories | Where-Object id -eq $translated.category
+    if (@($zhCategory.subcategories).Count) {
+        $zhIndex = [Array]::IndexOf(@($zhCategory.subcategories.name), $source.subcategory)
+        $enIndex = [Array]::IndexOf(@($enCategory.subcategories.name), $translated.subcategory)
+        if ($zhIndex -lt 0 -or $enIndex -ne $zhIndex) { throw "Missing or mismatched bilingual subcategory: $($source.id)" }
+    } elseif ($source.subcategory -or $translated.subcategory) { throw "Unexpected subcategory: $($source.id)" }
 }
 foreach ($entry in $catalog.effects) {
     foreach ($field in @('name','summary','details','category','search')) { if (!$entry.$field) { throw "Missing $field for $($entry.id)" } }

@@ -23,6 +23,13 @@ int main() {
 	aa.firstTry = true;
 	assert(MatchesEffectCategory(aa, L"first_try", L""));
 	std::vector<EffectPickerEntry> advancedEntries;
+	// Keep new frame generators reachable independently of their level label.
+	EffectPickerEntry fsr3;
+	fsr3.id = L"FSR3FG\\FSR3_FrameGeneration";
+	fsr3.category = L"frame"; fsr3.subcategory = L"补帧";
+	assert(MatchesEffectCategory(fsr3, L"advanced", L""));
+	assert(MatchesEffectCategory(fsr3, L"frame", L"补帧"));
+	assert(!MatchesEffectCategory(fsr3, L"frame", L"帧率调度"));
 	for (const auto id : ADVANCED_PICKER_EFFECTS) {
 		EffectPickerEntry entry;
 		entry.id = id; entry.name = id; entry.category = L"style";
