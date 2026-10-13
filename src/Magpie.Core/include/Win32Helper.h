@@ -2,6 +2,7 @@
 #include "Logger.h"
 #include "StrHelper.h"
 #include "Version.h"
+#include "WindowIdentity.h"
 
 namespace Magpie {
 

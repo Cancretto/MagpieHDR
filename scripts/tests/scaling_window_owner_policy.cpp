@@ -38,7 +38,21 @@ static HWND ReadOwnerForTest(HWND window, UINT relation) {
 }
 #define SetWindowLongPtrW SetOwnerForTest
 #define GetWindow ReadOwnerForTest
+static bool rejectPidQuery = false;
+static DWORD ThreadForTest(HWND window, DWORD* pid) {
+    if (pid && rejectPidQuery) { *pid = 0; SetLastError(0); return 0; }
+    return GetWindowThreadProcessId(window, pid);
+}
+static HWINEVENTHOOK HookForTest(DWORD first, DWORD last, HMODULE module, WINEVENTPROC callback,
+    DWORD pid, DWORD tid, DWORD flags) {
+    if (rejectPidQuery && first != EVENT_SYSTEM_FOREGROUND) assert(pid == GetCurrentProcessId());
+    return SetWinEventHook(first, last, module, callback, pid, tid, flags);
+}
+#define GetWindowThreadProcessId ThreadForTest
+#define SetWinEventHook HookForTest
 #include "SourceWindowCoordinator.h"
+#undef SetWinEventHook
+#undef GetWindowThreadProcessId
 #undef GetWindow
 #undef SetWindowLongPtrW
 #include "CaptureTargetLifetime.h"
@@ -52,6 +66,7 @@ enum class ScalingError { NoError, ScalingWindowCreationFailed, SourceWindowClos
 static SourceWindowCoordinator _sourceCoordinator;
 static HWND output;
 static bool hung, permission = true, pending, _isFirstFrame = true, showSucceeded = true;
+static DWORD sourceIntegrity = 1;
 static int detachCalls, reports, toasts, shows;
 static std::string reportedContext;
 static std::string _startupFailureContext;
@@ -73,7 +88,7 @@ struct Logger {
 };
 namespace Win32Helper {
 static bool IsWindowHung(HWND) { return hung; }
-static bool GetWindowIntegrityLevel(HWND, DWORD& level) { level = 1; return permission; }
+static bool GetWindowIntegrityLevel(HWND, DWORD& level) { level = sourceIntegrity; return permission; }
 static DWORD GetCurrentProcessIntegrityLevel() { return 1; }
 static std::wstring GetWindowClassName(HWND h) { wchar_t n[256]{}; GetClassNameW(h,n,256); return n; }
 }
@@ -194,6 +209,23 @@ static void CheckParameterLayers() {
 }
 int main() {
     CheckParameterLayers();
+    // Existing identity/coordinator code must also work when the PID-output
+    // query fails. Native thread/process queries resolve our offscreen windows.
+    rejectPidQuery = true;
+    HWND hookedRoot = Window(), hookedChild = Window(hookedRoot);
+    SourceWindowIdentity hookedIdentity;
+    assert(hookedIdentity.Read(hookedChild) && hookedIdentity.capturePid == GetCurrentProcessId());
+    assert(hookedIdentity.rootPid == GetCurrentProcessId() && hookedIdentity.Matches());
+    assert(RegisterSessionWindow(hookedRoot).Matches());
+    SourceWindowCoordinator hookedCoordinator;
+    assert(hookedCoordinator.Prepare(hookedRoot) && hookedCoordinator.Ready());
+    rejectPidQuery = false; assert(hookedCoordinator.Ready());
+    rejectPidQuery = true; assert(hookedCoordinator.Ready());
+    hookedCoordinator.Notify(hookedCoordinator.Epoch(), EVENT_OBJECT_DESTROY, hookedRoot);
+    assert(!hookedCoordinator.Ready()); hookedCoordinator.Reset();
+    Close(hookedChild); Close(hookedRoot);
+    assert(!hookedIdentity.Matches());
+    rejectPidQuery = false;
     HWND source=Window(); alternate=Window(); Prepare(source);
     auto result=TrySetScalingWindowOwner(output,source);
     assert(result.IsApplied() && result.actualOwner==source);
@@ -225,6 +257,9 @@ int main() {
     apiMode=ApiMode::Native; assert(TrySetScalingWindowOwner(output,nullptr).IsApplied());
     Prepare(source); permission=false; apiMode=ApiMode::Reject;
     assert(!_EstablishWindowCoordination() && reports==1 && reportedError==ERROR_ACCESS_DENIED);
+    Prepare(source); sourceIntegrity=2; rejectPidQuery=true;
+    assert(!_EstablishWindowCoordination() && reports==1 && reportedError==ERROR_ACCESS_DENIED);
+    sourceIntegrity=1; rejectPidQuery=false;
     Prepare(source); apiMode=ApiMode::Unexpected;
     assert(!_EstablishWindowCoordination() && reports==1 && reportedError==ERROR_ACCESS_DENIED);
     apiMode=ApiMode::Native; assert(TrySetScalingWindowOwner(output,nullptr).IsApplied());

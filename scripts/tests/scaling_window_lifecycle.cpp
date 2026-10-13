@@ -6,6 +6,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
@@ -28,6 +29,7 @@ struct NvidiaForegroundCompatibility {
     static void ReleaseReferenceFocus() {}
     static void FinishRetire() {}
 };
+struct ScalingWindow { static uint32_t RunId() { return 10; } };
 static HANDLE readyEvent,releaseEvent,lockHeldEvent;
 static int pausePhase=-1, saves, snapshots, resourceReleases, inputReleases;
 static HWND retiringOutput;
@@ -114,7 +116,9 @@ public:
     void ReleaseParameterInput() { assert(!IsWindow(retiringOutput) || !GetWindow(retiringOutput,GW_OWNER)); ++inputReleases; }
     void ClearOverlayStates() {}
     int CaptureOverlayState() { return 7; }
-    void _ReleaseNgxConsumers() { Pause(3); ++resourceReleases; CloseHandle(_frameSyncConsumedEvent.value); }
+    bool _ReleaseNgxConsumers() { Pause(3); ++resourceReleases; CloseHandle(_frameSyncConsumedEvent.value); return true; }
+    std::mutex _effectParameterMailboxMutex;
+    std::vector<int> _effectParameterMailbox;
     std::shared_ptr<ScalingSessionLifetime> _sessionLifetime;
     std::shared_ptr<SceneScreenshotRequest> _sceneScreenshotRequest;
     void _FailScreenshotRequest(const std::shared_ptr<SceneScreenshotRequest>& request, const char*, uint32_t code) {

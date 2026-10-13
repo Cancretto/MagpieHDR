@@ -38,7 +38,7 @@ assert 'MH_CreateHookApiEx(L"user32.dll", "GetForegroundWindow"' in controller
 assert "MH_EnableHook(hookTarget)" in controller and "MH_DisableHook(hookTarget)" in controller
 assert "MH_ALL_HOOKS" not in controller and "MH_RemoveHook(" not in controller
 assert "published.Current(version)" in controller and "realQueryDepth" in controller
-assert "GetWindowThreadProcessId" in controller and "GET_MODULE_HANDLE_EX_FLAG_PIN" in controller
+assert "QueryWindowThreadProcessId" in controller and "GET_MODULE_HANDLE_EX_FLAG_PIN" in controller
 assert "active=unknown" in controller
 assert "SetCursorPos" not in controller and "AttachThreadInput" not in controller
 assert "10000" in controller and "MAGPIE_GSYNC_DIAGNOSTIC" in controller

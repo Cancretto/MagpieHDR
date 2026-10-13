@@ -19,7 +19,7 @@ struct TargetIdentity {
 		if (!process || !IsWindow(source) || !IsWindow(processWindow)) return false;
 		if (source != processWindow && !IsChild(source, processWindow)) return false;
 		DWORD pid = 0, exitCode = 0;
-		GetWindowThreadProcessId(processWindow, &pid);
+		if (!QueryWindowThreadProcessId(processWindow, pid)) return false;
 		FILETIME created{}, exited{}, kernel{}, user{};
 		return pid == processId && GetExitCodeProcess(process.get(), &exitCode) && exitCode == STILL_ACTIVE &&
 			GetProcessTimes(process.get(), &created, &exited, &kernel, &user) &&
@@ -60,8 +60,7 @@ std::shared_ptr<TargetIdentity> ResolveTarget(HWND source) {
 			auto& found = *reinterpret_cast<Children*>(context);
 			if (Win32Helper::GetWindowClassName(child) != L"Windows.UI.Core.CoreWindow") return TRUE;
 			DWORD pid = 0;
-			GetWindowThreadProcessId(child, &pid);
-			if (!pid || pid == GetCurrentProcessId()) return TRUE;
+			if (!QueryWindowThreadProcessId(child, pid) || pid == GetCurrentProcessId()) return TRUE;
 			if (found.pid && found.pid != pid) found.ambiguous = true;
 			found.pid = pid; found.actual = child;
 			return TRUE;
@@ -71,8 +70,7 @@ std::shared_ptr<TargetIdentity> ResolveTarget(HWND source) {
 	}
 	auto result = std::make_shared<TargetIdentity>();
 	result->source = source; result->processWindow = actual;
-	GetWindowThreadProcessId(actual, &result->processId);
-	if (!result->processId || result->processId == GetCurrentProcessId()) return {};
+	if (!QueryWindowThreadProcessId(actual, result->processId) || result->processId == GetCurrentProcessId()) return {};
 	result->process.reset(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, result->processId));
 	FILETIME exited{}, kernel{}, user{};
 	if (!result->process || !GetProcessTimes(result->process.get(), &result->creation, &exited, &kernel, &user)) return {};

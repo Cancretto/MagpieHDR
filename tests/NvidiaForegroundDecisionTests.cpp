@@ -14,6 +14,7 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <memory>
 
 namespace Magpie {
 static const HWND fakeCapture = HWND(uintptr_t(1)), fakeRoot = HWND(uintptr_t(2)), fakeOutput = HWND(uintptr_t(3)), other = HWND(uintptr_t(4));
@@ -33,6 +34,8 @@ static thread_local unsigned windowApiCalls = 0;
 static std::atomic<bool> retireDuringIdentity = false;
 static std::atomic<bool> retireDuringFinalForeground = false;
 static thread_local unsigned foregroundReads = 0;
+static bool rejectSourcePid = false, denySourceThread = false;
+static std::atomic<unsigned> threadOpens = 0, threadCloses = 0;
 static void RetireWhileReading();
 static BOOL FakeIsWindow(HWND window) { ++windowApiCalls; return native.contains(window); }
 static DWORD FakeThread(HWND window, DWORD* pid) {
@@ -40,9 +43,26 @@ static DWORD FakeThread(HWND window, DWORD* pid) {
 	const auto it = native.find(window);
 	SetLastError(1234);
 	if (it == native.end()) return 0;
+	if (pid && rejectSourcePid && (window == fakeCapture || window == fakeRoot)) {
+		*pid = 0; SetLastError(0); return 0;
+	}
 	if (pid) *pid = it->second.pid;
 	return it->second.tid;
 }
+static HANDLE FakeOpenThread(DWORD access, BOOL inherit, DWORD tid) {
+	assert(access == THREAD_QUERY_LIMITED_INFORMATION && !inherit);
+	++threadOpens;
+	if (denySourceThread) { SetLastError(ERROR_ACCESS_DENIED); return nullptr; }
+	return HANDLE(uintptr_t(tid));
+}
+static DWORD FakeThreadOwner(HANDLE handle) {
+	for (const auto& [window, value] : native) {
+		(void)window;
+		if (value.tid == uintptr_t(handle)) return value.pid;
+	}
+	return 0;
+}
+static BOOL FakeCloseThread(HANDLE handle) { assert(handle); ++threadCloses; return TRUE; }
 static ULONG_PTR FakeAtom(HWND window, int) {
 	++windowApiCalls;
 	if (window == fakeOutput && changeDuringIdentity.exchange(false)) fakeForeground = other;
@@ -93,6 +113,9 @@ static BOOL FakeModuleInformation(HANDLE, HMODULE module, MODULEINFO* info, DWOR
 
 #define IsWindow FakeIsWindow
 #define GetWindowThreadProcessId FakeThread
+#define OpenThread FakeOpenThread
+#define GetProcessIdOfThread FakeThreadOwner
+#define CloseHandle FakeCloseThread
 #define GetClassLongPtrW FakeAtom
 #define GetAncestor FakeAncestor
 #define IsWindowVisible FakeVisible
@@ -354,6 +377,29 @@ int main() {
 	for (auto& mask : observedPhases) mask = 0;
 	windowApiCalls = 0;
 	assert(DetourForegroundWindow() == fakeOutput && windowApiCalls == 13 && GetLastError() == 73);
+	assert(threadOpens == 0); // Ordinary windows keep the original query cost.
+	rejectSourcePid = true;
+	assert(Identity(fakeRoot).pid == 20 && RegisterSessionWindow(fakeRoot).Matches());
+	threadOpens = 0; threadCloses = 0;
+	assert(DetourForegroundWindow() == fakeOutput && GetLastError() == 73);
+	assert(threadOpens == 1 && threadCloses == 1); // Same source/root resolved once.
+	denySourceThread = true;
+	assert(DetourForegroundWindow() == fakeRoot && GetLastError() == 73);
+	denySourceThread = false;
+	const auto savedRoot = native[fakeRoot];
+	++native[fakeRoot].pid;
+	assert(DetourForegroundWindow() == fakeRoot);
+	native[fakeRoot] = savedRoot;
+	++native[fakeRoot].atom;
+	assert(DetourForegroundWindow() == fakeRoot);
+	native[fakeRoot] = savedRoot;
+	// Worker-thread calls use the resolver without a shared HWND cache.
+	threads.clear();
+	for (int i = 0; i < 4; ++i) threads.emplace_back([] {
+		for (int j = 0; j < 1000; ++j) assert(DetourForegroundWindow() == fakeOutput && GetLastError() == 73);
+	});
+	for (auto& thread : threads) thread.join();
+	rejectSourcePid = false;
 	assert(targetQueries == 0 && appliedQueries == 0);
 	for (auto& mask : observedPhases) assert(mask == 0);
 	ForegroundCompatibilitySnapshot unchanged; uint64_t unchangedVersion;
