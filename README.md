@@ -27,6 +27,8 @@ Experimental-effect availability depends on the GPU, driver, runtime components 
 
 An **effect group** combines effects in a chosen order, storing their parameters and scaling settings. Use built-in groups or create your own combinations for different applications.
 
+See the [built-in effect guide](docs/Built-in%20effects.md#current-branch-setup) for this branch's frame-generation chains, HDR conversion, and shared settings.
+
 The toolbar's parameter panel lets you adjust effects while viewing the result, with automatic saving. Controls indicate whether a change applies live or requires the group to restart; double-clicking a slider restores the effect's default value. Parameters support groups, drop-down choices and Chinese translations.
 
 The same panel places the Front Edge Sync switch and target frame-rate slider (15–360 FPS, step 1) before the effect controls, so you can adjust frame pacing and image processing in one place. Follow each control's Live or Restart label to see how a change takes effect. The parameter window remembers its position and size and stays within the visible area when the capture area changes.

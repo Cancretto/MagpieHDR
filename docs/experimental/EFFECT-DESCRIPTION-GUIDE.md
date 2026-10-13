@@ -4,7 +4,7 @@
 
 2026-10-13 写作方向修订：说明首先帮助用户理解和选择效果器。用户读完应能回答：**它做什么、画面会怎样变化、适合什么内容、如何开始使用。** 以这个阅读结果验收，再检查事实与技术一致性。新增效果和旧效果使用相同的信息顺序、语气与篇幅尺度。
 
-本规范已按用户反馈修订；现有产品文案尚未按此轮方向重写，见[用户说明重写 TODO](todos/20261013-effect-description-user-copy-revision-TODO.md)。
+本规范已用于本轮 165 项双语说明重写，见[执行 TODO](todos/20261013-effect-description-user-copy-revision-TODO.md)与[样稿、逐项审查及交接](reviews/20261013-effect-description-user-copy-revision.md)。文案审查与静态检查已完成，编译部署及真实界面／GPU 验收由后续会话执行。
 
 ## 写作主线
 
@@ -86,7 +86,7 @@ Upscale 的主体写法示例（必要硬件条件另置末尾短句）：
 >
 > 详情：适合视频播放和串流画面的放大。可选择固定倍率，或自动适配目标尺寸；通过锐化强度调整画面的清晰程度。
 
-该示例只展示阅读顺序和信息密度，不作为此次已经实施的产品文案。后续先用 VSR、Upscale、VFG、FSR3 FG、TrueHDR 和典型旧效果形成双语样稿，再按同一尺度改写全量。
+该示例摘录已实施的主体文案，完整条目另含硬件与运行库条件。本轮先审阅 VSR、Upscale、VFG、FSR3 FG、TrueHDR 和典型旧效果的双语样稿，再按同一尺度覆盖全量。以后修改同样先校准有代表性的条目，再检查全量一致性。
 
 ## 修改入口与生成
 
@@ -101,6 +101,8 @@ Upscale 的主体写法示例（必要硬件条件另置末尾短句）：
 运行 [Generate-EffectCatalog.ps1](../../scripts/Generate-EffectCatalog.ps1) 生成 `src/Magpie/EffectCatalog/{zh-Hans,en-US,hdr-components}.json`。**不能只改生成产物**。效果 ID 和参数键属于配置兼容协议，改说明不能随意改 ID。
 
 参数提示位于 `src/Magpie/Resources.language-{zh-Hans,en-US}.resw` 的 `EffectParam_<效果键>_<参数键>_Description`。效果键里的非字母数字字符变为 `_`。现有 `EffectParameterLocalization::Tooltip` 供参数页与运行面板共用，不要为相同文字增加第二套入口。查不到说明时按现有标签／数字提示回退。
+
+组合与共用设置的现有落点为[内置效果使用说明](../Built-in%20effects.md#current-branch-setup)，中英文仓库首页均提供入口；FSR3 FG 的[完整清单](effects/FSR3FG.md#compatible-effect-list)由该文档继续链接。自动检查将文档中的支持 ID 与实际策略比对。选择器详情本身不提供这些文档的点击入口，维护者不能把仓库入口描述成应用内链接。
 
 `search` 收纳当前名称、用途词、参数词、必要别名与当前说明；更新文字时同步刷新，不不断追加整段旧说明。保留有效旧文件名、RTX 档位后缀、FSR3FG 等检索入口。分类有子分类时，每个效果须落入其中一个；简体中文与英文应对应同一子分类位置。
 

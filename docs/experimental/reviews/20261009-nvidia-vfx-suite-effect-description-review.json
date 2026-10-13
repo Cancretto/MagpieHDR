@@ -99,7 +99,7 @@
         "scope": "2026-10-09 source integration; no build or deployment",
         "copyReviewedOn": "2026-10-13",
         "copyDisposition": "revised",
-        "copyScope": "Bilingual purpose, variants, HDR constraints and parameter hints; source only, no build/UI/GPU acceptance.",
+        "copyScope": "User-focused bilingual purpose, content and starting steps; shared guidance moved to categories, parameter help and usage docs. Source review only; no build, deployment, UI or GPU acceptance.",
         "runtimeEvidenceSha256": {
           "src/Magpie.Core/NvidiaVfxImageBackend.cpp": "e12686e9097a2a847a7e3f5b6b4fcddd6dd27cfee4cc1441dd156d3d3554f69d",
           "src/Magpie.Core/include/NvidiaVfxParameterPolicy.h": "1c1e36befa857dfbdeb5dc2f02d047fafdee72253139c287341ff98ce46ba1c8",
@@ -115,15 +115,15 @@
         "name": "Nvidia VFX VSR",
         "subcategory": "通用",
         "summary": "AI 视频增强，可放大、降噪或去模糊。",
-        "details": "按素材选择常规、高码率或流媒体放大；降噪和去模糊保持输入尺寸。各分类分别记住质量档位与缩放设置。档位提高不保证更适合素材，请比较纹理、噪声与开销。\n\n需要受支持的 NVIDIA 渲染 GPU、驱动及匹配的 VFX 运行库。流媒体仅提供中／极高档，要求 Ampere 及更新架构。HDR 使用 SDR 兼容转换，可能改变高光与颜色。\n\n修改分类需重新启动缩放；质量档位可实时切换，加载模型时可能短暂停顿。",
-        "search": "RTXVideo\\RTXVideo_VSR RTXVideo_VSR RTX Video VSR RTXVideo_VSR RTX Video Denoise RTXVideo_Denoise RTXVideo\\RTXVideo_VSR_Low RTXVideo\\RTXVideo_VSR_Medium RTXVideo\\RTXVideo_VSR_High RTXVideo\\RTXVideo_VSR_Ultra RTXVideo\\RTXVideo_Denoise_Low RTXVideo\\RTXVideo_Denoise_Medium RTXVideo\\RTXVideo_Denoise_High RTXVideo\\RTXVideo_Denoise_Ultra category Category Standard High bitrate Streaming Denoise Deblur strength Quality level Low Medium High Ultra Nvidia VFX VSR 放大与超分 通用 AI 视频增强，可放大、降噪或去模糊。 按素材选择常规、高码率或流媒体放大；降噪和去模糊保持输入尺寸。各分类分别记住质量档位与缩放设置。档位提高不保证更适合素材，请比较纹理、噪声与开销。 需要受支持的 NVIDIA 渲染 GPU、驱动及匹配的 VFX 运行库。流媒体仅提供中／极高档，要求 Ampere 及更新架构。HDR 使用 SDR 兼容转换，可能改变高光与颜色。 修改分类需重新启动缩放；质量档位可实时切换，加载模型时可能短暂停顿。"
+        "details": "增强视频画面的清晰度，适合视频播放与串流内容。先按素材选择放大、降噪或去模糊分类，再调节质量档位；降噪和去模糊保持输入尺寸。需要受支持的 NVIDIA 渲染 GPU 与配套 VFX 运行库，流媒体分类需 Ampere 及更新架构。",
+        "search": "RTXVideo\\RTXVideo_VSR RTXVideo_VSR RTX Video VSR RTXVideo_VSR RTX Video Denoise RTXVideo_Denoise RTXVideo\\RTXVideo_VSR_Low RTXVideo\\RTXVideo_VSR_Medium RTXVideo\\RTXVideo_VSR_High RTXVideo\\RTXVideo_VSR_Ultra RTXVideo\\RTXVideo_Denoise_Low RTXVideo\\RTXVideo_Denoise_Medium RTXVideo\\RTXVideo_Denoise_High RTXVideo\\RTXVideo_Denoise_Ultra category Category Standard High bitrate Streaming Denoise Deblur strength Quality level Low Medium High Ultra Nvidia VFX VSR 放大与超分 通用 AI 视频增强，可放大、降噪或去模糊。 增强视频画面的清晰度，适合视频播放与串流内容。先按素材选择放大、降噪或去模糊分类，再调节质量档位；降噪和去模糊保持输入尺寸。需要受支持的 NVIDIA 渲染 GPU 与配套 VFX 运行库，流媒体分类需 Ampere 及更新架构。"
       },
       "en-US": {
         "name": "Nvidia VFX VSR",
         "subcategory": "General purpose",
         "summary": "AI video enhancement with upscaling, denoising, or deblurring.",
-        "details": "Choose Standard, High bitrate, or Streaming for upscaling; Denoise and Deblur keep the input size. Each category remembers its quality and scaling settings. Higher quality levels are not always a better fit; compare texture, noise, and cost.\n\nRequires a supported NVIDIA rendering GPU, driver, and matching VFX runtime. Streaming offers only Medium/Ultra and requires Ampere or later. HDR uses an SDR compatibility conversion that can change highlights and colors.\n\nCategory changes require restarting scaling. Quality levels can change live; loading a model may briefly pause processing.",
-        "search": "RTXVideo\\RTXVideo_VSR RTXVideo_VSR RTX Video VSR RTXVideo_VSR RTX Video Denoise RTXVideo_Denoise RTXVideo\\RTXVideo_VSR_Low RTXVideo\\RTXVideo_VSR_Medium RTXVideo\\RTXVideo_VSR_High RTXVideo\\RTXVideo_VSR_Ultra RTXVideo\\RTXVideo_Denoise_Low RTXVideo\\RTXVideo_Denoise_Medium RTXVideo\\RTXVideo_Denoise_High RTXVideo\\RTXVideo_Denoise_Ultra category Category Standard High bitrate Streaming Denoise Deblur strength Quality level Low Medium High Ultra Nvidia VFX VSR Upscaling and super resolution General purpose AI video enhancement with upscaling, denoising, or deblurring. Choose Standard, High bitrate, or Streaming for upscaling; Denoise and Deblur keep the input size. Each category remembers its quality and scaling settings. Higher quality levels are not always a better fit; compare texture, noise, and cost. Requires a supported NVIDIA rendering GPU, driver, and matching VFX runtime. Streaming offers only Medium/Ultra and requires Ampere or later. HDR uses an SDR compatibility conversion that can change highlights and colors. Category changes require restarting scaling. Quality levels can change live; loading a model may briefly pause processing."
+        "details": "Enhances clarity in video playback and streams. Choose an upscaling, denoising, or deblurring category for your content, then set the quality level; denoising and deblurring keep the input size. Requires a supported NVIDIA rendering GPU and matching VFX runtime. Streaming requires Ampere or newer.",
+        "search": "RTXVideo\\RTXVideo_VSR RTXVideo_VSR RTX Video VSR RTXVideo_VSR RTX Video Denoise RTXVideo_Denoise RTXVideo\\RTXVideo_VSR_Low RTXVideo\\RTXVideo_VSR_Medium RTXVideo\\RTXVideo_VSR_High RTXVideo\\RTXVideo_VSR_Ultra RTXVideo\\RTXVideo_Denoise_Low RTXVideo\\RTXVideo_Denoise_Medium RTXVideo\\RTXVideo_Denoise_High RTXVideo\\RTXVideo_Denoise_Ultra category Category Standard High bitrate Streaming Denoise Deblur strength Quality level Low Medium High Ultra Nvidia VFX VSR Upscaling and super resolution General purpose AI video enhancement with upscaling, denoising, or deblurring. Enhances clarity in video playback and streams. Choose an upscaling, denoising, or deblurring category for your content, then set the quality level; denoising and deblurring keep the input size. Requires a supported NVIDIA rendering GPU and matching VFX runtime. Streaming requires Ampere or newer."
       }
     },
     {
@@ -220,7 +220,7 @@
         "scope": "2026-10-09 source integration; no build or deployment",
         "copyReviewedOn": "2026-10-13",
         "copyDisposition": "revised",
-        "copyScope": "Bilingual purpose, variants, HDR constraints and parameter hints; source only, no build/UI/GPU acceptance.",
+        "copyScope": "User-focused bilingual purpose, content and starting steps; shared guidance moved to categories, parameter help and usage docs. Source review only; no build, deployment, UI or GPU acceptance.",
         "runtimeEvidenceSha256": {
           "src/Magpie.Core/NvidiaVfxImageBackend.cpp": "e12686e9097a2a847a7e3f5b6b4fcddd6dd27cfee4cc1441dd156d3d3554f69d",
           "src/Magpie.Core/include/NvidiaVfxTrueHdrParameters.h": "6e8952db6d110ff00c8a04a425206fbb22fc6619a68f93583f50e4bc15c7bed1",
@@ -234,16 +234,16 @@
       "zh-Hans": {
         "name": "Nvidia VFX TrueHDR",
         "subcategory": "",
-        "summary": "用 AI 将 SDR 扩展为 HDR，可减轻色带。",
-        "details": "保持输入尺寸，用 AI 重新塑造亮度与颜色；不代表恢复原始 HDR。放在 SDR 效果段之后，HDR 源需先添加 HDR → SDR。需要受支持的 NVIDIA 渲染 GPU、驱动和匹配的 VFX TrueHDR 运行库，输出屏幕需开启 Windows HDR。\n\n按显示器能力设置峰值亮度，再比较对比度、饱和度和中间灰；去色带默认开启。五项参数均可实时调整。搭配 VFX VFG 时，真实帧和生成帧都会经过 TrueHDR。",
-        "search": "RTXVideo\\RTXVideo_HDR RTXVideo_HDR RTX Video HDR RTXVideo_HDR TrueHDR contrast Contrast saturation Saturation middleGray Middle gray peakNits Peak brightness (nits) debanding Debanding Nvidia VFX TrueHDR HDR 组件 用 AI 将 SDR 扩展为 HDR，可减轻色带。 保持输入尺寸，用 AI 重新塑造亮度与颜色；不代表恢复原始 HDR。放在 SDR 效果段之后，HDR 源需先添加 HDR → SDR。需要受支持的 NVIDIA 渲染 GPU、驱动和匹配的 VFX TrueHDR 运行库，输出屏幕需开启 Windows HDR。 按显示器能力设置峰值亮度，再比较对比度、饱和度和中间灰；去色带默认开启。五项参数均可实时调整。搭配 VFX VFG 时，真实帧和生成帧都会经过 TrueHDR。"
+        "summary": "用 AI 将 SDR 画面扩展为 HDR 亮度与颜色。",
+        "details": "重新塑造 SDR 画面的亮度和颜色，适合在 HDR 屏幕上观看视频与游戏，保持画面尺寸。先按显示器能力设置峰值亮度，再调节对比度与饱和度。需要 SDR 输入、受支持的 NVIDIA 渲染 GPU 与配套 VFX 运行库，输出屏幕须开启 Windows HDR。",
+        "search": "RTXVideo\\RTXVideo_HDR RTXVideo_HDR RTX Video HDR RTXVideo_HDR TrueHDR contrast Contrast saturation Saturation middleGray Middle gray peakNits Peak brightness (nits) debanding Debanding Nvidia VFX TrueHDR HDR 组件 用 AI 将 SDR 画面扩展为 HDR 亮度与颜色。 重新塑造 SDR 画面的亮度和颜色，适合在 HDR 屏幕上观看视频与游戏，保持画面尺寸。先按显示器能力设置峰值亮度，再调节对比度与饱和度。需要 SDR 输入、受支持的 NVIDIA 渲染 GPU 与配套 VFX 运行库，输出屏幕须开启 Windows HDR。"
       },
       "en-US": {
         "name": "Nvidia VFX TrueHDR",
         "subcategory": "",
-        "summary": "AI expansion from SDR to HDR, with optional debanding.",
-        "details": "Keeps the input size and uses AI to reshape brightness and color; it does not recover original HDR. Place it after SDR image effects, adding HDR → SDR first for an HDR source. Requires a supported NVIDIA rendering GPU, driver, matching VFX TrueHDR runtime, and Windows HDR enabled on the output display.\n\nSet peak brightness to suit the display, then compare contrast, saturation, and middle gray. Debanding is enabled by default. All five parameters update live. With VFX VFG, both real and generated frames pass through TrueHDR.",
-        "search": "RTXVideo\\RTXVideo_HDR RTXVideo_HDR RTX Video HDR RTXVideo_HDR TrueHDR contrast Contrast saturation Saturation middleGray Middle gray peakNits Peak brightness (nits) debanding Debanding Nvidia VFX TrueHDR HDR components AI expansion from SDR to HDR, with optional debanding. Keeps the input size and uses AI to reshape brightness and color; it does not recover original HDR. Place it after SDR image effects, adding HDR → SDR first for an HDR source. Requires a supported NVIDIA rendering GPU, driver, matching VFX TrueHDR runtime, and Windows HDR enabled on the output display. Set peak brightness to suit the display, then compare contrast, saturation, and middle gray. Debanding is enabled by default. All five parameters update live. With VFX VFG, both real and generated frames pass through TrueHDR."
+        "summary": "Uses AI to expand SDR brightness and color into HDR.",
+        "details": "Reshapes SDR brightness and color for viewing video and games on an HDR display, keeping the image size. Set peak brightness for your display, then adjust contrast and saturation. Requires SDR input, a supported NVIDIA rendering GPU, the matching VFX runtime, and Windows HDR enabled on the output display.",
+        "search": "RTXVideo\\RTXVideo_HDR RTXVideo_HDR RTX Video HDR RTXVideo_HDR TrueHDR contrast Contrast saturation Saturation middleGray Middle gray peakNits Peak brightness (nits) debanding Debanding Nvidia VFX TrueHDR HDR components Uses AI to expand SDR brightness and color into HDR. Reshapes SDR brightness and color for viewing video and games on an HDR display, keeping the image size. Set peak brightness for your display, then adjust contrast and saturation. Requires SDR input, a supported NVIDIA rendering GPU, the matching VFX runtime, and Windows HDR enabled on the output display."
       }
     },
     {
@@ -258,16 +258,16 @@
       "zh-Hans": {
         "name": "Nvidia VFX Upscale",
         "subcategory": "通用",
-        "summary": "轻量视频放大，支持固定倍率和自动适配。",
-        "details": "用于视频放大，可调节输出锐度；需要 AI 降噪或去模糊时可比较 VFX VSR。需要受支持的 NVIDIA 渲染 GPU、驱动及匹配的 VFX Upscale 运行库。HDR 使用 SDR 兼容转换，可能改变高光与颜色。\n\n固定倍率为 4/3×、1.5×、2×、3×、4×，宽高使用相同倍率，输出必须为整数尺寸。自动模式选择能覆盖目标的最低合法倍率，再用 Bicubic 等比适配；目标超过 4× 时继续放大。尺寸超过设备限制会拒绝启动。运行面板可查看原生尺寸和适配结果。\n\n锐度可实时调整，过高可能产生光晕；倍率或目标尺寸修改需重新启动缩放。",
-        "search": "NvidiaVFX\\Upscale Upscale sharpness Sharpness Nvidia VFX Upscale 放大与超分 通用 轻量视频放大，支持固定倍率和自动适配。 用于视频放大，可调节输出锐度；需要 AI 降噪或去模糊时可比较 VFX VSR。需要受支持的 NVIDIA 渲染 GPU、驱动及匹配的 VFX Upscale 运行库。HDR 使用 SDR 兼容转换，可能改变高光与颜色。 固定倍率为 4/3×、1.5×、2×、3×、4×，宽高使用相同倍率，输出必须为整数尺寸。自动模式选择能覆盖目标的最低合法倍率，再用 Bicubic 等比适配；目标超过 4× 时继续放大。尺寸超过设备限制会拒绝启动。运行面板可查看原生尺寸和适配结果。 锐度可实时调整，过高可能产生光晕；倍率或目标尺寸修改需重新启动缩放。"
+        "summary": "放大视频画面，并调节边缘清晰度。",
+        "details": "适合视频播放和串流画面的放大。可选择固定倍率，或自动适配目标尺寸；通过锐化强度调整画面的清晰程度。需要受支持的 NVIDIA 渲染 GPU 与配套 VFX 运行库。",
+        "search": "NvidiaVFX\\Upscale Upscale sharpness Sharpness Nvidia VFX Upscale 放大与超分 通用 放大视频画面，并调节边缘清晰度。 适合视频播放和串流画面的放大。可选择固定倍率，或自动适配目标尺寸；通过锐化强度调整画面的清晰程度。需要受支持的 NVIDIA 渲染 GPU 与配套 VFX 运行库。"
       },
       "en-US": {
         "name": "Nvidia VFX Upscale",
         "subcategory": "General purpose",
-        "summary": "Lightweight video upscaling with fixed ratios or automatic target fitting.",
-        "details": "Upscales video with adjustable sharpness. Compare VFX VSR when AI denoising or deblurring is needed. Requires a supported NVIDIA rendering GPU, driver, and matching VFX Upscale runtime. HDR uses an SDR compatibility conversion that can change highlights and colors.\n\nFixed ratios are 4/3x, 1.5x, 2x, 3x, and 4x, equal on both axes with integer output dimensions. Auto mode selects the lowest legal ratio covering the target, then fits it proportionally with Bicubic; targets beyond 4x need further upscaling. Dimensions exceeding device limits are rejected. The running panel shows native and fitted sizes.\n\nSharpness updates live; excessive sharpening can cause halos. Ratio or target-size changes require restarting scaling.",
-        "search": "NvidiaVFX\\Upscale Upscale sharpness Sharpness Nvidia VFX Upscale Upscaling and super resolution General purpose Lightweight video upscaling with fixed ratios or automatic target fitting. Upscales video with adjustable sharpness. Compare VFX VSR when AI denoising or deblurring is needed. Requires a supported NVIDIA rendering GPU, driver, and matching VFX Upscale runtime. HDR uses an SDR compatibility conversion that can change highlights and colors. Fixed ratios are 4/3x, 1.5x, 2x, 3x, and 4x, equal on both axes with integer output dimensions. Auto mode selects the lowest legal ratio covering the target, then fits it proportionally with Bicubic; targets beyond 4x need further upscaling. Dimensions exceeding device limits are rejected. The running panel shows native and fitted sizes. Sharpness updates live; excessive sharpening can cause halos. Ratio or target-size changes require restarting scaling."
+        "summary": "Upscales video with adjustable edge sharpness.",
+        "details": "Enlarges video playback and streams. Choose a fixed scale or automatically fit the target size, then adjust sharpness to refine edge definition. Requires a supported NVIDIA rendering GPU and matching VFX runtime.",
+        "search": "NvidiaVFX\\Upscale Upscale sharpness Sharpness Nvidia VFX Upscale Upscaling and super resolution General purpose Upscales video with adjustable edge sharpness. Enlarges video playback and streams. Choose a fixed scale or automatically fit the target size, then adjust sharpness to refine edge definition. Requires a supported NVIDIA rendering GPU and matching VFX runtime."
       },
       "source": {
         "path": "src/Effects/NvidiaVFX/Upscale.hlsl",
@@ -310,7 +310,7 @@
         "scope": "2026-10-09 source integration; no build or deployment",
         "copyReviewedOn": "2026-10-13",
         "copyDisposition": "revised",
-        "copyScope": "Bilingual purpose, variants, HDR constraints and parameter hints; source only, no build/UI/GPU acceptance.",
+        "copyScope": "User-focused bilingual purpose, content and starting steps; shared guidance moved to categories, parameter help and usage docs. Source review only; no build, deployment, UI or GPU acceptance.",
         "runtimeEvidenceSha256": {
           "src/Magpie.Core/NvidiaVfxImageBackend.cpp": "e12686e9097a2a847a7e3f5b6b4fcddd6dd27cfee4cc1441dd156d3d3554f69d",
           "src/Magpie.Core/include/NvidiaVfxParameters.h": "d7e192c7447ab2da701a70cee6075a09c6dc89af926cdc66ad844a9f0a4df6ac",
@@ -333,16 +333,16 @@
       "zh-Hans": {
         "name": "Nvidia VFX VFG",
         "subcategory": "补帧",
-        "summary": "SDR 视频 2×～8× 补帧，可搭配 TrueHDR。",
-        "details": "在连续视频帧之间生成中间帧，保持输入尺寸。Windows x64 需要 Ada／Blackwell 架构的 NVIDIA 渲染 GPU、驱动和匹配的 VFX VFG 运行库。仅处理 SDR；HDR 源需先显式添加 HDR → SDR。同一效果组只使用一个补帧器。\n\n图像效果先处理，再补帧；拖动 VFG 条目不会改变处理阶段。使用 TrueHDR 时，首个 TrueHDR 及其后效果会处理每张真实／生成帧。这一段仅支持 TrueHDR、Bicubic、Bilinear、CAS 和 FSR RCAS；其他效果需移到 TrueHDR 前或移除。\n\n性能／均衡模型可实时切换；倍率及自动场切检测修改需重新启动缩放。默认 2×、均衡，自动场切检测开启。检查快速运动、遮挡与文字伪影；高倍率增加处理开销，实际帧率受处理能力和显示节奏限制。\n\n基础帧率、重复检测和空闲持续重绘使用“帧率与刷新”设置。空闲重绘复用缓存，不额外补帧；补帧不提高游戏逻辑帧率，也不保证降低输入延迟。",
-        "search": "NvidiaVFX\\VFG VFG multiplier Frame multiplier model Model Performance Balanced automaticShotDetection Automatic shot detection Nvidia VFX VFG 补帧与帧率 补帧 SDR 视频 2×～8× 补帧，可搭配 TrueHDR。 在连续视频帧之间生成中间帧，保持输入尺寸。Windows x64 需要 Ada／Blackwell 架构的 NVIDIA 渲染 GPU、驱动和匹配的 VFX VFG 运行库。仅处理 SDR；HDR 源需先显式添加 HDR → SDR。同一效果组只使用一个补帧器。 图像效果先处理，再补帧；拖动 VFG 条目不会改变处理阶段。使用 TrueHDR 时，首个 TrueHDR 及其后效果会处理每张真实／生成帧。这一段仅支持 TrueHDR、Bicubic、Bilinear、CAS 和 FSR RCAS；其他效果需移到 TrueHDR 前或移除。 性能／均衡模型可实时切换；倍率及自动场切检测修改需重新启动缩放。默认 2×、均衡，自动场切检测开启。检查快速运动、遮挡与文字伪影；高倍率增加处理开销，实际帧率受处理能力和显示节奏限制。 基础帧率、重复检测和空闲持续重绘使用“帧率与刷新”设置。空闲重绘复用缓存，不额外补帧；补帧不提高游戏逻辑帧率，也不保证降低输入延迟。"
+        "summary": "在视频帧之间补帧，提供 2×～8× 帧数倍率。",
+        "details": "为连续视频画面生成中间帧，让运动呈现更连贯，保持画面尺寸。可从 2×、均衡模型开始，再按处理余量调整倍率。处理 SDR 输入；需要 Windows x64、Ada／Blackwell 架构的 NVIDIA 渲染 GPU 与配套 VFX 运行库。",
+        "search": "NvidiaVFX\\VFG VFG multiplier Frame multiplier model Model Performance Balanced automaticShotDetection Automatic shot detection Nvidia VFX VFG 补帧与帧率 补帧 在视频帧之间补帧，提供 2×～8× 帧数倍率。 为连续视频画面生成中间帧，让运动呈现更连贯，保持画面尺寸。可从 2×、均衡模型开始，再按处理余量调整倍率。处理 SDR 输入；需要 Windows x64、Ada／Blackwell 架构的 NVIDIA 渲染 GPU 与配套 VFX 运行库。"
       },
       "en-US": {
         "name": "Nvidia VFX VFG",
         "subcategory": "Frame generation",
-        "summary": "SDR video frame generation at 2x–8x, with optional TrueHDR.",
-        "details": "Generates intermediate video frames without resizing. Windows x64 requires an NVIDIA Ada/Blackwell rendering GPU, driver, and matching VFX VFG runtime. Processing is SDR only; add HDR → SDR explicitly for HDR sources. Use one frame generator per group.\n\nImage effects run before interpolation, regardless of the VFG entry position. When TrueHDR is present, the first TrueHDR and all following effects process every real/generated frame. This section supports only TrueHDR, Bicubic, Bilinear, CAS, and FSR RCAS; move other effects before TrueHDR or remove them.\n\nPerformance/Balanced models can switch live. Multiplier and automatic shot detection changes require restarting scaling. Defaults are 2x, Balanced, and automatic shot detection enabled. Check fast motion, occlusion, and text artifacts. Higher multipliers add cost; processing capacity and display pacing limit actual FPS.\n\nBase FPS, duplicate detection, and idle redraw use Frame rate and refresh settings. Idle redraw reuses cached output without interpolation. Generation does not raise game simulation FPS or guarantee lower input latency.",
-        "search": "NvidiaVFX\\VFG VFG multiplier Frame multiplier model Model Performance Balanced automaticShotDetection Automatic shot detection Nvidia VFX VFG Frame generation and frame rate Frame generation SDR video frame generation at 2x–8x, with optional TrueHDR. Generates intermediate video frames without resizing. Windows x64 requires an NVIDIA Ada/Blackwell rendering GPU, driver, and matching VFX VFG runtime. Processing is SDR only; add HDR → SDR explicitly for HDR sources. Use one frame generator per group. Image effects run before interpolation, regardless of the VFG entry position. When TrueHDR is present, the first TrueHDR and all following effects process every real/generated frame. This section supports only TrueHDR, Bicubic, Bilinear, CAS, and FSR RCAS; move other effects before TrueHDR or remove them. Performance/Balanced models can switch live. Multiplier and automatic shot detection changes require restarting scaling. Defaults are 2x, Balanced, and automatic shot detection enabled. Check fast motion, occlusion, and text artifacts. Higher multipliers add cost; processing capacity and display pacing limit actual FPS. Base FPS, duplicate detection, and idle redraw use Frame rate and refresh settings. Idle redraw reuses cached output without interpolation. Generation does not raise game simulation FPS or guarantee lower input latency."
+        "summary": "Generates intermediate video frames at 2x–8x frame multipliers.",
+        "details": "Adds intermediate frames to continuous video for smoother motion while keeping the image size. Start with 2x and the Balanced model, then adjust the multiplier to suit processing headroom. Takes SDR input; requires Windows x64, an Ada/Blackwell NVIDIA rendering GPU, and the matching VFX runtime.",
+        "search": "NvidiaVFX\\VFG VFG multiplier Frame multiplier model Model Performance Balanced automaticShotDetection Automatic shot detection Nvidia VFX VFG Frame generation and frame rate Frame generation Generates intermediate video frames at 2x–8x frame multipliers. Adds intermediate frames to continuous video for smoother motion while keeping the image size. Start with 2x and the Balanced model, then adjust the multiplier to suit processing headroom. Takes SDR input; requires Windows x64, an Ada/Blackwell NVIDIA rendering GPU, and the matching VFX runtime."
       },
       "source": {
         "path": "src/Effects/NvidiaVFX/VFG.hlsl",
@@ -416,7 +416,7 @@
         "settingsRevision": "2026-10-12 FG common filtering and idle redraw; source only, uncompiled",
         "copyReviewedOn": "2026-10-13",
         "copyDisposition": "revised",
-        "copyScope": "Bilingual purpose, variants, HDR constraints and parameter hints; source only, no build/UI/GPU acceptance.",
+        "copyScope": "User-focused bilingual purpose, content and starting steps; shared guidance moved to categories, parameter help and usage docs. Source review only; no build, deployment, UI or GPU acceptance.",
         "runtimeEvidenceSha256": {
           "src/Magpie.Core/NvidiaVfxFrameGenerator.cpp": "801a58fbd0d468087f04f099f7c78283414227e420d247dda7cd5fdf5b6d284b",
           "src/Magpie.Core/include/NvidiaVfxExecutionPlan.h": "fefa7a5209c35e481f2921d768b660b534ac08803dbef66beef56a71fbef0e0a",
@@ -429,5 +429,10 @@
       }
     }
   ],
-  "copyRevision": "2026-10-13: bilingual description standards; source-only review"
+  "copyRevision": {
+    "date": "2026-10-13",
+    "guide": "docs/experimental/EFFECT-DESCRIPTION-GUIDE.md",
+    "review": "docs/experimental/reviews/20261013-effect-description-user-copy-revision.md",
+    "scope": "User-focused bilingual rewrite; preserve IDs, parameters, behavior and source evidence. No compilation or deployment."
+  }
 }

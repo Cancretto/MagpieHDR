@@ -1,6 +1,6 @@
 # 效果器说明规范化：审查与源码交接
 
-后续反馈（2026-10-13）：用户指出文案仍有防御性描述过多、跨效果信息过密和新旧表达不一致的问题。本文保留上一轮事实修正与验证记录；其中写作完成结论已被后续反馈重新打开，后续按[用户说明重写 TODO](../todos/20261013-effect-description-user-copy-revision-TODO.md)与[修订规范](../EFFECT-DESCRIPTION-GUIDE.md)执行。本次只准备文档，尚未重写产品文案。
+后续反馈（2026-10-13）：用户指出文案仍有防御性描述过多、跨效果信息过密和新旧表达不一致的问题。本文保留上一轮事实修正与验证记录；其中写作完成结论已被后续反馈重新打开，后续按[用户说明重写 TODO](../todos/20261013-effect-description-user-copy-revision-TODO.md)与[修订规范](../EFFECT-DESCRIPTION-GUIDE.md)执行。后续重写现已完成，结果与待实机事项见[本轮文案审查](20261013-effect-description-user-copy-revision.md)。
 
 日期：2026-10-13。分支：`feature/effect-description-standards`。基线：`release/0.6.10-beta8` / `cbe2c2cbda103e6cb6f686a5521918ed2501c32e`。
 

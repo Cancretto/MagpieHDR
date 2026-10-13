@@ -14,6 +14,42 @@
 - 喜鹊工具栏与可独立绘制的鼠标走单独的 DirectComposition UI 层。游戏 HUD 和捕获中已经烘焙的鼠标仍留在图像中，无法自动分离。
 - 喜鹊限制基础帧输入，AMD 交换链控制插值和真实帧呈现。三种帧同步选择在 FSR FG 下均使用基础帧 Async 限速；不依赖 XeLL、Reflex 或 Anti-Lag。补帧不增加游戏逻辑帧率，也不能据此宣称降低输入延迟。
 
+<a id="compatible-effect-list"></a>
+
+## 完整效果组合清单 / Compatible effects
+
+使用固定 2× SDR 补帧时，效果组可包含以下条目。清单与 `FSR3FGPolicy.h::SupportsFSR3FGExternalMotion` 对应；`Utility\FrameRate_Filter` 为旧 ID 兼容入口。组合须保持矩形坐标关系，画面完整位于输出区域内。HDR 组件、CRT、几何变形和清单外效果不在当前支持范围。
+
+For fixed 2x SDR generation, the group can contain the entries below. This list follows `SupportsFSR3FGExternalMotion`; `Utility\FrameRate_Filter` is a legacy ID. Chains must preserve rectangular coordinates with the image entirely inside the output area. HDR components, CRT, geometry distortion, and unlisted effects are outside the current scope.
+
+<!-- fsr3fg-supported-effects:start -->
+| 效果 / Effect | 效果 ID / Effect ID |
+| --- | --- |
+| FSR3 FrameGeneration | `FSR3FG\FSR3_FrameGeneration` |
+| DLSS SR | `DLSS\DLSS_SR` |
+| FSR2 SR | `FSR2\FSR2_SR` |
+| FSR3 SR | `FSR3\FSR3_SR` |
+| FSR4 SR | `FSR4\FSR4_SR` |
+| XeSS SR | `XeSS\XeSS_SR` |
+| DLSSNR | `DLSSNR\DLSSNR_AI_Filter` |
+| Nvidia VFX VSR | `RTXVideo\RTXVideo_VSR` |
+| Nvidia VFX Upscale | `NvidiaVFX\Upscale` |
+| NIS | `NIS\NIS` |
+| NVSharpen | `NIS\NVSharpen` |
+| Bilinear | `Bilinear` |
+| Bicubic | `Bicubic` |
+| Lanczos | `Lanczos` |
+| Nearest | `Nearest` |
+| 帧率限制 / Frame-rate limiter | `FrameRate_Filter` |
+| 旧版限帧 ID / Legacy limiter ID | `Utility\FrameRate_Filter` |
+| FSR EASU | `FSR\FSR_EASU` |
+| FSR RCAS | `FSR\FSR_RCAS` |
+<!-- fsr3fg-supported-effects:end -->
+
+初次设置、共用帧率选项和颜色组合见[内置效果使用说明](../../Built-in%20effects.md#current-branch-setup)。
+
+For initial setup, shared frame-rate controls, and color chains, see the [built-in effect guide](../../Built-in%20effects.md#current-branch-setup).
+
 ## 实验性输入契约
 
 运动向量来自现有 Frame Guidance，方向为当前帧到前帧，单位为像素。后端先适配到最终效果输出，Presenter 再按内容矩形缩放向量，在辅助纹理左上角写入；`generationRect` 表示内容在整个交换链中的位置。首帧或明确 reset 时允许合法零纹理占位；正常插帧须有对应的光流输入。provider 运行/resize/同步失败会明确停止，连续缺失不能以 reset 无限直通。有效的全零光流代表静止，不是错误。缓存重绘不提交新的光流样本。

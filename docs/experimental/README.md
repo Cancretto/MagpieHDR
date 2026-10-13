@@ -28,9 +28,9 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
-- [效果器用户说明重写 TODO](todos/20261013-effect-description-user-copy-revision-TODO.md)：按用户反馈收敛防御性描述，聚焦各效果自身用途，统一新旧效果的阅读结构。当前仅准备 TODO 并修订规范，产品文案等待稍后执行。
+- [效果器用户说明重写 TODO](todos/20261013-effect-description-user-copy-revision-TODO.md)／[样稿、全量审查与交接](reviews/20261013-effect-description-user-copy-revision.md)：已重写 165 项双语说明并整理 40 项分类／家族说明；减少防御句，聚焦自身用途，统一新旧表达。文案 review 与静态检查完成；编译部署及界面／GPU 验收待后续会话执行。
 - [效果器说明维护规范](EFFECT-DESCRIPTION-GUIDE.md)：已修订为用户理解和选择优先，明确比较／组合／参数信息的归属；技术来源与证据要求继续保留。
-- [上一轮效果器说明 TODO](todos/20261013-effect-descriptions-and-guidelines-TODO.md)／[逐项审查与交接](reviews/20261013-effect-description-standards.md)：保留 165 项事实核对、分类／进阶入口及 VFG RCAS ID 修正记录。此前静态检查通过；写作方向按上述新 TODO 继续修订。编译部署及实机验收交给独立会话。
+- [上一轮效果器说明 TODO](todos/20261013-effect-descriptions-and-guidelines-TODO.md)／[逐项审查与交接](reviews/20261013-effect-description-standards.md)：保留 165 项事实核对、分类／进阶入口及 VFG RCAS ID 修正记录。本轮文案重写结果见上方；编译部署及实机验收交给独立会话。
 
 - [DLSSFG sm86 启动修复源码交接](reviews/20261011-issue37-dlssfg-sm86-startup-fix.md)：原功能分支补齐显式 bundle 加载和 NGX 搜索目录；独立 loader 四场景通过，修改后的 Magpie 编译与真实补帧由后续会话验收。
 
