@@ -28,6 +28,9 @@ HDR 当前状态：旧配置页入口保持隐藏，新旧配置中的旧开关�
 
 ## 当前工作
 
+- [效果器说明维护规范](EFFECT-DESCRIPTION-GUIDE.md)：内容分层、双语术语、来源与生成、原生后端证据及验收边界。
+- [全部效果器说明 TODO](todos/20261013-effect-descriptions-and-guidelines-TODO.md)／[逐项审查与交接](reviews/20261013-effect-description-standards.md)：覆盖 165 项，重点整理 0.6.9 起新增和变更的说明，补齐分类／进阶入口并修正 VFG 的 RCAS ID。源码与非编译检查完成；原生测试执行、产品编译部署和真实界面／GPU 验收交给独立会话。
+
 - [DLSSFG sm86 启动修复源码交接](reviews/20261011-issue37-dlssfg-sm86-startup-fix.md)：原功能分支补齐显式 bundle 加载和 NGX 搜索目录；独立 loader 四场景通过，修改后的 Magpie 编译与真实补帧由后续会话验收。
 
 - [DLSSFG Beta7 启用失败修复 TODO](todos/20261011-issue37-dlssfg-sm86-startup-failure-TODO.md)：`FeatureNotFound` 实机记录与独立加载探针；补齐 bundle 准备和 NGX 搜索路径。

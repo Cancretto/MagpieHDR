@@ -2,7 +2,7 @@
   "category": {
     "id": "hdr-components",
     "name": "HDR 组件",
-    "description": "在 HDR 与 SDR 之间转换，或将 SDR 画面扩展为 HDR。",
+    "description": "显式设置 HDR／SDR 转换顺序；输入颜色域需匹配，HDR 捕获或输出需对应屏幕开启 Windows HDR。",
     "subcategories": []
   },
   "effects": [
@@ -15,10 +15,10 @@
         "hdr-components"
       ],
       "summary": "将 HDR 映射到 SDR 处理或显示。",
-      "details": "保持输入尺寸，放在需要 SDR 输入的效果之前。兼容配对模式预留高光范围，后面的 SDR → HDR 自动沿用配对参数；SDR 显示模式用于直接观看。\n\n源应用所在屏幕需开启 Windows HDR，并使用 Graphics Capture。配对中间画面与普通 SDR 不同；量化、裁切和处理可能损失高光与颜色，恢复不保证无损。参数修改需重新缩放。",
+      "details": "保持输入尺寸，放在需要 SDR 输入的效果之前。兼容配对模式预留高光范围，后面的 SDR → HDR 自动沿用配对参数；SDR 显示模式用于直接观看。\n\n源应用所在屏幕需开启 Windows HDR，并使用 Graphics Capture。配对中间画面与普通 SDR 不同；量化、裁切和处理可能损失高光与颜色，恢复不保证无损。参数修改需重新启动缩放。",
       "level": "advanced",
       "recommendation": "进阶／实验",
-      "search": "Color\\HDR_to_SDR HDR → SDR HDR 组件  将 HDR 映射到 SDR 处理或显示。 保持输入尺寸，放在需要 SDR 输入的效果之前。兼容配对模式预留高光范围，后面的 SDR → HDR 自动沿用配对参数；SDR 显示模式用于直接观看。  源应用所在屏幕需开启 Windows HDR，并使用 Graphics Capture。配对中间画面与普通 SDR 不同；量化、裁切和处理可能损失高光与颜色，恢复不保证无损。参数修改需重新缩放。 Color\\HDR_to_SDR Mapping SDR white (nits) HDR peak (nits) Exposure Shoulder",
+      "search": "Color\\HDR_to_SDR HDR → SDR HDR 组件 将 HDR 映射到 SDR 处理或显示。 保持输入尺寸，放在需要 SDR 输入的效果之前。兼容配对模式预留高光范围，后面的 SDR → HDR 自动沿用配对参数；SDR 显示模式用于直接观看。 源应用所在屏幕需开启 Windows HDR，并使用 Graphics Capture。配对中间画面与普通 SDR 不同；量化、裁切和处理可能损失高光与颜色，恢复不保证无损。参数修改需重新启动缩放。 Color\\HDR_to_SDR Mapping SDR white (nits) HDR peak (nits) Exposure Shoulder",
       "family": null,
       "subfamily": null
     },
@@ -31,10 +31,10 @@
         "hdr-components"
       ],
       "summary": "恢复兼容映射，或映射 SDR 白点。",
-      "details": "保持输入尺寸，放在 SDR 效果段之后。自动模式优先恢复上游 HDR → SDR 的兼容映射；没有配对时，将 SDR 白色映射到设定亮度。\n\n配对恢复使用上游参数。原生 SDR 映射使用一个白色亮度参数，80–4000 尼特、默认 203；高值提高整体画面亮度。旧白点和曝光语义在主动编辑前保留。输出屏幕需开启 Windows HDR；普通白色映射不会生成原素材没有的高光细节。参数修改需重新缩放。",
+      "details": "保持输入尺寸，放在 SDR 效果段之后。自动模式优先恢复上游 HDR → SDR 的兼容映射；没有配对时，将 SDR 白色映射到设定亮度。\n\n配对恢复使用上游参数。原生 SDR 映射使用一个白色亮度参数，80–4000 尼特、默认 203；高值提高整体画面亮度。输出屏幕需开启 Windows HDR；普通白色映射不会生成原素材没有的高光细节。参数修改需重新启动缩放。",
       "level": "advanced",
       "recommendation": "进阶／实验",
-      "search": "Color\\SDR_to_HDR SDR → HDR 恢复兼容映射，或映射 SDR 白点。 保持输入尺寸，放在 SDR 效果段之后。自动模式优先恢复上游 HDR → SDR 的兼容映射；没有配对时，将 SDR 白色映射到设定亮度。  配对恢复使用上游参数。原生 SDR 映射使用一个白色亮度参数，80–4000 尼特、默认 203；高值提高整体画面亮度。旧白点和曝光语义在主动编辑前保留。输出屏幕需开启 Windows HDR；普通白色映射不会生成原素材没有的高光细节。参数修改需重新缩放。 nativeWhiteNits Native SDR white brightness Legacy exposure",
+      "search": "Color\\SDR_to_HDR SDR → HDR 恢复兼容映射，或映射 SDR 白点。 保持输入尺寸，放在 SDR 效果段之后。自动模式优先恢复上游 HDR → SDR 的兼容映射；没有配对时，将 SDR 白色映射到设定亮度。 配对恢复使用上游参数。原生 SDR 映射使用一个白色亮度参数，80–4000 尼特、默认 203；高值提高整体画面亮度。输出屏幕需开启 Windows HDR；普通白色映射不会生成原素材没有的高光细节。参数修改需重新启动缩放。 nativeWhiteNits Native SDR white brightness Legacy exposure",
       "family": null,
       "subfamily": null
     },
@@ -46,11 +46,11 @@
       "purposes": [
         "hdr-components"
       ],
-      "summary": "将 SDR 扩展为 HDR，包含去色带。",
-      "details": "保留旧 RTX Video HDR 的效果 ID、参数、精确输入和普通／Shift 刻度。对比度、饱和度 0–200（默认 100）；中灰 10–100（50）；峰值 400–2000 nits（1000）。去色带默认开启。配合 VFG 时每张真实／生成帧都处理；HDR 源先转 SDR。输出屏幕开启 Windows HDR。AI 重塑亮度和颜色，不代表恢复原始 HDR。",
+      "summary": "用 AI 将 SDR 扩展为 HDR，可减轻色带。",
+      "details": "保持输入尺寸，用 AI 重新塑造亮度与颜色；不代表恢复原始 HDR。放在 SDR 效果段之后，HDR 源需先添加 HDR → SDR。需要受支持的 NVIDIA 渲染 GPU、驱动和匹配的 VFX TrueHDR 运行库，输出屏幕需开启 Windows HDR。\n\n按显示器能力设置峰值亮度，再比较对比度、饱和度和中间灰；去色带默认开启。五项参数均可实时调整。搭配 VFX VFG 时，真实帧和生成帧都会经过 TrueHDR。",
       "level": "situational",
       "recommendation": "特定场景推荐",
-      "search": "RTXVideo\\RTXVideo_HDR Nvidia VFX TrueHDR 将 SDR 扩展为 HDR，包含去色带。 保留旧 RTX Video HDR 的效果 ID、参数、精确输入和普通／Shift 刻度。对比度、饱和度 0–200（默认 100）；中灰 10–100（50）；峰值 400–2000 nits（1000）。去色带默认开启。配合 VFG 时每张真实／生成帧都处理；HDR 源先转 SDR。输出屏幕开启 Windows HDR。AI 重塑亮度和颜色，不代表恢复原始 HDR。 RTXVideo\\RTXVideo_HDR RTX Video HDR HDR 组件  通过 NVIDIA AI 将 SDR 扩展为 HDR。 保持输入尺寸，放在 SDR 效果段之后；HDR 输入先用 HDR → SDR。AI 会重新塑造亮度与颜色，不代表恢复原始 HDR。  需要受支持的 NVIDIA RTX 显卡、驱动与随附 RTX Video HDR 运行库，输出屏幕需开启 Windows HDR。按显示器设置峰值亮度，再比较对比度、饱和度和中间灰。四项参数可实时调整；开销随分辨率和显卡变化。 RTXVideo\\RTXVideo_HDR Contrast Saturation Middle gray Peak brightness (nits)",
+      "search": "RTXVideo\\RTXVideo_HDR RTXVideo_HDR RTX Video HDR RTXVideo_HDR TrueHDR contrast Contrast saturation Saturation middleGray Middle gray peakNits Peak brightness (nits) debanding Debanding Nvidia VFX TrueHDR HDR 组件 用 AI 将 SDR 扩展为 HDR，可减轻色带。 保持输入尺寸，用 AI 重新塑造亮度与颜色；不代表恢复原始 HDR。放在 SDR 效果段之后，HDR 源需先添加 HDR → SDR。需要受支持的 NVIDIA 渲染 GPU、驱动和匹配的 VFX TrueHDR 运行库，输出屏幕需开启 Windows HDR。 按显示器能力设置峰值亮度，再比较对比度、饱和度和中间灰；去色带默认开启。五项参数均可实时调整。搭配 VFX VFG 时，真实帧和生成帧都会经过 TrueHDR。",
       "family": null,
       "subfamily": null
     }

@@ -68,7 +68,8 @@
         "runtimeEvidence": [
           "src/Magpie.Core/FSR3FGPresenter.cpp",
           "src/Magpie.Core/FSR3FGPolicy.h",
-          "src/Magpie.Core/Renderer.cpp"
+          "src/Magpie.Core/Renderer.cpp",
+          "src/Magpie.Core/include/FrameGenerationParameters.h"
         ],
         "externalReferences": [
           "https://gpuopen.com/manuals/fsr_sdk/techniques/frame-interpolation-api/"
@@ -81,22 +82,33 @@
           "HDR",
           "VRR-display-activation"
         ],
-        "settingsRevision": "2026-10-12 FG common filtering and idle redraw; source only, uncompiled"
+        "settingsRevision": "2026-10-12 FG common filtering and idle redraw; source only, uncompiled",
+        "copyReviewedOn": "2026-10-13",
+        "copyDisposition": "revised",
+        "copyScope": "Bilingual purpose, variants, HDR constraints and parameter hints; source only, no build/UI/GPU acceptance.",
+        "runtimeEvidenceSha256": {
+          "src/Magpie.Core/FSR3FGPresenter.cpp": "84b37cd0543f88813fd5d09c19463d883a1cf2ceb2f23faca9f09628f7da035e",
+          "src/Magpie.Core/FSR3FGPolicy.h": "fc8083f161bc29eb3781453c4207ff1de64809a7214d1c25292a798701dc5ed3",
+          "src/Magpie.Core/Renderer.cpp": "f54c48b6c55ecb3644613927c6e93ef984784bbd01b8ac6c854d83c31b25dcd9",
+          "src/Magpie.Core/include/FrameGenerationParameters.h": "3d83785bc44ef71c2ad68d4c55aa6ac3993e3d860b3aff0a4aedbce91d99688d"
+        },
+        "evidenceBaseline": "cbe2c2cbda103e6cb6f686a5521918ed2501c32e + feature/effect-description-standards changes"
       },
       "zh-Hans": {
         "name": "FSR3 FrameGeneration",
         "subcategory": "补帧",
-        "summary": "实验性 FSR 3 补帧，固定 2×，目前仅支持 SDR。",
-        "details": "在最终图像处理完成后补帧，固定 2×，不必搭配 FSR 超分。一条效果链只使用一个补帧效果器。不限定 WGC；缺少捕获时间戳时使用捕获接收间隔估计。需要包含 FSR FG 的程序构建、配套 AMD 运行库和满足要求的显卡。\n\n必须提供外部光流，默认 AMDOF 质量，也可选择 NVOF；FSR 内部光流仍运行。旧“无”或缺省配置迁移为 AMDOF 质量。仅支持已列出的矩形缩放效果链；请移除 CRT、几何变形和未验证效果。光流变更需重启缩放。\n\n这是基于捕获图像的实验性接入，缺少游戏真实深度和运动信息。游戏 HUD、遮挡及快速运动可能出现伪影；当前不支持 HDR 和超出输出窗口的裁剪。请先验证画质与开销。基础帧率在“帧率与刷新”中设置，补帧不提高游戏逻辑帧率，也不代表输入延迟降低。\n\n重复帧检测统一使用“帧率与刷新”的通用设置。启用空闲持续重绘后，约 0.5 秒没有新内容时按有效重绘率重绘缓存；不会额外插帧，也不增加真实输入帧率。",
-        "search": "FSR3FG\\FSR3_FrameGeneration FSR3 FrameGeneration 实验性 FSR 3 补帧，固定 2×，目前仅支持 SDR。 在最终图像处理完成后补帧，固定 2×，不必搭配 FSR 超分。一条效果链只使用一个补帧效果器。不限定 WGC；缺少捕获时间戳时使用捕获接收间隔估计。需要包含 FSR FG 的程序构建、配套 AMD 运行库和满足要求的显卡。  必须提供外部光流，默认 AMDOF 质量，也可选择 NVOF；FSR 内部光流仍运行。旧“无”或缺省配置迁移为 AMDOF 质量。仅支持已列出的矩形缩放效果链；请移除 CRT、几何变形和未验证效果。光流变更需重启缩放。  这是基于捕获图像的实验性接入，缺少游戏真实深度和运动信息。游戏 HUD、遮挡及快速运动可能出现伪影；当前不支持 HDR 和超出输出窗口的裁剪。请先验证画质与开销。基础帧率在“帧率与刷新”中设置，补帧不提高游戏逻辑帧率，也不代表输入延迟降低。  重复帧检测统一使用“帧率与刷新”的通用设置。启用空闲持续重绘后，约 0.5 秒没有新内容时按有效重绘率重绘缓存；不会额外插帧，也不增加真实输入帧率。 AMDOF NVOF FSR 3 FG AMD FidelityFX"
+        "summary": "实验性 FSR 3 补帧，固定 2×，仅支持 SDR。",
+        "details": "在最终图像处理后生成中间帧，不必搭配 FSR 超分，也不限定 Graphics Capture。同一效果组只使用一个补帧器。需要包含 FSR FG 的 x64 程序、匹配的 AMD 运行库和通过能力检查的渲染 GPU。\n\n必须使用外部光流，默认 AMDOF 质量，也可选受硬件支持的 NVOF。光流方式与质量修改需重新启动缩放。可搭配：DLSS SR、FSR2／3／4 SR、XeSS SR、DLSSNR、VFX VSR、VFX Upscale、NIS、NVSharpen、Bilinear、Bicubic、Lanczos、Nearest、FSR EASU、FSR RCAS 和帧率限制。列表外效果、CRT、几何变形及超出输出窗口的裁剪不支持。\n\n仅支持 SDR，不可加入 HDR 组件。基于捕获图像估计运动，缺少游戏真实深度与运动信息；游戏 HUD、遮挡及快速运动可能出现伪影。基础帧率、重复检测和空闲持续重绘使用“帧率与刷新”设置；空闲时重绘缓存，不额外补帧。补帧不提高游戏逻辑帧率，也不保证降低输入延迟。",
+        "search": "FSR3FG\\FSR3_FrameGeneration FSR3_FrameGeneration FSR3FG FSR 3 FG FSR3_FrameGeneration AMD FidelityFX opticalFlowMethod Optical Flow Method 1 AMDOF 2 NVOF amdOpticalFlowMode OF Quality 0 Performance 1 Quality nvidiaOpticalFlowQuality OF Quality 1 Performance 2 Balanced (Recommended) 3 Quality 4 High Quality (High Cost) 5 Highest Quality (Very High Cost) FSR3 FrameGeneration 补帧与帧率 补帧 实验性 FSR 3 补帧，固定 2×，仅支持 SDR。 在最终图像处理后生成中间帧，不必搭配 FSR 超分，也不限定 Graphics Capture。同一效果组只使用一个补帧器。需要包含 FSR FG 的 x64 程序、匹配的 AMD 运行库和通过能力检查的渲染 GPU。 必须使用外部光流，默认 AMDOF 质量，也可选受硬件支持的 NVOF。光流方式与质量修改需重新启动缩放。可搭配：DLSS SR、FSR2／3／4 SR、XeSS SR、DLSSNR、VFX VSR、VFX Upscale、NIS、NVSharpen、Bilinear、Bicubic、Lanczos、Nearest、FSR EASU、FSR RCAS 和帧率限制。列表外效果、CRT、几何变形及超出输出窗口的裁剪不支持。 仅支持 SDR，不可加入 HDR 组件。基于捕获图像估计运动，缺少游戏真实深度与运动信息；游戏 HUD、遮挡及快速运动可能出现伪影。基础帧率、重复检测和空闲持续重绘使用“帧率与刷新”设置；空闲时重绘缓存，不额外补帧。补帧不提高游戏逻辑帧率，也不保证降低输入延迟。"
       },
       "en-US": {
         "name": "FSR3 FrameGeneration",
         "subcategory": "Frame generation",
-        "summary": "Experimental FSR 3 frame generation at fixed 2x, currently SDR only.",
-        "details": "Generates frames after final image processing at fixed 2x. It can be used independently of FSR upscaling. Use one frame generator per group. WGC is not required; missing native timestamps use a capture-admission interval estimate. Requires a build with FSR FG, matching AMD runtimes and a compatible GPU.\n\nExternal optical flow is required, with AMDOF Quality as the default and NVOF also available; FSR internal optical flow remains active. Retired None or missing settings migrate to AMDOF Quality. Only supported rectangular scaling chains are allowed; remove CRT, distortion or unverified effects. Optical-flow changes require restarting scaling.\n\nThis experimental capture-based integration lacks real game depth and motion. Game HUD, occlusion and fast motion may show artifacts. HDR and cropping outside the output window are not supported. Validate quality and cost first. Set base FPS under Frame rate and refresh. Generation does not increase game simulation FPS or establish lower input latency.\n\nDuplicate detection follows the common Frame rate and refresh settings. With idle redraw enabled, about 0.5 seconds without new content starts cached redraws at the effective rate; these do not generate frames or increase real input FPS.",
-        "search": "FSR3FG\\FSR3_FrameGeneration FSR3 FrameGeneration Experimental FSR 3 frame generation at fixed 2x, currently SDR only. Generates frames after final image processing at fixed 2x. It can be used independently of FSR upscaling. Use one frame generator per group. WGC is not required; missing native timestamps use a capture-admission interval estimate. Requires a build with FSR FG, matching AMD runtimes and a compatible GPU.  External optical flow is required, with AMDOF Quality as the default and NVOF also available; FSR internal optical flow remains active. Retired None or missing settings migrate to AMDOF Quality. Only supported rectangular scaling chains are allowed; remove CRT, distortion or unverified effects. Optical-flow changes require restarting scaling.  This experimental capture-based integration lacks real game depth and motion. Game HUD, occlusion and fast motion may show artifacts. HDR and cropping outside the output window are not supported. Validate quality and cost first. Set base FPS under Frame rate and refresh. Generation does not increase game simulation FPS or establish lower input latency.  Duplicate detection follows the common Frame rate and refresh settings. With idle redraw enabled, about 0.5 seconds without new content starts cached redraws at the effective rate; these do not generate frames or increase real input FPS. AMDOF NVOF FSR 3 FG AMD FidelityFX"
+        "summary": "Experimental FSR 3 frame generation at fixed 2x, SDR only.",
+        "details": "Generates intermediate frames after final image processing, independently of FSR upscaling and without requiring Graphics Capture. Use one frame generator per group. Requires an x64 build with FSR FG, matching AMD runtimes, and a rendering GPU that passes capability checks.\n\nExternal optical flow is required: AMDOF Quality by default, or NVOF on supported hardware. Method and quality changes require restarting scaling. Supported companions: DLSS SR, FSR2/3/4 SR, XeSS SR, DLSSNR, VFX VSR, VFX Upscale, NIS, NVSharpen, Bilinear, Bicubic, Lanczos, Nearest, FSR EASU, FSR RCAS, and Frame Rate Filter. Unlisted effects, CRT, distortion, and cropping outside the output window are unsupported.\n\nSDR only; HDR components cannot be used. Motion is estimated from captured images without real game depth or motion data; game HUD, occlusion, and fast motion may show artifacts. Base FPS, duplicate detection, and idle redraw use Frame rate and refresh settings. Idle redraw reuses cached output without interpolation. Generation does not raise game simulation FPS or guarantee lower input latency.",
+        "search": "FSR3FG\\FSR3_FrameGeneration FSR3_FrameGeneration FSR3FG FSR 3 FG FSR3_FrameGeneration AMD FidelityFX opticalFlowMethod Optical Flow Method 1 AMDOF 2 NVOF amdOpticalFlowMode OF Quality 0 Performance 1 Quality nvidiaOpticalFlowQuality OF Quality 1 Performance 2 Balanced (Recommended) 3 Quality 4 High Quality (High Cost) 5 Highest Quality (Very High Cost) FSR3 FrameGeneration Frame generation and frame rate Frame generation Experimental FSR 3 frame generation at fixed 2x, SDR only. Generates intermediate frames after final image processing, independently of FSR upscaling and without requiring Graphics Capture. Use one frame generator per group. Requires an x64 build with FSR FG, matching AMD runtimes, and a rendering GPU that passes capability checks. External optical flow is required: AMDOF Quality by default, or NVOF on supported hardware. Method and quality changes require restarting scaling. Supported companions: DLSS SR, FSR2/3/4 SR, XeSS SR, DLSSNR, VFX VSR, VFX Upscale, NIS, NVSharpen, Bilinear, Bicubic, Lanczos, Nearest, FSR EASU, FSR RCAS, and Frame Rate Filter. Unlisted effects, CRT, distortion, and cropping outside the output window are unsupported. SDR only; HDR components cannot be used. Motion is estimated from captured images without real game depth or motion data; game HUD, occlusion, and fast motion may show artifacts. Base FPS, duplicate detection, and idle redraw use Frame rate and refresh settings. Idle redraw reuses cached output without interpolation. Generation does not raise game simulation FPS or guarantee lower input latency."
       }
     }
-  ]
+  ],
+  "copyRevision": "2026-10-13: bilingual description standards; source-only review"
 }

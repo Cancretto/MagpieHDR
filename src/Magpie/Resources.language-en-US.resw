@@ -1718,8 +1718,8 @@
   <data name="Profile_Cursor_Refresh_Rate.Header" xml:space="preserve"><value>Minimum refresh rate</value></data>
   <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>Target minimum cursor refresh rate.</value></data>
   <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>Detects and skips identical images across all profiles.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description" xml:space="preserve"><value>Adjust the input resolution sent to NR.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent_Description" xml:space="preserve"><value>Set the NR input resolution as a percentage of the original image.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description" xml:space="preserve"><value>Adjust the working size sent to NR. Available in SDR only; also enables post-processing detail controls. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent_Description" xml:space="preserve"><value>Lower percentages change working resolution, processing cost, and texture response without changing final output size. Changes require restarting scaling.</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Description" xml:space="preserve"><value>Adjust the overall strength of NR processing.</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Description" xml:space="preserve"><value>Adjust the strength of color changes from NR.</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Description" xml:space="preserve"><value>Adjust the overall strength of lightness changes from NR.</value></data>
@@ -1743,8 +1743,8 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Description" xml:space="preserve"><value>Adjust skin structure processing for this pass.</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_useAutoMask_Description" xml:space="preserve"><value>Enable automatic masking for this pass.</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_uiCorrection_Description" xml:space="preserve"><value>Improve interface elements and text after NR processing.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_multiPass_Description" xml:space="preserve"><value>Set the number of consecutive NR passes.</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Description" xml:space="preserve"><value>Stabilize the image across consecutive frames.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_multiPass_Description" xml:space="preserve"><value>Set the number of consecutive, independently controlled passes. Extra passes add cost and may accumulate texture changes. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Description" xml:space="preserve"><value>Reduce changes between consecutive frames; still check motion ghosting. Enable this to edit optical-flow parameters. Changes require restarting scaling.</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_Group_Advanced_Adjustments" xml:space="preserve"><value>Advanced Adjustments</value></data>
   <data name="EffectParameter_Help_Range" xml:space="preserve"><value>Range</value></data>
   <data name="EffectParameter_Help_Default" xml:space="preserve"><value>Default</value></data>
@@ -1842,7 +1842,7 @@
   <data name="HdrParameter_InvalidInput" xml:space="preserve"><value>Enter a number in the shown range; integer parameters require whole numbers.</value></data>
   <data name="HdrParameter_PreciseInputHelp" xml:space="preserve"><value>Type an exact value; Shift + arrow or wheel uses the coarse step.</value></data>
   <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Label" xml:space="preserve"><value>SDR white brightness (nits)</value></data>
-  <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Description" xml:space="preserve"><value>Higher values brighten the entire image. Default 203; new edits use 80–4000 nits. Existing dim values remain unchanged until edited.</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Description" xml:space="preserve"><value>Raise the HDR brightness assigned to SDR white to brighten the image. Pair restoration inherits upstream settings. Changes require restarting scaling.</value></data>
   <data name="ScalingModes_HdrMigrationInvalid_Description" xml:space="preserve"><value>The saved HDR configuration could not be safely restored. Its original data is retained. Restore the original group or fix its saved configuration before starting.</value></data>
   <data name="HdrParameter_PairSource" xml:space="preserve"><value>Restores settings from HDR -&gt; SDR at effect #{}.</value></data>
 
@@ -1968,12 +1968,12 @@
   <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_3" xml:space="preserve"><value>Denoise</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_4" xml:space="preserve"><value>Deblur</value></data>
   <data name="NvidiaVfx_Upscale_Auto" xml:space="preserve"><value>Auto fit target</value></data>
-  <data name="NvidiaVfx_Upscale_AutoHelp" xml:space="preserve"><value>Choose the lowest legal ratio, then fit the target with Bicubic.</value></data>
+  <data name="NvidiaVfx_Upscale_AutoHelp" xml:space="preserve"><value>Choose the lowest legal ratio covering the target, then fit proportionally with Bicubic; targets beyond 4x need further upscaling. Changes require restarting scaling.</value></data>
   <data name="NvidiaVfx_Upscale_Down" xml:space="preserve"><value> -&gt; Bicubic downsample: {}x{}</value></data>
-  <data name="NvidiaVfx_Upscale_FixedHelp" xml:space="preserve"><value>Exact native ratio; width and height must be integers.</value></data>
+  <data name="NvidiaVfx_Upscale_FixedHelp" xml:space="preserve"><value>Use an exact native ratio, equal on both axes with integer output dimensions. Changes require restarting scaling.</value></data>
   <data name="NvidiaVfx_Upscale_Process" xml:space="preserve"><value>{}x{} -&gt; Nvidia VFX {}/{}x: {}x{}</value></data>
   <data name="NvidiaVfx_Upscale_Up" xml:space="preserve"><value> -&gt; Bicubic upscale: {}x{}</value></data>
-  <data name="NvidiaVfx_Vfg_Process" xml:space="preserve"><value>SDR pre-effects -&gt; VFG -&gt; every real/generated frame -&gt; TrueHDR (when selected) -&gt; presentation</value></data>
+  <data name="NvidiaVfx_Vfg_Process" xml:space="preserve"><value>SDR image effects → VFG → every real/generated frame → first TrueHDR and supported post-effects (if present) → presentation</value></data>
   <data name="NvidiaVfx_Vsr_SameSize" xml:space="preserve"><value>Keep input size</value></data>
   <data name="FrameRefresh_Mode.Header" xml:space="preserve"><value>Settings mode</value></data>
   <data name="FrameRefresh_Mode.Description" xml:space="preserve"><value>Simple mode manages the other refresh settings. Applies to all profiles after restarting scaling.</value></data>
@@ -2117,4 +2117,40 @@
   <data name="Overlay_FG_InputCopyTiming" xml:space="preserve"><value>input copy only</value></data>
   <data name="Overlay_FG_UnmeasuredTiming" xml:space="preserve"><value>Frame-generation GPU time is unmeasured. Proxy FG rows measure only the input copy; the measured total excludes SDK frame generation.</value></data>
   <data name="Overlay_FG_MeasuredTotal" xml:space="preserve"><value>Measured total (excludes FG)</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Description" xml:space="preserve"><value>Choose upscaling, denoising, or deblurring; Denoise/Deblur keep the input size. Streaming requires Ampere or later. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Description" xml:space="preserve"><value>Select a quality level for the current category; Streaming offers Medium/Ultra only. Switches live but may briefly pause while loading a model. Compare texture, noise, and cost.</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Description" xml:space="preserve"><value>Select a denoising level; compare noise reduction against texture loss. Switches live but may briefly pause while loading a model.</value></data>
+  <data name="EffectParam_NvidiaVFX_Upscale_sharpness_Description" xml:space="preserve"><value>Enhance edge definition after upscaling; high values can cause halos. Zero disables enhancement while retaining upscaling. Updates live.</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_model_Description" xml:space="preserve"><value>Performance uses a lower-complexity model; Balanced trades processing cost against image reconstruction. Switches live but may briefly pause while loading.</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_multiplier_Description" xml:space="preserve"><value>Raise the target output multiplier at additional processing cost; actual FPS depends on capacity and display pacing. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_automaticShotDetection_Description" xml:space="preserve"><value>Detect scene cuts to avoid interpolating across discontinuities; output may repeat the current frame instead. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_contrast_Description" xml:space="preserve"><value>Adjust light/dark contrast; watch highlight and shadow detail. Updates live.</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_saturation_Description" xml:space="preserve"><value>Adjust color intensity; check skin tones and saturated areas. Updates live.</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_middleGray_Description" xml:space="preserve"><value>Adjust midtone brightness alongside peak brightness. Updates live.</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_peakNits_Description" xml:space="preserve"><value>Set target peak brightness to suit the output display. Updates live.</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_debanding_Description" xml:space="preserve"><value>Reduce gradient banding; compare any changes to fine texture. Updates live.</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Description" xml:space="preserve"><value>FSR3 frame generation requires external optical flow. AMDOF works across GPU vendors; NVOF needs a rendering GPU with NVIDIA optical-flow support. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_amdOpticalFlowMode_Description" xml:space="preserve"><value>Used when AMDOF is selected. Performance/Quality changes the computation tradeoff for motion estimation. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Description" xml:space="preserve"><value>Used when NVOF is selected. Higher levels add cost without guaranteeing better results on every source. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_multiplier_Description" xml:space="preserve"><value>Set the frame-generation multiplier; hardware capacity and display pacing limit actual FPS. It does not raise game simulation FPS. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_multiplier_Description" xml:space="preserve"><value>Set the frame-generation multiplier; hardware capacity and display pacing limit actual FPS. It does not raise game simulation FPS. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_mode_Description" xml:space="preserve"><value>Compatibility pair preserves mapping settings for a later SDR → HDR effect; SDR display tone map is for direct viewing. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_whiteNits_Description" xml:space="preserve"><value>Set the reference white for mapping; together with HDR peak, it affects tonal balance. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_peakNits_Description" xml:space="preserve"><value>Set the reference range of source HDR highlights for mapping; this is not a display brightness switch. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_exposure_Description" xml:space="preserve"><value>Adjust overall brightness during conversion; check highlight and shadow detail. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_shoulder_Description" xml:space="preserve"><value>Adjust the highlight-compression curve; compare bright detail and overall contrast. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_mode_Description" xml:space="preserve"><value>Auto restores an upstream compatibility pair when available; otherwise it maps SDR white brightness. Pair restoration inherits upstream settings. Changes require restarting scaling.</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrYWeight_Description" xml:space="preserve"><value>Adjust the luminance weight used by the small-detail branch; only takes effect with Preserve Small Details enabled. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrEqThreshold_Description" xml:space="preserve"><value>Adjust color similarity; higher values treat more differences as similar. Check thin lines and color boundaries. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>Adjust the coefficient for Lv2 diagonal-edge detection; compare diagonal outlines. This is not overall sharpening strength. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramPreserveSmallDetails_Description" xml:space="preserve"><value>Switch edge detection to the small-detail preservation variant; compare isolated pixels and thin lines. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrYWeight_Description" xml:space="preserve"><value>Adjust the luminance weight used by the small-detail branch; only takes effect with Preserve Small Details enabled. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrEqThreshold_Description" xml:space="preserve"><value>Adjust color similarity; higher values treat more differences as similar. Check thin lines and color boundaries. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>Adjust the coefficient for Lv2 diagonal-edge detection; compare diagonal outlines. This is not overall sharpening strength. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramPreserveSmallDetails_Description" xml:space="preserve"><value>Switch edge detection to the small-detail preservation variant; compare isolated pixels and thin lines. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrYWeight_Description" xml:space="preserve"><value>Adjust the luminance weight used by the small-detail branch; only takes effect with Preserve Small Details enabled. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrEqThreshold_Description" xml:space="preserve"><value>Adjust color similarity; higher values treat more differences as similar. Check thin lines and color boundaries. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>Adjust the coefficient for Lv2 diagonal-edge detection; compare diagonal outlines. This is not overall sharpening strength. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Description" xml:space="preserve"><value>Switch edge detection to the small-detail preservation variant; compare isolated pixels and thin lines. Updates live.</value></data>
+  <data name="EffectParam_xBR_xBR_NoBlend_3x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>Adjust Lv2 diagonal-edge detection; output still selects input colors without blending new colors. Updates live.</value></data>
 </root>

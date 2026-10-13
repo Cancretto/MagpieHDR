@@ -14,7 +14,7 @@ namespace Magpie {
 inline constexpr std::wstring_view ADVANCED_PICKER_EFFECTS[] = {
 	L"NvidiaVFX\\Upscale", L"NvidiaVFX\\VFG", L"RTXVideo\\RTXVideo_HDR",
 	L"RTXVideo\\RTXVideo_VSR", L"DLSSFG\\DLSS_FrameGeneration",
-	L"XeSSFG\\XeSS_FrameGeneration",
+	L"XeSSFG\\XeSS_FrameGeneration", L"FSR3FG\\FSR3_FrameGeneration",
 	L"DLSSNR\\DLSSNR_AI_Filter", L"FrameRate_Filter"
 };
 
