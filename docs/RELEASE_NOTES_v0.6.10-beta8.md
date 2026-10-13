@@ -4,6 +4,8 @@
 
 ## 中文
 
+- 再次精简 165 个效果的双语说明：用途、适用素材和起步方法在前，必要启用条件收尾；参数提示同步更新，完整兼容列表移至使用指南。效果 ID、参数默认值、算法和运行行为保持不变。
+
 - 新增 DLSSNR 持续状态与分类恢复引导：区分未运行、启动中、运行中、单层跳过及多层停止，保留原始失败和环境信息；正常参数限制与后端故障分开显示。
 - 更新 165 个内置效果器的双语说明、分类和参数提示，修正 VFG 后置白名单中的 FSR RCAS 实际 ID。
 - HDR 工具栏和浮窗根据已提交画面的参考白适配亮度，范围 160～300 nits，并提高底板不透明度；普通 SDR 路径保留。
@@ -17,6 +19,8 @@
 - 保留 Beta7 的通用重复帧设置、缓存空闲重绘、AMDOF Quality 默认值，以及 DLSS 社区运行库、RTSS 和配置页修复。
 
 ## English
+
+- Refines bilingual copy for all 165 effects around purpose, suitable content and getting started. Updates parameter help and moves full compatibility lists into usage guides while preserving effect IDs, defaults, algorithms and runtime behavior.
 
 - Adds persistent DLSSNR state and cause-specific recovery guidance, preserving original failures and environment details.
 - Updates bilingual descriptions and parameter help for 165 built-in effects; corrects the installed FSR RCAS ID in the VFG post-effect policy.
@@ -32,3 +36,5 @@
 ## 验证边界
 
 首次 Beta8 构建记录见 `reports/0610-beta8-integration-20261013`；本次功能更新见 `reports/0610-beta8-feature-update-20261013`。真实 Helldivers 2/GameGuard 启动与捕获、NIS+FSR3 画质、静止/恢复、VRR/HDR/多屏和性能验收仍需实机执行。Beta7 保留为回退版本。
+
+本次说明更新的构建及部署记录：`reports/0610-beta8-copy-update-20261013`。

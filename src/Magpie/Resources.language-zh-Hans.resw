@@ -1644,8 +1644,8 @@
   <data name="Profile_Advanced_ParameterFocusSwitching.Description" xml:space="preserve"><value>参数实时调整时启用焦点切换，但在部分窗口上运行时可能不稳定。</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Header" xml:space="preserve"><value>切屏时自动停用生效效果组</value></data>
   <data name="Home_Advanced_StopEffectsOnTaskSwitch.Description" xml:space="preserve"><value>如果在使用 DLSSNR 时进行切屏，会让你感觉像吃了毒蘑菇，你可以尝试启用它。</value></data>
-  <data name="EffectPicker_CustomSummary" xml:space="preserve"><value>自定义效果器；用途与参数请参考作者说明。</value></data>
-  <data name="EffectPicker_CustomDetails" xml:space="preserve"><value>请按作者说明选择参数、输出尺寸和组合位置。HDR 输入、所需运行库及显卡条件也应由作者说明确认。</value></data>
+  <data name="EffectPicker_CustomSummary" xml:space="preserve"><value>已安装的自定义效果器，用途见作者说明。</value></data>
+  <data name="EffectPicker_CustomDetails" xml:space="preserve"><value>使用作者提供的效果处理画面。请从作者建议的参数与尺寸开始，并按其说明配置组合位置、HDR 输入及运行环境。</value></data>
   <data name="EffectPicker_All" xml:space="preserve"><value>全部</value></data>
   <data name="EffectPicker_AllDescription" xml:space="preserve"><value>查看已安装效果器的用途、适用场景和组合建议。</value></data>
   <data name="EffectPicker_DetailScrollHint" xml:space="preserve"><value>Ctrl + 滚轮：滚动说明</value></data>
@@ -1656,7 +1656,7 @@
   <data name="EffectPicker_Advanced" xml:space="preserve"><value>进阶</value></data>
   <data name="EffectPicker_AdvancedDescription" xml:space="preserve"><value>视频超分、补帧、AI 画面重塑与帧率调节，按显卡条件和目标画面选择。</value></data>
   <data name="EffectPicker_CustomCategory" xml:space="preserve"><value>自定义／未归类</value></data>
-  <data name="EffectPicker_CustomCategoryDescription" xml:space="preserve"><value>目录中没有收录的已安装效果器；请参考作者说明选择参数、尺寸与组合位置。</value></data>
+  <data name="EffectPicker_CustomCategoryDescription" xml:space="preserve"><value>已安装、尚未收录到内置目录的效果器；用途和使用方式见作者说明。</value></data>
   <data name="EffectPicker_SearchPlaceholder" xml:space="preserve"><value>搜索效果器、用途或关键词……</value></data>
   <data name="EffectPicker_SearchAutomationName" xml:space="preserve"><value>搜索全部效果器</value></data>
   <data name="EffectPicker_JumpTo" xml:space="preserve"><value>定位 </value></data>
@@ -1722,8 +1722,8 @@
   <data name="Profile_Cursor_Refresh_Rate.Header" xml:space="preserve"><value>最低刷新率</value></data>
   <data name="Profile_Cursor_Refresh_Rate.Description" xml:space="preserve"><value>光标的目标最低刷新率。</value></data>
   <data name="Home_Advanced_DeveloperOptions_DuplicateFrameDetection.Description" xml:space="preserve"><value>检测并跳过相同画面，全局生效。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description" xml:space="preserve"><value>调整送入 NR 的工作尺寸；仅 SDR 支持，并启用处理后的细节控制。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent_Description" xml:space="preserve"><value>降低百分比会改变工作尺寸、处理开销与纹理表现，最终输出尺寸不变。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description" xml:space="preserve"><value>调整 AI 处理的工作尺寸，并启用细节控制；细节控制仅在全部处理结束后应用一次。仅 SDR 支持，修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_inputResolutionPercent_Description" xml:space="preserve"><value>降低百分比会减小工作尺寸，改变处理开销与纹理表现，最终输出尺寸不变。修改后需重新启动缩放。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualMultiplier_Description" xml:space="preserve"><value>调节 NR 处理效果的整体强度。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualSaturation_Description" xml:space="preserve"><value>调节 NR 带来的颜色变化强度。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLightness_Description" xml:space="preserve"><value>调节 NR 明暗变化的总强度。</value></data>
@@ -1737,9 +1737,9 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualLowFrequencyGain_Description" xml:space="preserve"><value>调节修正中平缓变化部分的强度。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDetailGain_Description" xml:space="preserve"><value>调节修正中细节变化部分的强度。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_residualDebugView_Description" xml:space="preserve"><value>查看各类修正和保护效果。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Description" xml:space="preserve"><value>选择 NR 使用的光流方法。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Description" xml:space="preserve"><value>设置 AMD 光流质量。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Description" xml:space="preserve"><value>设置 NVIDIA 光流质量。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_opticalFlowMethod_Description" xml:space="preserve"><value>选择从连续帧估计运动的方式。AMDOF 可跨厂商使用；NVOF 需支持 NVIDIA 光流的渲染 GPU。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_amdOpticalFlowMode_Description" xml:space="preserve"><value>选择 AMDOF 后有效；性能档侧重较低开销，质量档使用更多计算进行运动估计。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_nvidiaOpticalFlowQuality_Description" xml:space="preserve"><value>选择 NVOF 后有效；较高档位使用更多计算进行运动估计。修改后需重新启动缩放。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_style_Description" xml:space="preserve"><value>选择本层 NR 的处理风格。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_intensity_Description" xml:space="preserve"><value>调节本层 NR 的处理强度。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_localToneStrength_Description" xml:space="preserve"><value>调节本层的局部色调处理强度。</value></data>
@@ -1747,8 +1747,8 @@
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_skinStructureStrength_Description" xml:space="preserve"><value>调节本层的皮肤结构处理强度。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_useAutoMask_Description" xml:space="preserve"><value>启用本层 NR 的自动遮罩。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_uiCorrection_Description" xml:space="preserve"><value>改善本层 NR 处理后的界面与文字。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_multiPass_Description" xml:space="preserve"><value>设置连续处理次数；各次独立调节，更多次数增加开销并可能累积纹理变化。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Description" xml:space="preserve"><value>缓和连续帧之间的变化，仍需检查运动重影；启用后才可调整光流参数。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_multiPass_Description" xml:space="preserve"><value>设置连续处理次数，各次可独立调节风格与强度。更多次数会增加开销，并累积纹理变化。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_antiFlicker_Description" xml:space="preserve"><value>结合历史帧缓和纹理闪烁；光流模式使用帧间运动估计。修改后需重新启动缩放。</value></data>
   <data name="EffectParam_DLSSNR_DLSSNR_AI_Filter_Group_Advanced_Adjustments" xml:space="preserve"><value>进阶调整</value></data>
   <data name="EffectParameter_Help_Range" xml:space="preserve"><value>范围</value></data>
   <data name="EffectParameter_Help_Default" xml:space="preserve"><value>默认</value></data>
@@ -1846,7 +1846,7 @@
   <data name="HdrParameter_InvalidInput" xml:space="preserve"><value>请输入所示范围内的数值；整数参数需要输入整数。</value></data>
   <data name="HdrParameter_PreciseInputHelp" xml:space="preserve"><value>可输入精确数值；Shift 配合方向键或滚轮进行粗调。</value></data>
   <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Label" xml:space="preserve"><value>SDR 白色亮度（尼特）</value></data>
-  <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Description" xml:space="preserve"><value>提高 SDR 白色对应的 HDR 亮度，会使整体画面更亮；配对恢复时沿用上游参数。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_nativeWhiteNits_Description" xml:space="preserve"><value>设置 SDR 白色对应的 HDR 亮度，较高值让整体画面更亮；配对恢复时沿用上游参数。修改后需重新启动缩放。</value></data>
   <data name="ScalingModes_HdrMigrationInvalid_Description" xml:space="preserve"><value>保存的 HDR 配置无法安全展开，原始数据已保留。请恢复原组或修复保存的配置后再启动。</value></data>
   <data name="HdrParameter_PairSource" xml:space="preserve"><value>使用第 {} 个效果器（HDR → SDR）的配对参数恢复。</value></data>
 
@@ -1972,9 +1972,9 @@
   <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_3" xml:space="preserve"><value>降噪</value></data>
   <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Option_4" xml:space="preserve"><value>去模糊</value></data>
   <data name="NvidiaVfx_Upscale_Auto" xml:space="preserve"><value>自动适配目标</value></data>
-  <data name="NvidiaVfx_Upscale_AutoHelp" xml:space="preserve"><value>选择能覆盖目标的最低合法倍率，再用 Bicubic 等比适配；超过 4× 时继续放大。修改后需重新启动缩放。</value></data>
+  <data name="NvidiaVfx_Upscale_AutoHelp" xml:space="preserve"><value>选择能覆盖目标的最低可用倍率，再等比缩放到目标尺寸；目标超过 4× 时追加放大。修改后需重新启动缩放。</value></data>
   <data name="NvidiaVfx_Upscale_Down" xml:space="preserve"><value> → Bicubic 降采样：{}×{}</value></data>
-  <data name="NvidiaVfx_Upscale_FixedHelp" xml:space="preserve"><value>使用固定原生倍率，宽高同比例且输出须为整数尺寸；修改后需重新启动缩放。</value></data>
+  <data name="NvidiaVfx_Upscale_FixedHelp" xml:space="preserve"><value>使用固定倍率放大，宽高采用相同比例，输出尺寸须为整数。修改后需重新启动缩放。</value></data>
   <data name="NvidiaVfx_Upscale_Process" xml:space="preserve"><value>{}×{} → Nvidia VFX {}/{}×：{}×{}</value></data>
   <data name="NvidiaVfx_Upscale_Up" xml:space="preserve"><value> → Bicubic 上采样：{}×{}</value></data>
   <data name="NvidiaVfx_Vfg_Process" xml:space="preserve"><value>SDR 图像效果 → VFG → 每张真实／生成帧 → 首个 TrueHDR 及支持的后置效果（如有）→ 呈现</value></data>
@@ -2227,40 +2227,104 @@
     <value>相关效果组：{}{}</value>
   </data>
   <data name="Overlay_EffectParameters_RestrictedBadge" xml:space="preserve"><value>正常受限</value></data>
-  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Description" xml:space="preserve"><value>选择放大、降噪或去模糊用途；降噪与去模糊保持输入尺寸。流媒体要求 Ampere 及更新架构。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Description" xml:space="preserve"><value>选择当前分类的处理档位；流媒体仅提供中／极高档。可实时切换，加载模型时可能短暂停顿；请比较纹理、噪声与开销。</value></data>
-  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Description" xml:space="preserve"><value>选择降噪档位；比较噪声减少与纹理损失。可实时切换，加载模型时可能短暂停顿。</value></data>
-  <data name="EffectParam_NvidiaVFX_Upscale_sharpness_Description" xml:space="preserve"><value>增强放大后的边缘清晰度；过高可能产生光晕。设为 0 时只放大，可实时调整。</value></data>
-  <data name="EffectParam_NvidiaVFX_VFG_model_Description" xml:space="preserve"><value>性能档使用较低复杂度模型，均衡档兼顾处理开销与画面表现；可实时切换，加载时可能短暂停顿。</value></data>
-  <data name="EffectParam_NvidiaVFX_VFG_multiplier_Description" xml:space="preserve"><value>提高生成输出的目标倍率，同时增加开销；实际帧率受处理能力和显示节奏限制。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_NvidiaVFX_VFG_automaticShotDetection_Description" xml:space="preserve"><value>检测场景切换，避免在不连续画面之间插帧；此时可能输出当前帧的复制。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_RTXVideo_RTXVideo_HDR_contrast_Description" xml:space="preserve"><value>调整明暗对比，留意高光和暗部细节。可实时调整。</value></data>
-  <data name="EffectParam_RTXVideo_RTXVideo_HDR_saturation_Description" xml:space="preserve"><value>调整颜色浓淡，留意肤色与鲜艳区域。可实时调整。</value></data>
-  <data name="EffectParam_RTXVideo_RTXVideo_HDR_middleGray_Description" xml:space="preserve"><value>调整中间调亮度，与峰值亮度配合比较。可实时调整。</value></data>
-  <data name="EffectParam_RTXVideo_RTXVideo_HDR_peakNits_Description" xml:space="preserve"><value>设置目标峰值亮度，按输出显示器能力调整。可实时调整。</value></data>
-  <data name="EffectParam_RTXVideo_RTXVideo_HDR_debanding_Description" xml:space="preserve"><value>减轻渐变色带，比较细小纹理是否受影响。可实时调整。</value></data>
-  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Description" xml:space="preserve"><value>FSR3 补帧必须使用外部光流；AMDOF 可跨厂商使用，NVOF 要求支持 NVIDIA 光流的渲染 GPU。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_amdOpticalFlowMode_Description" xml:space="preserve"><value>仅在选择 AMDOF 时使用；性能／质量改变运动估计的计算取舍。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Description" xml:space="preserve"><value>仅在选择 NVOF 时使用；较高档位增加开销，不保证每种素材都更好。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_multiplier_Description" xml:space="preserve"><value>设置补帧目标倍率，实际帧率受硬件能力与显示节奏限制；不提高游戏逻辑帧率。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_multiplier_Description" xml:space="preserve"><value>设置补帧目标倍率，实际帧率受硬件能力与显示节奏限制；不提高游戏逻辑帧率。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_Color_HDR_to_SDR_mode_Description" xml:space="preserve"><value>兼容配对为后续 SDR → HDR 保留恢复参数；SDR 显示模式用于直接观看。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_Color_HDR_to_SDR_whiteNits_Description" xml:space="preserve"><value>设置映射参考白点，与 HDR 峰值共同影响明暗关系。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_Color_HDR_to_SDR_peakNits_Description" xml:space="preserve"><value>设置源 HDR 高光的映射参考范围；不是显示器输出亮度开关。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_Color_HDR_to_SDR_exposure_Description" xml:space="preserve"><value>调整转换时的整体亮度，留意高光和暗部细节。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_Color_HDR_to_SDR_shoulder_Description" xml:space="preserve"><value>调整高光压缩曲线，比较亮部层次与整体对比。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_Color_SDR_to_HDR_mode_Description" xml:space="preserve"><value>自动模式优先恢复上游兼容配对，否则映射 SDR 白色亮度；配对恢复沿用上游参数。修改后需重新启动缩放。</value></data>
-  <data name="EffectParam_xBR_xBR_2x_paramXbrYWeight_Description" xml:space="preserve"><value>调整小细节保护分支的亮度权重；仅在开启小细节保护时参与计算。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_2x_paramXbrEqThreshold_Description" xml:space="preserve"><value>调整颜色相似判定；较高值把更多差异视为相似，留意细线和色块边界。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_2x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>调整 Lv2 斜边判定的系数，比较斜线轮廓；不是整体锐化强度。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_2x_paramPreserveSmallDetails_Description" xml:space="preserve"><value>切换小细节保护的边缘判定方式，比较孤立像素和细线是否保留。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_3x_paramXbrYWeight_Description" xml:space="preserve"><value>调整小细节保护分支的亮度权重；仅在开启小细节保护时参与计算。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_3x_paramXbrEqThreshold_Description" xml:space="preserve"><value>调整颜色相似判定；较高值把更多差异视为相似，留意细线和色块边界。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_3x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>调整 Lv2 斜边判定的系数，比较斜线轮廓；不是整体锐化强度。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_3x_paramPreserveSmallDetails_Description" xml:space="preserve"><value>切换小细节保护的边缘判定方式，比较孤立像素和细线是否保留。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_4x_paramXbrYWeight_Description" xml:space="preserve"><value>调整小细节保护分支的亮度权重；仅在开启小细节保护时参与计算。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_4x_paramXbrEqThreshold_Description" xml:space="preserve"><value>调整颜色相似判定；较高值把更多差异视为相似，留意细线和色块边界。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_4x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>调整 Lv2 斜边判定的系数，比较斜线轮廓；不是整体锐化强度。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Description" xml:space="preserve"><value>切换小细节保护的边缘判定方式，比较孤立像素和细线是否保留。可实时调整。</value></data>
-  <data name="EffectParam_xBR_xBR_NoBlend_3x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>调整 Lv2 斜边判定，仍只选取输入颜色，不混合生成新颜色。可实时调整。</value></data>
+
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_category_Description" xml:space="preserve"><value>按素材选择常规、高码率或流媒体放大，也可选择保持尺寸的降噪或去模糊。各分类记住各自设置；流媒体需 Ampere 及更新架构。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_VSR_strength_Description" xml:space="preserve"><value>选择当前分类的处理档位；流媒体提供中／极高档。可实时切换，切换时可能短暂等待模型加载。</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_Denoise_strength_Description" xml:space="preserve"><value>选择降噪处理档位，从中档开始调节颗粒与细节的保留程度。可实时切换，切换时可能短暂等待模型加载。</value></data>
+  <data name="EffectParam_NvidiaVFX_Upscale_sharpness_Description" xml:space="preserve"><value>增强放大后的边缘清晰度；过高时容易产生边缘光圈，0 为纯放大。可实时调整。</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_model_Description" xml:space="preserve"><value>性能档侧重较低计算开销，均衡档使用更复杂的模型。可实时切换，切换时可能短暂等待模型加载。</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_multiplier_Description" xml:space="preserve"><value>设置相对基础帧率的目标输出倍率；较高倍率增加处理开销，实际输出受硬件与显示节奏影响。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_NvidiaVFX_VFG_automaticShotDetection_Description" xml:space="preserve"><value>识别镜头切换，切换时沿用当前画面，以保持场景过渡清楚。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_contrast_Description" xml:space="preserve"><value>调整亮部与暗部的明暗对比。可实时调整。</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_saturation_Description" xml:space="preserve"><value>调整颜色的浓淡程度。可实时调整。</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_middleGray_Description" xml:space="preserve"><value>调整画面中间调的亮度。可实时调整。</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_peakNits_Description" xml:space="preserve"><value>设置目标高光亮度，按输出显示器的峰值能力调整。可实时调整。</value></data>
+  <data name="EffectParam_RTXVideo_RTXVideo_HDR_debanding_Description" xml:space="preserve"><value>平滑渐变中的分层边界，减轻色带。可实时调整。</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_opticalFlowMethod_Description" xml:space="preserve"><value>从连续帧估计运动，为补帧提供光流。AMDOF 可跨厂商使用；NVOF 需支持 NVIDIA 光流的渲染 GPU。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_amdOpticalFlowMode_Description" xml:space="preserve"><value>选择 AMDOF 后有效；性能档侧重较低开销，质量档使用更多计算进行运动估计。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_FSR3FG_FSR3_FrameGeneration_nvidiaOpticalFlowQuality_Description" xml:space="preserve"><value>选择 NVOF 后有效；较高档位使用更多计算进行运动估计。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_multiplier_Description" xml:space="preserve"><value>设置相对基础帧率的目标输出倍率；较高倍率增加处理开销，实际输出受硬件与显示节奏影响。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_multiplier_Description" xml:space="preserve"><value>设置相对基础帧率的目标输出倍率；较高倍率增加处理开销，实际输出受硬件与显示节奏影响。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_mode_Description" xml:space="preserve"><value>兼容配对为后续 SDR → HDR 保留恢复参数；SDR 显示模式将画面映射为可直接观看的 SDR。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_whiteNits_Description" xml:space="preserve"><value>设置映射参考白点，与源 HDR 峰值共同决定亮度范围的分配。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_peakNits_Description" xml:space="preserve"><value>设置源 HDR 高光的映射参考范围。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_exposure_Description" xml:space="preserve"><value>调整转换时的整体画面亮度。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_Color_HDR_to_SDR_shoulder_Description" xml:space="preserve"><value>调整高光压缩曲线，改变亮部层次与整体对比。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_Color_SDR_to_HDR_mode_Description" xml:space="preserve"><value>自动模式优先恢复上游兼容配对，否则按白点亮度映射 SDR；配对恢复沿用上游参数。修改后需重新启动缩放。</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrYWeight_Description" xml:space="preserve"><value>调整小细节保护使用的亮度权重；开启小细节保护时有效。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrEqThreshold_Description" xml:space="preserve"><value>设置颜色相似判定的阈值，较高值把更多颜色差异视为相似。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>调整斜边的识别条件，改变斜线轮廓的重建方式。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_2x_paramPreserveSmallDetails_Description" xml:space="preserve"><value>启用针对孤立像素与细线的边缘判定，帮助保留小细节。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrYWeight_Description" xml:space="preserve"><value>调整小细节保护使用的亮度权重；开启小细节保护时有效。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrEqThreshold_Description" xml:space="preserve"><value>设置颜色相似判定的阈值，较高值把更多颜色差异视为相似。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>调整斜边的识别条件，改变斜线轮廓的重建方式。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_3x_paramPreserveSmallDetails_Description" xml:space="preserve"><value>启用针对孤立像素与细线的边缘判定，帮助保留小细节。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrYWeight_Description" xml:space="preserve"><value>调整小细节保护使用的亮度权重；开启小细节保护时有效。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrEqThreshold_Description" xml:space="preserve"><value>设置颜色相似判定的阈值，较高值把更多颜色差异视为相似。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>调整斜边的识别条件，改变斜线轮廓的重建方式。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_4x_paramPreserveSmallDetails_Description" xml:space="preserve"><value>启用针对孤立像素与细线的边缘判定，帮助保留小细节。可实时调整。</value></data>
+  <data name="EffectParam_xBR_xBR_NoBlend_3x_paramXbrLv2Coefficient_Description" xml:space="preserve"><value>调整斜边识别条件，重建时从输入调色板中选取颜色。可实时调整。</value></data>
+  <data name="EffectParam_DLSS_DLSS_SR_opticalFlowMethod_Description" xml:space="preserve">
+    <value>选择从连续帧估计运动的方式。AMDOF 可跨厂商使用；NVOF 需支持 NVIDIA 光流的渲染 GPU。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_DLSS_DLSS_SR_amdOpticalFlowMode_Description" xml:space="preserve">
+    <value>选择 AMDOF 后有效；性能档侧重较低开销，质量档使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_DLSS_DLSS_SR_nvidiaOpticalFlowQuality_Description" xml:space="preserve">
+    <value>选择 NVOF 后有效；较高档位使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_FSR2_FSR2_SR_opticalFlowMethod_Description" xml:space="preserve">
+    <value>选择从连续帧估计运动的方式。AMDOF 可跨厂商使用；NVOF 需支持 NVIDIA 光流的渲染 GPU。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_FSR2_FSR2_SR_amdOpticalFlowMode_Description" xml:space="preserve">
+    <value>选择 AMDOF 后有效；性能档侧重较低开销，质量档使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_FSR2_FSR2_SR_nvidiaOpticalFlowQuality_Description" xml:space="preserve">
+    <value>选择 NVOF 后有效；较高档位使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_FSR3_FSR3_SR_opticalFlowMethod_Description" xml:space="preserve">
+    <value>选择从连续帧估计运动的方式。AMDOF 可跨厂商使用；NVOF 需支持 NVIDIA 光流的渲染 GPU。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_FSR3_FSR3_SR_amdOpticalFlowMode_Description" xml:space="preserve">
+    <value>选择 AMDOF 后有效；性能档侧重较低开销，质量档使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_FSR3_FSR3_SR_nvidiaOpticalFlowQuality_Description" xml:space="preserve">
+    <value>选择 NVOF 后有效；较高档位使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_FSR4_FSR4_SR_opticalFlowMethod_Description" xml:space="preserve">
+    <value>选择从连续帧估计运动的方式。AMDOF 可跨厂商使用；NVOF 需支持 NVIDIA 光流的渲染 GPU。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_FSR4_FSR4_SR_amdOpticalFlowMode_Description" xml:space="preserve">
+    <value>选择 AMDOF 后有效；性能档侧重较低开销，质量档使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_FSR4_FSR4_SR_nvidiaOpticalFlowQuality_Description" xml:space="preserve">
+    <value>选择 NVOF 后有效；较高档位使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_XeSS_XeSS_SR_opticalFlowMethod_Description" xml:space="preserve">
+    <value>选择从连续帧估计运动的方式。AMDOF 可跨厂商使用；NVOF 需支持 NVIDIA 光流的渲染 GPU。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_XeSS_XeSS_SR_amdOpticalFlowMode_Description" xml:space="preserve">
+    <value>选择 AMDOF 后有效；性能档侧重较低开销，质量档使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_XeSS_XeSS_SR_nvidiaOpticalFlowQuality_Description" xml:space="preserve">
+    <value>选择 NVOF 后有效；较高档位使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_opticalFlowMethod_Description" xml:space="preserve">
+    <value>选择从连续帧估计运动的方式。AMDOF 可跨厂商使用；NVOF 需支持 NVIDIA 光流的渲染 GPU。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_amdOpticalFlowMode_Description" xml:space="preserve">
+    <value>选择 AMDOF 后有效；性能档侧重较低开销，质量档使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_DLSSFG_DLSS_FrameGeneration_nvidiaOpticalFlowQuality_Description" xml:space="preserve">
+    <value>选择 NVOF 后有效；较高档位使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_opticalFlowMethod_Description" xml:space="preserve">
+    <value>选择从连续帧估计运动的方式。AMDOF 可跨厂商使用；NVOF 需支持 NVIDIA 光流的渲染 GPU。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_amdOpticalFlowMode_Description" xml:space="preserve">
+    <value>选择 AMDOF 后有效；性能档侧重较低开销，质量档使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
+  <data name="EffectParam_XeSSFG_XeSS_FrameGeneration_nvidiaOpticalFlowQuality_Description" xml:space="preserve">
+    <value>选择 NVOF 后有效；较高档位使用更多计算进行运动估计。修改后需重新启动缩放。</value>
+  </data>
 </root>

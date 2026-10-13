@@ -1,5 +1,7 @@
 # 全部效果器说明审查与项目说明规范 TODO
 
+后续反馈（2026-10-13）：用户认为防御性描述、跨效果信息和新旧表达不一致仍然影响阅读。上一轮源码与事实核对状态保留；文案继续按[用户说明重写 TODO](20261013-effect-description-user-copy-revision-TODO.md)及[修订规范](../EFFECT-DESCRIPTION-GUIDE.md)处理。以下已完成项记录上一轮工作；新方向的实施、文本复核和实机待验收事项见[本轮文案审查](../reviews/20261013-effect-description-user-copy-revision.md)。
+
 日期：2026-10-13（Asia/Shanghai）。状态：已在 `feature/effect-description-standards` 完成说明、项目规范、定向源码修正和非编译检查；原生测试执行、产品编译部署及真实界面／GPU 验收交给独立会话。详见[逐项审查与交接](../reviews/20261013-effect-description-standards.md)。
 
 目标：让用户通过选择器准确判断效果器的用途、变体差异、使用条件和组合方式，并建立新增效果或能力变化时同步维护说明的项目规范。重点覆盖 0.6.9 起新增或改变行为的效果器，同时复查全部既有效果。

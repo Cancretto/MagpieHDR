@@ -16,6 +16,14 @@ def literal_ids(text):
     return [value.replace('\\\\', '\\') for value in re.findall(r'"([^"\n]+)"', text)]
 
 
+def documented_ids(path, section):
+    block = read(path).split(f'<!-- {section}:start -->', 1)[1].split(f'<!-- {section}:end -->', 1)[0]
+    ids = re.findall(r'`([^`]+)`', block)
+    if len(ids) != len(set(ids)):
+        raise AssertionError(f'Duplicate documented effect: {section}')
+    return set(ids)
+
+
 class EffectDescriptionContracts(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -61,6 +69,31 @@ class EffectDescriptionContracts(unittest.TestCase):
         for id in (r'FSR\FSR_RCAS', r'RCAS\RCAS', r'CAS\CAS_Scaling', r'CRT\CRT_Geom'):
             self.assertIn(id.replace('\\', '\\\\'), native)
 
+    def test_full_compatibility_lists_follow_runtime_policy(self):
+        # Full chains belong in usage docs. Compare their IDs with the actual
+        # admission rules so concise picker copy cannot silently lose a rule.
+        fsr = read('src/Magpie.Core/FSR3FGPolicy.h').split(
+            'constexpr bool SupportsFSR3FGExternalMotion', 1)[1].split('\n}', 1)[0]
+        fsr_ids = set(literal_ids(fsr))
+        self.assertEqual(documented_ids('docs/experimental/effects/FSR3FG.md',
+                                        'fsr3fg-supported-effects'), fsr_ids)
+        self.assertLessEqual(fsr_ids - {r'Utility\FrameRate_Filter'}, set(self.effects['en-US']))
+        vfx = read('src/Magpie.Core/include/NvidiaVfxExecutionPlan.h').split(
+            'inline bool NvidiaVfxPostEffectSupported', 1)[1].split('\n}', 1)[0]
+        constants = read('src/Magpie.Core/include/NvidiaVfxParameters.h')
+        vfx_ids = set(literal_ids(vfx))
+        for name in set(re.findall(r'\bNVIDIA_VFX_\w+_ID\b', vfx)):
+            value = re.search(r'\b' + name + r'\s*=\s*"([^"]+)"', constants)
+            self.assertIsNotNone(value, name)
+            vfx_ids.add(value[1].replace('\\\\', '\\'))
+        self.assertEqual(documented_ids('docs/Built-in effects.md', 'vfx-post-effects'), vfx_ids)
+        self.assertLessEqual(vfx_ids, set(self.effects['en-US']))
+        # Users can reach both usage sections from the repository's main pages.
+        for path in ('README.md', 'README_ZH.md'):
+            self.assertIn('docs/Built-in%20effects.md#current-branch-setup', read(path))
+        self.assertIn('effects/FSR3FG.md#compatible-effect-list', read('docs/Built-in effects.md'))
+        self.assertIn('Balanced/Preset J', read('docs/Built-in effects.md'))
+
     def test_current_names_and_legacy_search_aliases(self):
         def normalize(text):
             return re.sub(r'[_\\/\-\s]', '', text).lower()
@@ -93,6 +126,11 @@ class EffectDescriptionContracts(unittest.TestCase):
             parameters['xBR\\xBR_' + scale] = ['paramXbrYWeight', 'paramXbrEqThreshold',
                                                'paramXbrLv2Coefficient', 'paramPreserveSmallDetails']
         parameters[r'xBR\xBR_NoBlend_3x'] = ['paramXbrLv2Coefficient']
+        for id in (r'DLSS\DLSS_SR', r'FSR2\FSR2_SR', r'FSR3\FSR3_SR',
+                   r'FSR4\FSR4_SR', r'XeSS\XeSS_SR', r'DLSSFG\DLSS_FrameGeneration',
+                   r'XeSSFG\XeSS_FrameGeneration', r'DLSSNR\DLSSNR_AI_Filter'):
+            parameters.setdefault(id, []).extend(
+                ['opticalFlowMethod', 'amdOpticalFlowMode', 'nvidiaOpticalFlowQuality'])
         for effect, params in parameters.items():
             shader = read('src/Effects/' + effect.replace('\\', '/') + '.hlsl')
             for param in params:
@@ -109,21 +147,31 @@ class EffectDescriptionContracts(unittest.TestCase):
         for path in ('src/Magpie/EffectParametersViewModel.cpp', 'src/Magpie.Core/OverlayDrawer.cpp'):
             self.assertIn('EffectParameterLocalization::Tooltip', read(path))
 
-    def test_native_limitations_stay_visible(self):
+    def test_essential_conditions_and_moved_parameter_help(self):
         for lang, effects in self.effects.items():
             fsr = effects[r'FSR3FG\FSR3_FrameGeneration']
             self.assertRegex(fsr['summary'], r'2[×x]')
             self.assertIn('SDR', fsr['summary'])
-            for token in ('AMDOF', 'NVOF', 'DLSS', 'NIS', 'NVSharpen', 'Bilinear',
-                          'Bicubic', 'Lanczos', 'Nearest', 'EASU', 'RCAS', 'CRT'):
+            for token in ('AMDOF', 'x64'):
                 self.assertIn(token, fsr['details'])
+            self.assertRegex(fsr['details'], r'实验性|Experimental')
             vfg = effects[r'NvidiaVFX\VFG']
-            for token in ('SDR', 'Ada', 'Blackwell', 'TrueHDR', 'CAS', 'RCAS'):
+            for token in ('SDR', 'Ada', 'Blackwell', 'x64'):
                 self.assertIn(token, vfg['details'])
-            self.assertNotIn('有界队列', vfg['details'])
-            self.assertNotIn('bounded queue', vfg['details'])
             self.assertIn('Ampere', effects[r'RTXVideo\RTXVideo_VSR']['details'])
             self.assertNotIn('重启应用', effects[r'RTXVideo\RTXVideo_VSR']['details'])
+            self.assertRegex(effects[r'xBR\xBR_Hybrid_2x']['details'], r'最近邻 2×|nearest-neighbor 2x')
+            self.assertIn('SDR', effects[r'xBR\xBR_NoBlend_3x']['details'])
+            for id in (r'Color\HDR_to_SDR', r'Color\SDR_to_HDR', r'RTXVideo\RTXVideo_HDR'):
+                self.assertIn('Windows HDR', effects[id]['details'])
+            help = self.resources[lang]['EffectParam_DLSSNR_DLSSNR_AI_Filter_enableInputResolutionScaling_Description']
+            self.assertIn('SDR', help)
+            self.assertRegex(help, r'全部处理结束后应用一次|once after all passes')
+            for effect, param in ((r'RTXVideo\RTXVideo_VSR', 'category'),
+                                  (r'FSR3FG\FSR3_FrameGeneration', 'opticalFlowMethod'),
+                                  (r'DLSS\DLSS_SR', 'opticalFlowMethod')):
+                key = 'EffectParam_' + re.sub(r'[^A-Za-z0-9]', '_', effect) + '_' + param + '_Description'
+                self.assertRegex(self.resources[lang][key], r'重新启动缩放|Restart scaling')
 
 
 if __name__ == '__main__':

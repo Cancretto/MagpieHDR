@@ -83,12 +83,14 @@ foreach ($entry in $catalog.effects) {
 }
 $dlssnr = $catalog.effects | Where-Object id -eq 'DLSSNR\DLSSNR_AI_Filter'
 if ($dlssnr.category -ne 'style' -or $dlssnr.purposes -contains 'cleanup' -or $dlssnr.summary -match '降噪') { throw 'DLSSNR purpose regression' }
-if ($dlssnr.details -notmatch '1～3' -or $dlssnr.details -notmatch '调整输入分辨率' -or $dlssnr.details -notmatch '仅在全部处理结束后应用一次' -or $dlssnr.details -match '615|RTX 50|手动替换') { throw 'DLSSNR capability or compatibility guidance regression' }
+if ($dlssnr.details -notmatch '1～3' -or $dlssnr.details -notmatch '调整输入分辨率' -or $dlssnr.details -match '615|RTX 50|手动替换') { throw 'DLSSNR capability or compatibility guidance regression' }
+# Detail-control application timing lives in parameter help; checked by
+# validate_effect_descriptions.py together with the bilingual resources.
 $limiter = $catalog.effects | Where-Object id -eq 'FrameRate_Filter'
 if ($limiter.details -notmatch '帧率与刷新' -or $limiter.details -notmatch '基础帧率') { throw 'Unified frame-rate guidance regression' }
 $dlss = $catalog.effects | Where-Object id -eq 'DLSS\DLSS_SR'
 if ($dlss.category -ne 'upscale' -or $dlss.subcategory -ne '时序重建' -or $dlss.name -ne 'DLSS SR' -or
-    $dlss.purposes -contains 'antialiasing' -or $dlss.details -notmatch 'J' -or $dlss.details -notmatch 'L／M') { throw 'DLSS SR classification regression' }
+    $dlss.purposes -contains 'antialiasing') { throw 'DLSS SR classification regression' }
 foreach ($id in @('FSR2\FSR2_SR', 'FSR3\FSR3_SR', 'FSR4\FSR4_SR', 'XeSS\XeSS_SR')) {
     $peer = $catalog.effects | Where-Object id -eq $id
     if ($peer.category -ne $dlss.category -or $peer.subcategory -ne $dlss.subcategory) { throw 'Temporal SR entries are in different categories' }
@@ -129,7 +131,7 @@ foreach ($languageCatalog in @($catalog, $englishCatalog)) {
         if (!$fsr.search.Contains($alias)) { throw "Missing legacy FSR search alias: $alias" }
     }
     if ($fsr.summary -notmatch 'SDR' -or $fsr.summary -notmatch '2[×x]' -or
-        $fsr.summary -notmatch '实验性|Experimental') { throw 'FSR limitations must remain in the summary.' }
+        $fsr.details -notmatch '实验性|Experimental') { throw 'FSR fixed scale, SDR scope and experimental status must remain visible.' }
 }
 $cunny = @($catalog.effects | Where-Object { $_.family.id -eq 'cunny' })
 if ($cunny.Count -ne 29 -or @($cunny.subfamily.id | Sort-Object -Unique).Count -ne 2) { throw 'CuNNy generation grouping regression' }
