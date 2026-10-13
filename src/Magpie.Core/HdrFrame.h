@@ -104,6 +104,9 @@ struct HdrFrameMetadata {
 	// Separate clock/provenance from timestamp100ns; not game render time and
 	// never refreshed by publication retries, generated frames or UI redraws.
 	int64_t captureAdmissionTime100ns = 0;
+	// Effect history epoch and non-capture redraw travel with the published color.
+	uint64_t outputHistoryRevision = 0;
+	bool contentRedraw = false;
     bool IsValid() const noexcept;
 };
 

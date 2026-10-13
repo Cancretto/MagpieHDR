@@ -69,7 +69,7 @@ for token in ("IsStopping", "HasFatalError", "IsResizingOrMoving", "HasPendingCo
     check(token in idle, f"idle admission guard {token}")
 check("TimeUntilIdleRedraw()" in body(renderer, "bool Renderer::_TryIdleRedraw()"), "render and wake share one admission decision")
 draw = body(renderer, "bool Renderer::_FrontendRender(")
-guidance = body(draw, "if (!stableBaseOnly) {\n\t\t_presenter->SetSourceTiming")
+guidance = body(draw, "if (!stableBaseOnly && !idleRedraw) {\n\t\t_presenter->SetSourceTiming")
 check("SetFrameGuidance" in guidance, "cached output does not submit source timing or guidance")
 check("idleRedraw ? _presenter->BeginIdleFrame" in draw, "replay uses presenter contract")
 submit = body(renderer, "bool Renderer::_SubmitFrontendFrame()")

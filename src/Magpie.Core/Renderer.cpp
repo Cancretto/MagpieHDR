@@ -452,15 +452,15 @@ ScalingError Renderer::Initialize(HWND hwndAttach, OverlayOptions& overlayOption
 		})) {
 			_backendInitContext = "FSR 3 FG currently supports SDR only. Remove HDR components and disable HDR compatibility.";
 			Logger::Get().Error(_backendInitContext);
-			return ScalingError::PresentationInitFailed;
+			return ScalingError::FSR3FGHdrUnsupported;
 		}
 		const auto incompatible = std::ranges::find_if(effects, [](const auto& effect) {
 			return !SupportsFSR3FGExternalMotion(effect.name);
 		});
 		if (incompatible != effects.end()) {
-			_backendInitContext = "FSR 3 FG requires optical flow and a supported rectangular effect chain. Remove the incompatible effect: " + incompatible->name;
-			Logger::Get().Error(_backendInitContext);
-			return ScalingError::PresentationInitFailed;
+			_backendInitContext = incompatible->name;
+			Logger::Get().Error("FSR3 FG incompatible rectangular effect chain: " + _backendInitContext);
+			return ScalingError::FSR3FGEffectChainUnsupported;
 		}
 	}
 
@@ -739,6 +739,9 @@ bool Renderer::_OpenFrontendSharedTextures() noexcept {
 	_frontendMotionTexture = nullptr;
 	_frontendMotionFrameId = 0;
 	_frontendMotionValid = false;
+	_frontendMotionAvailability = FrameGuidanceAvailability::Unavailable;
+	_presentationRate.Reset(_presenter->LastContentFrameCount().source);
+	_lastCountedRealFrameId = 0;
 	_frontendMotionReset = true;
 	_frontendBaseValid = false;
 	_frontendPresentedBaseValid = false;
@@ -925,6 +928,7 @@ Renderer::FrontendBaseResult Renderer::_UpdateFrontendBase(uint32_t sharedTextur
 		_frontendResources.GetD3DDC()->CopyResource(_frontendBaseTexture.get(), source);
 		_frontendCaptureFrameId = _sharedTextureFrameIds[sharedTextureSlot].load(std::memory_order_acquire);
 		_frontendFrameMetadata = _sharedFrameMetadata[sharedTextureSlot];
+		_frontendMotionAvailability = _sharedMotionAvailability[sharedTextureSlot];
 		_frontendScreenshotFrame = std::move(_sharedScreenshotFrames[sharedTextureSlot]);
 		FrameTrace::SetFrame(_frontendCaptureFrameId);
 		traceBase.FrameId(_frontendCaptureFrameId);
@@ -1081,11 +1085,16 @@ bool Renderer::_FrontendRender(
 		_destRect.bottom - rendererRect.top
 	};
 	const auto& sourceMetadata = stableBaseOnly ? _frontendPresentedFrameMetadata : _frontendFrameMetadata;
-	if (!stableBaseOnly) {
+	// A live parameter edit can publish new color for the same captured frame.
+	// Present it through the proxy's non-FG path and reset on the next input.
+	idleRedraw |= !stableBaseOnly && _HasProxyFrameGenerator() && sourceMetadata.contentRedraw;
+	if (!stableBaseOnly && !idleRedraw) {
 		_presenter->SetSourceTiming(sourceMetadata.frameId,
 			sourceMetadata.captureSequence, sourceMetadata.resourceGeneration,
 			sourceMetadata.timestamp100ns);
 		_presenter->SetCaptureAdmissionTime(sourceMetadata.captureAdmissionTime100ns);
+		_presenter->SetOutputHistoryRevision(sourceMetadata.outputHistoryRevision);
+		_presenter->SetFrameGuidanceAvailability(_frontendMotionAvailability);
 		_presenter->SetFrameGuidance(
 			_frontendMotionValid ? _frontendMotionTexture.get() : nullptr,
 			_frontendMotionFrameId,
@@ -1093,7 +1102,7 @@ bool Renderer::_FrontendRender(
 			guidanceDestination);
 	}
 	FrameTrace::Scope traceBegin(FrameTrace::Event::BeginFrame);
-	const bool reflexContent = !stableBaseOnly && _frontendBaseNeedsPresent;
+	const bool reflexContent = !stableBaseOnly && !idleRedraw && _frontendBaseNeedsPresent;
 	const uint32_t diagnosticReasons = reflexContent ? 0 : _FrontendDiagnosticReasons();
 	_presenter->SetReflexFrame(reflexContent ? _frontendReflexIds.first : 0,
 		reflexContent ? _frontendReflexIds.second : 0, _frontendFrameMetadata.generated);
@@ -1137,7 +1146,7 @@ bool Renderer::_FrontendRender(
 		// above must leave them available for the frame that actually draws it.
 		_overlayDrawer.Draw(_stepTimer.FPS(), _effectsProfiler.GetTimings(), drawOffset);
 		VRRPerformance::Record(VRRPerformance::Event::OverlayDraw);
-		if (!stableBaseOnly && _frontendBaseNeedsPresent) {
+		if (!stableBaseOnly && !idleRedraw && _frontendBaseNeedsPresent) {
 			_cursorDrawer.ObserveContent({ sourceMetadata.frameId, sourceMetadata.captureSequence,
 				sourceMetadata.resourceGeneration }, sourceMetadata.generated);
 		}
@@ -1150,7 +1159,7 @@ bool Renderer::_FrontendRender(
 	if (timings) {
 		timings->draw = endFrameStart - drawStart;
 	}
-	const bool contentFrame = !stableBaseOnly && _frontendBaseNeedsPresent;
+	const bool contentFrame = !stableBaseOnly && !idleRedraw && _frontendBaseNeedsPresent;
 	const bool generatedFrame = contentFrame &&
 		_sharedTextureContainsGeneratedFrame[sharedTextureSlot].load(std::memory_order_acquire);
 	_pendingFrontendFrame = PendingFrontendFrame{
@@ -1244,8 +1253,10 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 	}
 	if (submitted && contentFrame && _hasFrameGeneration && _frontendCaptureFrameId != 0 &&
 		(generatedFrame || _frontendCaptureFrameId != _lastCountedRealFrameId)) {
-		const auto count = _presenter->LastPresentedFrameCount();
-		_presentationRate.Record(count, !generatedFrame && (!count || *count > 0) ? 1u : 0u);
+		const auto sample = _presenter->LastContentFrameCount();
+		const auto count = sample.total;
+		_presentationRate.Record(count, !generatedFrame && (!count || *count > 0) ? 1u : 0u,
+			PresentationFrameRate::Clock::now(), sample.source);
 		if (!generatedFrame && (!count || *count > 0)) _lastCountedRealFrameId = _frontendCaptureFrameId;
 	}
 	if (submitted) {
@@ -1254,7 +1265,6 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 				_frontendPresentedBaseTexture.get(), _frontendBaseTexture.get());
 			VRRPerformance::Record(VRRPerformance::Event::StableCopy);
 			_frontendPresentedBaseValid = true;
-			_frontendPresentedFrameMetadata = _frontendFrameMetadata;
 			_frontendPresentedFrameMetadata = _frontendFrameMetadata;
 			_frontendPresentedFrameMetadata.stage = HdrFrameStage::PresentedOutput;
 			_passThroughFrames.OnPresented();
@@ -1286,7 +1296,7 @@ bool Renderer::_SubmitFrontendFrame() noexcept {
 		_overlayDrawer.OnPresentFailed();
 		_cursorDrawer.OnPresent(false);
 	}
-	if (submitted && contentFrame && _frameSyncEnabled && _frameSyncUsesSharedSlot) {
+	if (submitted && !stableBaseOnly && _frameSyncEnabled && _frameSyncUsesSharedSlot) {
 		_frameSyncAcknowledgedKey.store(contentKey, std::memory_order_release);
 		SetEvent(_frameSyncConsumedEvent.get());
 	}
@@ -1397,7 +1407,8 @@ bool Renderer::Render(bool force, bool waitForGpu) noexcept {
 		!hasNewBackendFrame && _frontendPresentedBaseValid &&
 		_frontendFrameMetadata.frameId == _frontendPresentedFrameMetadata.frameId &&
 		_frontendFrameMetadata.captureSequence == _frontendPresentedFrameMetadata.captureSequence &&
-		_frontendFrameMetadata.resourceGeneration == _frontendPresentedFrameMetadata.resourceGeneration) {
+		_frontendFrameMetadata.resourceGeneration == _frontendPresentedFrameMetadata.resourceGeneration &&
+		_frontendFrameMetadata.outputHistoryRevision == _frontendPresentedFrameMetadata.outputHistoryRevision) {
 		_frontendBaseNeedsPresent = false;
 		return _TryIdleRedraw() || _FrontendOverlayRender();
 	}
@@ -4105,10 +4116,13 @@ void Renderer::_BackendRender(
 	// Keep the pacing/queue optimization, while avoiding duplicate real-frame
 	// submissions during a capture gap. FG must advance from a new canonical
 	// capture or its own generated frame, never from a repeated stale input.
-	if (!isNewCaptureFrame && (_HasSoftwareFrameGenerator() || _HasProxyFrameGenerator())) {
+	_backendOutputHistoryRevision = inputHistoryRevision;
+	if (!isNewCaptureFrame && (_HasSoftwareFrameGenerator() || _HasProxyFrameGenerator()) &&
+		(!_HasProxyFrameGenerator() || _backendOutputHistoryRevision == _lastPublishedOutputHistoryRevision)) {
 		d3dDC->Flush();
 		return;
 	}
+	_backendOutputRedraw = !isNewCaptureFrame;
 
 	if (ActiveFrameSyncBackend() == FrameSyncBackend::FrontEdge && _dlssFrameGenerator && isNewCaptureFrame &&
 		_backendMayDeferFG && _synchronousFramePresentationEnabled.load(std::memory_order_acquire)) {
@@ -4269,6 +4283,7 @@ void Renderer::_CompleteBackendFrame(
 		return;
 	}
 
+	_lastPublishedOutputHistoryRevision = _backendOutputHistoryRevision;
 	// 查询效果的渲染时间
 	_effectsProfiler.QueryTimings(d3dDC);
 }
@@ -4346,6 +4361,8 @@ bool Renderer::_PublishBackendTexture(
 		std::chrono::duration_cast<std::chrono::duration<int64_t, std::ratio<1, 10000000>>>(
 			_lastCapturedFrameTime.time_since_epoch()).count() : 0;
 	publicationMetadata.generated = generatedFrame;
+	publicationMetadata.outputHistoryRevision = _backendOutputHistoryRevision;
+	publicationMetadata.contentRedraw = _HasProxyFrameGenerator() && _backendOutputRedraw;
 	if (_nvidiaVfxFrameGenerator) {
 		publicationMetadata.stage = generatedFrame ? HdrFrameStage::GeneratedOutput : HdrFrameStage::PublishedOutput;
 		publicationMetadata.parameterRevision = _vfxParameterRevision;
@@ -4401,6 +4418,7 @@ bool Renderer::_PublishBackendTexture(
 	FrameGuidanceFrameId xessMotionFrameId = _capturedFrameId;
 	bool xessMotionValid = false;
 	bool xessMotionReset = true;
+	FrameGuidanceAvailability motionAvailability = FrameGuidanceAvailability::Unavailable;
 	if (!generatedFrame && _proxyMotionRequest.method != OpticalFlowMethod::None) {
 		D3D11_TEXTURE2D_DESC textureDesc{};
 		texture->GetDesc(&textureDesc);
@@ -4408,13 +4426,15 @@ bool Renderer::_PublishBackendTexture(
 		const FrameGuidanceConsumerViews guidance =
 			_frameGuidanceService.GetConsumerViews(
 				_capturedFrameId, extent, _proxyMotionRequest);
+		motionAvailability = guidance.motionAvailability;
 		if (guidance.produced.IsValidFor(_capturedFrameId, extent) &&
 			!guidance.produced.motion.metadata.isZero) {
 			xessMotion = guidance.produced.motion.texture;
 			xessMotionReset = guidance.produced.requiresHistoryReset;
 			const FrameGuidanceSyncPoint sync = guidance.produced.motion.metadata.sync;
 			if (sync.fence && sync.value && FAILED(d3dDC->Wait(sync.fence, sync.value))) {
-				Logger::Get().Warn("Proxy FG motion synchronization failed; using Zero Motion");
+				Logger::Get().Warn("Proxy FG motion synchronization failed");
+				motionAvailability = FrameGuidanceAvailability::SynchronizationFailed;
 				xessMotion = nullptr;
 				xessMotionReset = true;
 			}
@@ -4475,6 +4495,7 @@ bool Renderer::_PublishBackendTexture(
 			if (mutexes[2] && xessMotionValid) {
 				d3dDC->CopyResource(_backendSharedMotionTextures[sharedTextureSlot].get(), xessMotion);
 			}
+			_sharedMotionAvailability[sharedTextureSlot] = motionAvailability;
 			_sharedMotionFrameIds[sharedTextureSlot].store(xessMotionFrameId, std::memory_order_release);
 			_sharedMotionValid[sharedTextureSlot].store(xessMotionValid, std::memory_order_release);
 			_sharedMotionReset[sharedTextureSlot].store(xessMotionReset || !xessMotionValid,

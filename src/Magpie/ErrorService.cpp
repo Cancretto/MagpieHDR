@@ -53,6 +53,8 @@ static const wchar_t* MessageKey(ScalingError error) noexcept {
 	case ScalingError::ScalingModeUnknownEffect: return L"Message_ScalingModeUnknownEffect";
 	case ScalingError::GraphicsDeviceInitFailed: return L"Message_GraphicsDeviceInitFailed";
 	case ScalingError::PresentationInitFailed: return L"Message_PresentationInitFailed";
+	case ScalingError::FSR3FGEffectChainUnsupported: return L"Message_FSR3FGEffectChainUnsupported";
+	case ScalingError::FSR3FGHdrUnsupported: return L"Message_FSR3FGHdrUnsupported";
 	case ScalingError::EffectCompileFailed: return L"Message_EffectCompileFailed";
 	case ScalingError::EffectResourceFailed: return L"Message_EffectResourceFailed";
 	case ScalingError::NativeEffectInitFailed: return L"Message_NativeEffectInitFailed";
@@ -228,6 +230,8 @@ void ErrorService::Report(ScalingError error, std::string context, HWND target,
 					!CanSuggestAnotherAdapter(AdaptersService::Get().AdapterInfos().size()))
 					key = L"Message_CreateFenceFailed_SingleAdapter";
 				_summary = loader.GetString(key);
+				if (error == ScalingError::FSR3FGEffectChainUnsupported)
+					_summary = winrt::hstring(fmt::format(fmt::runtime(std::wstring(_summary)), StrHelper::UTF8ToUTF16(context)));
 				// Keep one complete, problem-specific sentence in the transient toast.
 				std::wstring toastSummary(_summary);
 				const auto chineseEnd = toastSummary.find(L'。');

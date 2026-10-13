@@ -358,6 +358,7 @@ private:
 	winrt::com_ptr<ID3D11Texture2D> _frontendMotionTexture;
 	FrameGuidanceFrameId _frontendMotionFrameId = 0;
 	bool _frontendMotionValid = false;
+	FrameGuidanceAvailability _frontendMotionAvailability = FrameGuidanceAvailability::Unavailable;
 	bool _frontendMotionReset = true;
 	bool _frontendBaseValid = false;
 	bool _frontendPresentedBaseValid = false;
@@ -479,7 +480,10 @@ private:
 		_sharedTextureResourceGenerations{};
 	std::array<std::atomic<int64_t>, MAX_SHARED_TEXTURE_SLOTS>
 		_sharedTextureTimestamps{};
+	std::array<FrameGuidanceAvailability, MAX_SHARED_TEXTURE_SLOTS> _sharedMotionAvailability{};
 	std::array<HdrFrameMetadata, MAX_SHARED_TEXTURE_SLOTS> _sharedFrameMetadata{};
+	uint64_t _backendOutputHistoryRevision = 0, _lastPublishedOutputHistoryRevision = 0;
+	bool _backendOutputRedraw = false;
 	HdrFrameMetadata _frontendFrameMetadata{};
 	// Protected by the slot's existing publication/consumption mutex. These
 	// IDs survive retries and stay paired with exactly the copied colour image.

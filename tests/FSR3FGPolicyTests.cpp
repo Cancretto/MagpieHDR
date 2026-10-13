@@ -80,5 +80,29 @@ int main() {
 	Check(SupportsFSR3FGExternalMotion("Bicubic"), "non-FSR scaling supported");
 	Check(!SupportsFSR3FGExternalMotion("CRT\\CRT_Geom"), "distortion cannot consume untransformed guidance");
 	Check(!SupportsFSR3FGExternalMotion("Custom\\Unknown"), "unverified external-motion mapping rejected");
+	Check(SupportsFSR3FGExternalMotion("NIS\\NIS"), "NIS rectangular scaling admitted");
+	Check(SupportsFSR3FGExternalMotion("NIS\\NVSharpen"), "NIS sharpening admitted");
+	Check(!SupportsFSR3FGExternalMotion("NIS\\Unknown"), "NIS namespace is not a blanket allowlist");
+	FSR3FGHistory revisions;
+	FSR3FGSourceSample before{10, 1, 1, 10000000, 0, 7};
+	revisions.Submitted(before);
+	auto changed = before; changed.frameId++; changed.timestamp100ns += 166667; changed.outputHistoryRevision++;
+	Check(revisions.Next(changed, false, false).reset == uint32_t(FSR3FGReset::OutputHistory), "parameter edit resets continuous input once");
+	revisions.Submitted(changed); changed.frameId++; changed.timestamp100ns += 166667;
+	Check(revisions.Next(changed, false, false).reset == 0, "ordinary frames preserve effect history epoch");
+	changed.frameId--; changed.outputHistoryRevision++;
+	Check(!revisions.Next(changed, false, false).submit, "same-capture parameter edit must use non-FG redraw");
+	FSR3FGMotionAdmission motion;
+	Check(motion.Accept(FrameGuidanceAvailability::ResetOnly, {1,1,1}), "provider bootstrap accepted");
+	Check(motion.Accept(FrameGuidanceAvailability::ResetOnly, {1,1,1}), "capacity retry is not another missing sample");
+	Check(!motion.Accept(FrameGuidanceAvailability::ResetOnly, {2,1,1}), "consecutive reset-only samples fail closed");
+	Check(motion.Accept(FrameGuidanceAvailability::ResetOnly, {1,2,1}), "new capture session bootstraps");
+	Check(motion.Accept(FrameGuidanceAvailability::Valid, {2,2,1}), "valid stationary vectors accepted regardless of values");
+	Check(motion.Accept(FrameGuidanceAvailability::ResetOnly, {3,2,1}), "legitimate reset after valid input accepted");
+	Check(motion.Accept(FrameGuidanceAvailability::ResetOnly, {4,2,2}), "resource recreation permits bootstrap");
+	for (auto state : {FrameGuidanceAvailability::Unavailable, FrameGuidanceAvailability::ProviderFailed,
+		FrameGuidanceAvailability::ProviderStopped, FrameGuidanceAvailability::SynchronizationFailed})
+		Check(!motion.Accept(state, {1,3,1}), "failure is fatal even on a first/reset input");
+	Check(FSR3FGSyncInterval(false) == 1 && FSR3FGSyncInterval(true) == 0, "SDK sync interval enforces tearing eligibility");
 	std::printf("FSR3FG policy: %u checks passed (no GPU/runtime acceptance).\n", checks);
 }

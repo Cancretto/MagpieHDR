@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string_view>
+#include "FrameGuidanceAvailability.h"
 
 namespace Magpie {
 
@@ -10,11 +11,12 @@ struct FSR3FGSourceSample {
 	uint64_t frameId = 0, sequence = 0, generation = 0;
 	int64_t timestamp100ns = 0;
 	int64_t captureAdmissionTime100ns = 0;
+	uint64_t outputHistoryRevision = 0;
 };
 
 enum class FSR3FGReset : uint32_t {
 	None = 0, FirstFrame = 1, CaptureSession = 2, ResourceGeneration = 4,
-	FrameGap = 8, Timestamp = 16, Guidance = 32, Geometry = 64, TimingSource = 128
+	FrameGap = 8, Timestamp = 16, Guidance = 32, Geometry = 64, TimingSource = 128, OutputHistory = 256
 };
 
 enum class FSR3FGTimingSource { Bootstrap, CaptureTimestamp, CaptureAdmissionEstimate };
@@ -43,6 +45,7 @@ public:
 		else {
 			if (sample.sequence != _previous.sequence) add(FSR3FGReset::CaptureSession);
 			if (sample.generation != _previous.generation) add(FSR3FGReset::ResourceGeneration);
+			if (sample.outputHistoryRevision != _previous.outputHistoryRevision) add(FSR3FGReset::OutputHistory);
 			if (sample.frameId != _previous.frameId + 1) add(FSR3FGReset::FrameGap);
 		}
 		const bool nativeNow = sample.timestamp100ns > 0, nativePrevious = _previous.timestamp100ns > 0;
@@ -73,6 +76,26 @@ private:
 	uint64_t _sdkFrameId = 1;
 };
 
+// Capacity retries of the same reset sample are harmless. A second missing
+// sample is not a bootstrap; a mandatory provider must not silently disappear.
+class FSR3FGMotionAdmission {
+public:
+	bool Accept(FrameGuidanceAvailability availability, FSR3FGSourceSample sample) noexcept {
+		if (availability == FrameGuidanceAvailability::Valid) { _missing = {}; return true; }
+		if (availability != FrameGuidanceAvailability::ResetOnly || !sample.frameId) return false;
+		if (_missing.frameId && _missing.sequence == sample.sequence &&
+			_missing.generation == sample.generation && _missing.frameId != sample.frameId) return false;
+		_missing = sample;
+		return true;
+	}
+private:
+	FSR3FGSourceSample _missing{};
+};
+
+// The pinned SDK ignores Present flags while interpolating, but honors vsync.
+// Use sync=1 when tearing is disallowed, including idle and environment changes.
+constexpr uint32_t FSR3FGSyncInterval(bool allowTearing) noexcept { return allowTearing ? 0u : 1u; }
+
 // Provider names are SDK version strings. Reject substring matches (3.1.60,
 // ML names, etc.); IDs themselves must come from ffxQuery, never from constants.
 constexpr bool IsFSR3FGProvider(std::string_view name, bool swapchain) noexcept {
@@ -87,6 +110,7 @@ constexpr bool SupportsFSR3FGExternalMotion(std::string_view name) noexcept {
 		name == "FSR2\\FSR2_SR" || name == "FSR3\\FSR3_SR" || name == "FSR4\\FSR4_SR" ||
 		name == "XeSS\\XeSS_SR" || name == "DLSSNR\\DLSSNR_AI_Filter" ||
 		name == "RTXVideo\\RTXVideo_VSR" || name == "NvidiaVFX\\Upscale" ||
+		name == "NIS\\NIS" || name == "NIS\\NVSharpen" ||
 		name == "Bilinear" || name == "Bicubic" || name == "Lanczos" ||
 		name == "Nearest" || name == "FrameRate_Filter" || name == "Utility\\FrameRate_Filter" ||
 		name == "FSR\\FSR_EASU" || name == "FSR\\FSR_RCAS";

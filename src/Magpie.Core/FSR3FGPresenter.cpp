@@ -73,6 +73,9 @@ struct FSR3FGPresenter::Impl {
 	uint32_t width = 0, height = 0;
 	RECT generationRect{};
 	FSR3FGHistory history;
+	FSR3FGMotionAdmission motionAdmission;
+	FrameGuidanceAvailability motionAvailability = FrameGuidanceAvailability::Unavailable;
+	std::optional<uint32_t> callbackGeneratedCount;
 	FSR3FGSourceSample sourceSample;
 	FSR3FGHistory::Decision decision{};
 	bool externalMotionEnabled = true, externalMotionValid = false, externalMotionReset = true;
@@ -99,14 +102,25 @@ struct FSR3FGPresenter::Impl {
 
 static bool WaitForFence(FSR3FGPresenter::Impl& impl, uint64_t value) noexcept {
 	if (!value) return true;
-	const uint64_t completed = impl.fence12->GetCompletedValue();
-	if (completed == UINT64_MAX) return impl.Fail("device removed during fence wait", impl.device12->GetDeviceRemovedReason());
-	if (completed >= value) return true;
-	const HRESULT hr = impl.fence12->SetEventOnCompletion(value, impl.fenceEvent.get());
-	if (FAILED(hr)) return impl.Fail("SetEventOnCompletion", hr);
-	if (WaitForSingleObject(impl.fenceEvent.get(), 3000) != WAIT_OBJECT_0)
-		return impl.Fail("GPU fence wait timed out");
-	return true;
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+	bool armed = false;
+	for (;;) {
+		const uint64_t completed = impl.fence12->GetCompletedValue();
+		if (completed == UINT64_MAX) return impl.Fail("device removed during fence wait", impl.device12->GetDeviceRemovedReason());
+		if (completed >= value) return true;
+		const auto now = std::chrono::steady_clock::now();
+		if (now >= deadline) return impl.Fail("GPU fence wait timed out");
+		if (!armed) {
+			const HRESULT hr = impl.fence12->SetEventOnCompletion(value, impl.fenceEvent.get());
+			if (FAILED(hr)) return impl.Fail("SetEventOnCompletion", hr);
+			armed = true;
+		}
+		// A prior timed-out registration can signal this same event. A wake is
+		// only a notification, never proof that our newer target has completed.
+		const DWORD timeout = DWORD(std::chrono::ceil<std::chrono::milliseconds>(deadline - now).count());
+		const DWORD result = WaitForSingleObject(impl.fenceEvent.get(), timeout);
+		if (result != WAIT_OBJECT_0 && result != WAIT_TIMEOUT) return impl.Fail("GPU fence wait failed");
+	}
 }
 static bool WaitForQueue(FSR3FGPresenter::Impl& impl) noexcept {
 	const uint64_t value = ++impl.fenceValue;
@@ -541,6 +555,7 @@ static ffxReturnCode_t GenerateFrame(ffxDispatchDescFrameGeneration* desc, void*
 	if (impl.callbackResult == FFX_API_RETURN_OK) {
 		// FSR primes history with a pass-through on reset. It is not a valid
 		// interpolated frame and must never inflate our interpolation count.
+		impl.callbackGeneratedCount = reset ? 0u : desc->numGeneratedFrames;
 		if (reset) ++impl.resetPassThroughs;
 		else ++impl.interpolations;
 	} else desc->numGeneratedFrames = 0;
@@ -660,6 +675,13 @@ void FSR3FGPresenter::SetCaptureAdmissionTime(int64_t timestamp100ns) noexcept {
 	if (_impl) _impl->sourceSample.captureAdmissionTime100ns = timestamp100ns;
 }
 
+void FSR3FGPresenter::SetOutputHistoryRevision(uint64_t revision) noexcept {
+	if (_impl) _impl->sourceSample.outputHistoryRevision = revision;
+}
+void FSR3FGPresenter::SetFrameGuidanceAvailability(FrameGuidanceAvailability availability) noexcept {
+	if (_impl) _impl->motionAvailability = availability;
+}
+
 void FSR3FGPresenter::SetFrameGuidance(ID3D11Texture2D* motion, FrameGuidanceFrameId frameId,
 	bool requiresHistoryReset, const RECT& rect) noexcept {
 	if (!_impl || _impl->fatal) return;
@@ -672,11 +694,18 @@ void FSR3FGPresenter::SetFrameGuidance(ID3D11Texture2D* motion, FrameGuidanceFra
 	impl.generationRect = rect;
 	impl.externalMotionValid = false;
 	impl.externalMotionReset = impl.externalMotionEnabled;
+	// Provider failure is not permission to reset indefinitely. This status
+	// travels in the same publication transaction as the color/motion pair.
+	if (!impl.motionAdmission.Accept(impl.motionAvailability, impl.sourceSample)) {
+		impl.Fail(fmt::format("required optical flow unavailable: status={} source={}",
+			FrameGuidanceAvailabilityName(impl.motionAvailability), impl.sourceSample.frameId)); return;
+	}
 	// The provider is mandatory; only bootstrap/reset may have no valid motion.
 	const HRESULT hr = impl.sourceMotion.Prepare(impl.device11, motion, frameId, impl.sourceSample.frameId);
 	if (hr == S_FALSE) {
 		++impl.invalidMotionSamples;
-		if (!requiresHistoryReset) impl.Fail("FSR3 FG requires valid AMDOF/NVOF motion for new interpolation input");
+		if (impl.motionAvailability != FrameGuidanceAvailability::ResetOnly)
+			impl.Fail("FSR3 FG requires valid AMDOF/NVOF motion for new interpolation input");
 		return;
 	}
 	if (FAILED(hr)) {
@@ -738,6 +767,7 @@ bool FSR3FGPresenter::HasFatalError() const noexcept { return _impl && _impl->fa
 const PresenterFailure* FSR3FGPresenter::GetFailure() const noexcept { return _impl ? &_impl->failure : nullptr; }
 
 bool FSR3FGPresenter::EndFrame(bool waitForGpu) noexcept {
+	_lastSubmittedFrameCount.reset();
 	if (!_impl || _impl->fatal || !_impl->decision.submit) return false;
 	auto& impl = *_impl;
 	std::scoped_lock lock(impl.apiMutex);
@@ -807,6 +837,7 @@ bool FSR3FGPresenter::EndFrame(bool waitForGpu) noexcept {
 	ID3D12CommandList* lists[]{ impl.commandList12.get() };
 	impl.queue12->ExecuteCommandLists(1, lists);
 	impl.callbackResult = FFX_API_RETURN_OK;
+	impl.callbackGeneratedCount.reset();
 	const auto start = std::chrono::steady_clock::now();
 	hr = _PresentWithVRR(impl.swapChain.get(), false);
 	const double presentMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
@@ -830,6 +861,11 @@ bool FSR3FGPresenter::EndFrame(bool waitForGpu) noexcept {
 		impl.decision.submit = false;
 		return true;
 	}
+	// Submission count, not scanout or proof of novel pixels: GPU scene-cut
+	// detection may still replace an accepted interpolation with a copy.
+	if (impl.callbackGeneratedCount) _lastSubmittedFrameCount = 1u + *impl.callbackGeneratedCount;
+	else if (impl.baseSubmissions % 120 == 0)
+		Logger::Get().Warn("FSR3FG Present accepted without a generation callback; content count unknown");
 	++impl.baseSubmissions;
 	if (impl.decision.reset || impl.baseSubmissions % 120 == 0) Logger::Get().Info(fmt::format(
 		"FSR3FG source={} session={} generation={} sdk={} resetMask={} inputMs={:.3f} timingSource={} content={}x{}+{},{} baseSubmits={} callbackDispatches={} interpolationDispatches={} resetPassThroughs={} invalidMotionSamples={} PresentMs={:.3f}; game render time and display events unmeasured",
@@ -863,6 +899,7 @@ bool FSR3FGPresenter::OnResize() noexcept {
 	impl.width = uint32_t(size.cx); impl.height = uint32_t(size.cy);
 	impl.generationRect = { 0, 0, size.cx, size.cy };
 	impl.history.Reset(); impl.geometryReset = true; impl.externalMotionValid = false;
+	impl.motionAdmission = {}; _lastSubmittedFrameCount.reset();
 	impl.allocatorFenceValues = {};
 	impl.frameLatencyWaitableObject.reset(impl.swapChain->GetFrameLatencyWaitableObject());
 	if (!impl.frameLatencyWaitableObject) return impl.Fail("resize capacity event");
@@ -941,6 +978,8 @@ bool FSR3FGPresenter::HasFatalError() const noexcept { return false; }
 const PresenterFailure* FSR3FGPresenter::GetFailure() const noexcept { return nullptr; }
 void FSR3FGPresenter::SetSourceTiming(uint64_t, uint64_t, uint64_t, int64_t) noexcept {}
 void FSR3FGPresenter::SetCaptureAdmissionTime(int64_t) noexcept {}
+void FSR3FGPresenter::SetOutputHistoryRevision(uint64_t) noexcept {}
+void FSR3FGPresenter::SetFrameGuidanceAvailability(FrameGuidanceAvailability) noexcept {}
 void FSR3FGPresenter::SetFrameGuidance(ID3D11Texture2D*, FrameGuidanceFrameId, bool, const RECT&) noexcept {}
 bool FSR3FGPresenter::HasIndependentOverlay() const noexcept { return false; }
 bool FSR3FGPresenter::BeginOverlayFrame(winrt::com_ptr<ID3D11Texture2D>&, winrt::com_ptr<ID3D11RenderTargetView>&, POINT&) noexcept { return false; }

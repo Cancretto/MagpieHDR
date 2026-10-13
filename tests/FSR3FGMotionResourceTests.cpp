@@ -137,7 +137,7 @@ int main() try {
 	Hr(device->CreateBuffer(&constantsDesc, nullptr, constants.put()));
 
 	// Identity, upscale, downscale and non-multiple-of-eight dispatch extents.
-	for (const auto& size : std::array<std::array<UINT, 4>, 4>{ {{17, 9, 17, 9}, {3, 2, 9, 6}, {9, 6, 3, 2}, {1, 1, 7, 5}} }) {
+	for (const auto& size : std::array<std::array<UINT, 4>, 5>{ {{17, 9, 17, 9}, {3, 2, 9, 6}, {9, 6, 3, 2}, {1, 1, 7, 5}, {7, 5, 11, 8}} }) {
 		const auto [sw, sh, cw, ch] = size;
 		std::vector<Pixel> input(size_t(sw) * sh);
 		for (UINT y = 0; y < sh; ++y) for (UINT x = 0; x < sw; ++x)

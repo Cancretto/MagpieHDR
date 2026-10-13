@@ -104,7 +104,9 @@ check("SetCaptureAdmissionTime(sourceMetadata.captureAdmissionTime100ns)" in ren
       "_lastCapturedFrameTime.time_since_epoch()" in renderer, "capture admission clock crosses the shared frame metadata")
 check("CaptureAdmissionEstimate" in policy and "TimingSource" in policy, "timestamp fallback has explicit provenance and transition reset")
 check("FFX_FRAMEGENERATION_ENABLE_ASYNC_WORKLOAD_SUPPORT" not in cpp, "async compute not enabled before acceptance")
-check("_lastPresentedFrameCount = std::nullopt" in cpp, "dispatches not mislabeled as displayed frames")
+check("_lastPresentedFrameCount = std::nullopt" in cpp and "_lastSubmittedFrameCount = 1u + *impl.callbackGeneratedCount" in cpp,
+      "submission counter is distinct from unknown presented count")
+check("LastContentFrameCount()" in renderer and "sample.source" in renderer, "content provenance reaches statistics")
 check("xell" not in cpp.lower() and "XeSSFGCompatibility" not in cpp, "AMD runtime independent of Intel patches and XeLL")
 
 if args.sdk_directory:

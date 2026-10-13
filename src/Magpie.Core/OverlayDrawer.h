@@ -112,6 +112,7 @@ private:
 	void _BuildFontIcons(const char* fontPath) noexcept;
 
 	struct _EffectDrawInfo {
+		std::string label;
 		const EffectDesc* desc = nullptr;
 		std::span<const float> passTimings;
 		float totalTime = 0.0f;
