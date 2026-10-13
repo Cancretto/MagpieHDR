@@ -67,6 +67,16 @@ int main() {
 	}
 	std::vector<StoredEffect> unsafe{{std::string(NVIDIA_VFX_VFG_ID)},{std::string(NVIDIA_VFX_TRUE_HDR_ID)},{"DLSSNR\\DLSSNR_AI_Filter"}};
 	assert(PlanNvidiaVfxExecution(unsafe,BuildHdrComponentPlan(unsafe)).error==NvidiaVfxPlanError::UnsupportedPostEffect);
+	// RCAS uses the installed FSR ID. Exercise the TrueHDR boundary so this
+	// verifies post-processing admission, not the unrestricted SDR pre-chain.
+	for (const auto id : {"FSR\\FSR_RCAS", "CAS\\CAS", "Bicubic", "Bilinear"}) {
+		unsafe.back().name = id;
+		assert(PlanNvidiaVfxExecution(unsafe,BuildHdrComponentPlan(unsafe)).error==NvidiaVfxPlanError::None);
+	}
+	for (const auto id : {"RCAS\\RCAS", "CAS\\CAS_Scaling", "FSR\\FSR_EASU", "CRT\\CRT_Geom", "custom\\FSR_RCAS"}) {
+		unsafe.back().name = id;
+		assert(PlanNvidiaVfxExecution(unsafe,BuildHdrComponentPlan(unsafe)).error==NvidiaVfxPlanError::UnsupportedPostEffect);
+	}
 	std::vector<StoredEffect> hdr{{"Color\\HDR_to_SDR"},{std::string(NVIDIA_VFX_VFG_ID)}};
 	assert(PlanNvidiaVfxExecution(hdr,BuildHdrComponentPlan(hdr)).error==NvidiaVfxPlanError::None);
 	hdr={{"Color\\SDR_to_HDR"},{std::string(NVIDIA_VFX_VFG_ID)}};
