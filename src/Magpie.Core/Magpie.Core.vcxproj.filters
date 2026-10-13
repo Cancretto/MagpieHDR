@@ -22,6 +22,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="OverlayColor.h"><Filter>Render</Filter></ClInclude>
     <ClInclude Include="SceneScreenshot.h"><Filter>Render</Filter></ClInclude>
     <ClInclude Include="ScreenshotNaming.h"><Filter>Helpers</Filter></ClInclude>
     <ClInclude Include="include\ScreenshotContent.h"><Filter>Include</Filter></ClInclude>
