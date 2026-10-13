@@ -157,7 +157,7 @@ void RootPage::NavigationView_SelectionChanged(
 			if (tagStr == L"Home") {
 				typeName = xaml_typename<HomePage>();
 			} else if (tagStr == L"ScalingModes") {
-				typeName = xaml_typename<ScalingModesPage>();
+				typeName = xaml_typename<winrt::Magpie::ScalingModesPage>();
 			} else if (tagStr == L"About") {
 				typeName = xaml_typename<AboutPage>();
 			} else {

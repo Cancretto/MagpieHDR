@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ScalingModesPage.h"
+#include "ScalingMode.h"
 #if __has_include("ScalingModesPage.g.cpp")
 #include "ScalingModesPage.g.cpp"
 #endif
