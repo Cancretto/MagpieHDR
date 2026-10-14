@@ -17,7 +17,7 @@ DLSSNR 状态与分类引导帮助判断实际运行状态；165 个效果的双
 
 完整更新、安装与限制见 RELEASE-NOTES.md，帧率说明见 FRAME_SYNC_GUIDE.md。
 保留 LICENSE-Magpie.txt、THIRD-PARTY-NOTICES.md、组件许可证及 build-manifest.json。
-可选附件：DLSSNR-DLL-Options-310.8.0.0.zip、NGX_OTA_Switch.bat。普通安装无需运行 OTA 工具。
+可选附件：DLSSNR-DLL-Options.zip、NGX_OTA_Switch.bat。普通安装无需运行 OTA 工具。
 
 English
 
@@ -38,4 +38,4 @@ DLSSNR state and cause-specific guidance help identify actual operation; bilingu
 
 See RELEASE-NOTES.md for updates, installation and limitations, and FRAME_SYNC_GUIDE.md for refresh settings.
 Retain LICENSE-Magpie.txt, THIRD-PARTY-NOTICES.md, component licenses and build-manifest.json.
-Optional assets: DLSSNR-DLL-Options-310.8.0.0.zip and NGX_OTA_Switch.bat. Normal installation does not require the OTA tool.
+Optional assets: DLSSNR-DLL-Options.zip and NGX_OTA_Switch.bat. Normal installation does not require the OTA tool.
