@@ -1,5 +1,11 @@
 # Magpie 实验分支文档索引
 
+## 0.6.10 待审核分发 / Distribution under review
+
+[完整中英更新说明](../RELEASE_NOTES_v0.6.10-experimental.md)汇总 0.6.9 之后的已整合功能。分发候选以 Beta8 为基线，更新 GitHub 源码并创建 Draft + Pre-release 供维护者 review；公开入口保持 0.6.9。真实 GPU／游戏／HDR／VRR 与完整 DPI 验收另行记录。
+
+The 0.6.10 candidate builds on Beta8. Source is synchronized to GitHub and assets are staged as Draft + Pre-release for review. Public downloads remain at 0.6.9; hardware and full UI acceptance remain separate.
+
 - [错误状态与操作引导规范](../ERROR-REPORTING-GUIDELINES.md)：修改错误状态、提示或恢复入口时按需使用。
 - [DLSSNR 状态与恢复](../DLSSNR-TROUBLESHOOTING.md)：检测结果、处理入口及恢复确认。
 - [报错引导与 DLSSNR 状态细分 TODO](todos/20261013-error-guidance-and-dlssnr-status-TODO.md)：功能分支实现与独立编译验收交接。
