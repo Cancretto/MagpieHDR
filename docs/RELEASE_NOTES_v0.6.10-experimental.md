@@ -19,14 +19,11 @@
 - 支持同步 Magpie 的基础内容目标，或指定 **15–360 FPS、步进 1** 的上限；同步目标可在 1–1000 FPS 内解析。跟随源时不使用同步限帧，保存的偏好保留。补帧输出帧率与源应用限帧分别处理。
 - 提供工具状态、只读重新检测、初始化和当前会话重试。RTSS 异常显示具体原因，正常缩放可继续。默认正常结束时尝试恢复原限帧，也可选择保留修改；外部配置冲突时停止覆盖。
 - 崩溃或强制结束可能保留最后写入值。“已写入”表示配置核对通过，游戏实际限帧仍取决于 RTSS 挂钩和运行状态。新配置与尚未迁移的设置默认请求管理员启动，之后保留用户关闭该选项的选择。
-- 修复配置页资源读取、状态集合和工具操作布局问题。
 
-#### VRR、窗口、截图与引导
+#### VRR、截图与引导
 
-- 增加默认关闭的 **可变刷新率（实验）**。开启后重新开始缩放，按呈现路径、显卡和显示器能力请求 VRR，并改进 NVIDIA 前台兼容处理。
-- 改进 UWP 全屏窗口、参数窗口焦点、最小化／隐藏／停止及再次启动的处理；正常进程查询失败时，通过窗口线程恢复并复核身份，覆盖部分受影响游戏的启动路径。渲染显卡选择保持在“性能”分组。
+- 增加默认关闭的 **可变刷新率（实验）**。开启后重新开始缩放，按呈现路径、显卡和显示器能力请求 VRR。
 - 截图可选择 **原始输入＋最终输出、仅输出（默认）、仅输入**，成对截图使用同一真实内容帧。保留效果／通道 PNG 与 DDS 导出，HDR PNG 转为 SDR sRGB，DDS 保留实际格式。
-- HDR 工具栏及浮窗随画面的参考白调整亮度，并提高底板不透明度。
 - 重写 **165 个内置效果器**的中英文说明与参数提示，优先说明用途、适合素材和起步方法，完整组合限制集中到使用指南。
 - DLSSNR 增加持续状态和分类恢复引导，区分启动中、运行中、单层跳过和多层停止。
 
@@ -37,7 +34,7 @@
 - 新增 **FSR3 FrameGeneration**，固定 **2×**、仅支持 **SDR**，可与超分配合或单独使用。一条链使用一个补帧效果。
 - 必须使用外部光流，默认 **AMDOF／质量**，也可选择 NVOF。旧缺省或“无”选择迁移为 AMDOF 质量，已有合法选择保留。
 - 支持 NIS／NVSharpen 等已列明的矩形组合及输出内部黑边。不支持 HDR、CRT、几何变形、超出输出的裁剪和清单外效果，详见 `FSR3FG-README.md`。
-- 修复运动纹理绑定、同步等待与错误处理，支持静止画面的实时参数更新。**Submitted** 计数表示成功提交，不能直接作为屏幕实际 FPS 或有效新插值画面数。
+- 支持静止画面的实时参数更新，修改生效后刷新当前画面。
 
 #### NVIDIA VFX 与 HDR
 
@@ -45,25 +42,54 @@
 - Upscale 支持原生放大与最终尺寸适配，锐度 **0–1，默认 0.4，步进 0.01**。VSR 提供 Standard／High bitrate／Streaming／Denoise／Deblur 分类，默认 Standard、Medium，兼容已有降噪配置。
 - VFG 支持 SDR **2–8×，默认 2×，步进 1**；模型为 Performance／Balanced，默认 Balanced，旧 High 迁移为 Balanced。自动场景切换检测默认开启，关闭后不使用该自动检测。
 - TrueHDR 默认开启去色带，关闭时不使用去色带处理；保留精确输入与实时更新。对比度／饱和度 **0–200、默认 100**，中间灰 **10–100、默认 50**，峰值亮度 **400–2000 nits、默认 1000**，均步进 1。
-- 修复 VSR 色彩通道、尺寸和参数回退，改进 TrueHDR 实时参数更新与停止后的资源释放。较高质量、放大或补帧倍率可能增加显存与处理成本，实际收益取决于 GPU 和素材。
-- HDR 使用 **手动效果链**：自行添加、排列和调整 HDR→SDR、SDR→HDR 或 RTX HDR。有效 Beta 试用组迁移时保留节点、顺序、参数并保存原始数据；无法确认的组保留原文并提示处理。
+- 较高质量、放大或补帧倍率可能增加显存与处理成本，实际收益取决于 GPU 和素材。
+- HDR 使用 **手动效果链**：自行添加、排列和调整 HDR→SDR、SDR→HDR 或 RTX HDR。
 - 原生 SDR 白色的新编辑范围为 **80–4000 nits、默认 203**，基础步进 1，保留分段／Shift 粗调；旧低亮度值在主动编辑前保持兼容。HDR 节点参数独立，配对来源可查看。
 
 #### DLSS 补帧与通用静态画面处理
 
-- DLSS FG 使用固定版本的社区兼容运行库并验证文件身份，保留 **2–4×，默认 2×，步进 1** 与旧配置，改进运行库发现及失败更新回滚。显卡兼容性以实际初始化和运行结果为准。
+- DLSS FG 使用固定版本的社区兼容运行库并验证文件身份，保留 **2–4×，默认 2×，步进 1** 与旧配置。显卡兼容性以实际初始化和运行结果为准。
 - DLSS／XeSS／FSR3／VFG 统一使用通用重复帧检测，移除效果内部独立开关。新配置的通用检测默认关闭，已有显式通用设置保留。
 - 开启空闲重绘后，约 **0.5 秒**没有新内容时按有效空闲率刷新缓存；关闭时保持最后画面等待。缓存重绘不重复运行效果或光流，新内容恢复时重置补帧历史。工具栏 **R/s** 单独记录缓存重绘提交，不计入生成帧率。
 
+## 兼容性更新和错误修复
+
+### 窗口启动、捕获与参数操作
+
+- **UWP 窗口启动：** 修正系统拒绝建立原生窗口关联时的启动处理，并为通过身份和权限检查的 UWP 全屏窗口补充兼容路径。
+- **受保护游戏的窗口识别：** 常规进程查询失败时，通过窗口线程恢复并复核进程身份，减少因身份读取失败而拒绝启动的情况；启动、NVIDIA 前台兼容与 RTSS 共用该识别结果。
+- **参数窗口焦点与输入：** 统一源窗口、根窗口与参数宿主的身份判断，修复焦点返回失败被误认为成功、旧窗口消息影响新会话，以及输入宿主销毁后仍等待输入的问题。
+- **最小化、切屏与停止：** 源窗口隐藏、最小化或关闭时及时隐藏或退出输出；停止和初始化失败时先解除窗口协作，再等待后端清理，避免旧会话继续干扰窗口层级和新会话。
+
+### RTSS 与配置页面
+
+- **打开配置页报错：** 修复资源表选错导致的“未找到 ResourceMap”，以及 RTSS 动态状态集合引发的配置页异常。
+- **限帧保存与恢复：** 跳过未变化的 RTSS 属性，修复普通 FPS 配置因重复写入零帧时间而保存失败；实际修改在写入后读回核对，再请求重载。
+- **状态与工具操作：** 区分读取失败、未初始化、部分保存与恢复失败，清除停止后的旧错误；只读重新检测不再执行会话重试，未安装或未启动的可选 Afterburner 不再混为 RTSS 失败。
+- **设置显示与保留：** 渲染显卡选择保留在“性能”分组，临时缺失的设备选择不会丢失；修正 RTSS 初始化按钮、文字换行、控件间距和简单模式恢复默认的行为。
+
+### 图像、HDR 与旧配置
+
+- **VSR／Upscale 色彩：** 修正 BGRA 与 RGBA 边界的颜色通道处理及 HDR 输入／输出转换，避免通道颠倒；HDR10／scRGB 转换保留合法的负通道值。
+- **实时参数与尺寸回退：** VSR 参数和尺寸一起保存与恢复；TrueHDR 在原模型上更新参数，跳过重复值，更新失败时恢复完整旧参数。停止后拒绝旧会话的参数请求。
+- **HDR 与旧效果迁移：** 保留有效 Beta HDR 试用组的节点、顺序和参数并保存原始数据；修正旧 Denoise 的语义识别与 RTX HDR 恢复链迁移，无法确认的数据保留原文并提示处理。
+- **截图与界面显示：** 按实际纹理格式导出 PNG／DDS；修正长中文参数分组标题重复和布局抖动，补齐箭头字形，并改善 HDR 工具栏与浮窗的亮度和背景可读性。
+
+### 补帧、VRR 与运行库
+
+- **DLSS FG 启动与升级：** 在 NGX 初始化前加载并校验配套运行库、登记实际搜索目录，修复仅加载代理时无法发现 FG 组件的启动路径；升级失败时恢复原文件。
+- **FSR3 运动与同步：** 修复运动纹理缺少采样绑定、旧同步事件提前唤醒的问题；光流或同步持续失败时明确停止，避免一直显示启用却只输出原始画面。
+- **FSR3 画面更新与统计：** 修复静止画面修改实时参数后未刷新、上游参数变化后插帧历史未正确重置的问题；提交计数标为 Submitted，FSR3／XeSS 的输入复制耗时与尚未测量的 SDK 补帧耗时分别显示。
+- **呈现与会话清理：** FSR3 不允许画面撕裂时使用 SDK 支持的垂直同步；VFG 关闭帧同步时仍能正确等待消费，并修复等待统计异常。原生效果在原后端完成排空和释放，减少停止／重启时的资源状态混用。
+- **效果组合兼容：** 补充 FSR3 的 NIS／NVSharpen 矩形组合支持，修正 VFG 对已安装 FSR RCAS 效果 ID 的识别，并将 HDR 配置错误与不支持的效果链分别提示。
+
 ## 应该下载哪个文件？
 
-### 从 0.6.9 或本地 Beta 升级
+### 从 0.6.9、更早版本或本地 Beta 升级，以及首次使用
 
-下载完整主包 **`Magpie-Experimental-x64.zip`**。先备份设置并从托盘完全退出 Magpie，将 ZIP 完整解压到新目录，再运行其中的 `Magpie.exe`。保留旧目录及配置备份供回退。
+统一下载完整主包 **`Magpie-Experimental-x64.zip`**。升级前备份设置并从托盘完全退出 Magpie，将 ZIP 完整解压到新目录，再运行其中的 `Magpie.exe`。保留旧目录及配置备份供回退；首次使用直接完整解压后运行即可。
 
-### 首次使用或从更早版本升级
-
-同样下载完整主包并完整解压。普通配置位于 `%LOCALAPPDATA%\Magpie\config\v4e\config.json`；没有 v4e 时导入旧 v4 设置。便携用户可将原配置复制到新程序目录的 `config\v4e\config.json`。源码 ZIP 面向开发者，运行程序请选择完整主包。
+普通配置位于 `%LOCALAPPDATA%\Magpie\config\v4e\config.json`；没有 v4e 时导入旧 v4 设置。便携用户可将原配置复制到新程序目录的 `config\v4e\config.json`。源码 ZIP 面向开发者，运行程序请选择完整主包。
 
 ### 可选附件
 
@@ -72,20 +98,13 @@
 | `DLSSNR-DLL-Options-310.8.0.0.zip` | 按包内中英说明选择 NVIDIA 原版、RTX 40/50 社区兼容版或 SF-v2。完全退出 Magpie、备份现有文件后，将所选 DLL 放到 `Magpie.exe` 旁。 |
 | `NGX_OTA_Switch.bat` | 查看或切换系统级 NGX OTA 设置，需要管理员权限；使用 Restore default 恢复。正常安装无需运行。 |
 
-## 使用提示与已知限制
-
-- 一条链使用一个补帧效果。补帧估算捕获画面的运动，快速运动、遮挡、文字和 HUD 可能出现拖影或不稳定；提高倍率不会提高游戏逻辑帧率，也不保证降低输入延迟。
-- 先用简单效果链确认捕获，再逐项添加超分、HDR 或补帧。FSR3 使用 SDR 和受支持矩形组合；VFG 在 SDR 阶段工作，使用 TrueHDR 时按指南在输出阶段转换。
-- RTSS 实际限帧、物理 VRR、游戏／UWP 兼容性、HDR 观感与 GPU 性能需按设备和场景确认。遇到问题可关闭相关新选项，或恢复旧完整包及其配置备份。
-- 反馈时请附日志、捕获方式、效果链、显卡／驱动版本及复现步骤。保留包内许可证、第三方声明和 `build-manifest.json`。
-
 ---
 
 # Magpie Experimental v0.6.10 User Guide
 
 This release brings together the changes since 0.6.9: reorganized refresh settings, RTSS integration, experimental VRR and FSR 3 frame generation, updated NVIDIA VFX, manual HDR chains and window compatibility improvements.
 
-## Updates
+## Feature updates
 
 ### Magpie usability updates
 
@@ -102,14 +121,11 @@ This release brings together the changes since 0.6.9: reorganized refresh settin
 - Synchronize with Magpie's base content target or specify **15–360 FPS in 1-FPS steps**; resolved synchronized targets can span 1–1000 FPS. Follow source does not use synchronized limiting and retains saved preferences. Generated output FPS and source-application limiting are handled separately.
 - Provide tool status, read-only recheck, initialization and current-session retry. RTSS failures show specific causes while normal scaling can continue. Normal shutdown attempts to restore the original limit by default; keeping changes is optional. Stop overwriting on external configuration conflicts.
 - Crashes or forced exits may leave the last written value. A verified write confirms configuration; actual in-game limiting depends on RTSS hooking and runtime state. New and unmigrated settings request administrator startup by default, while later choices to disable it are retained.
-- Fix profile-page resource lookup, status collection and tool-action layout issues.
 
-#### VRR, windows, screenshots and guidance
+#### VRR, screenshots and guidance
 
-- Add default-off **Variable refresh rate (experimental)**. Restart scaling after enabling it. Request VRR according to the presentation path, GPU and display capabilities, with improved NVIDIA foreground compatibility.
-- Improve fullscreen UWP handling, parameter-window focus, minimization, hiding, stopping and restarting. Recover and revalidate identity through the window thread when the normal process query fails, covering affected game startup paths. Keep rendering-GPU selection in Performance.
+- Add default-off **Variable refresh rate (experimental)**. Restart scaling after enabling it. Request VRR according to the presentation path, GPU and display capabilities.
 - Choose **original input + final output, output only (default), or input only** for screenshots. Pairs use the same real content frame. Retain effect/channel PNG and DDS export; HDR PNG converts to SDR sRGB, while DDS retains the actual format.
-- Adapt HDR toolbar and panel brightness to the picture's reference white and increase background opacity.
 - Rewrite Chinese and English descriptions and parameter help for **165 built-in effects**, emphasizing purpose, suitable content and initial setup; collect full combination rules in usage guides.
 - Add persistent DLSSNR state and cause-specific recovery guidance for startup, running, single-pass skipping and multi-pass stopping.
 
@@ -120,7 +136,7 @@ This release brings together the changes since 0.6.9: reorganized refresh settin
 - Add **FSR3 FrameGeneration**, fixed **2× SDR**, with or without super resolution. Use one frame-generation effect per chain.
 - External optical flow is required, defaulting to **AMDOF / Quality**, with NVOF also available. Legacy missing or None selections migrate to AMDOF Quality; valid existing choices remain.
 - Support listed rectangular combinations including NIS / NVSharpen and letterboxing inside the output. HDR, CRT, geometric distortion, cropping beyond the output and unlisted effects are unsupported; see `FSR3FG-README.md`.
-- Fix motion-texture binding, synchronization waits and error handling, and support live edits on static pictures. **Submitted** counts successful submissions, not directly measured display FPS or unique interpolated pictures.
+- Support live parameter edits on static pictures and refresh the current picture after changes take effect.
 
 #### NVIDIA VFX and HDR
 
@@ -128,25 +144,54 @@ This release brings together the changes since 0.6.9: reorganized refresh settin
 - Upscale supports native scaling and final size adaptation; sharpness uses **0–1, default 0.4, step 0.01**. VSR offers Standard / High bitrate / Streaming / Denoise / Deblur, defaults to Standard and Medium, and retains existing denoise compatibility.
 - VFG supports SDR **2–8×, default 2×, step 1**. Models are Performance / Balanced, defaulting to Balanced; retired High migrates to Balanced. Automatic shot detection defaults to On; disabling it turns off that detection.
 - TrueHDR enables debanding by default; disabling it turns off debanding. Retain precise entry and live updates. Contrast / saturation use **0–200, default 100**; middle gray **10–100, default 50**; peak brightness **400–2000 nits, default 1000**, all in steps of 1.
-- Fix VSR color channels, size and parameter rollback, and improve live TrueHDR updates and resource release. Higher quality, scale or frame multipliers can increase memory use and processing cost; results depend on GPU and content.
-- Use **manual HDR chains**: add, order and adjust HDR-to-SDR, SDR-to-HDR or RTX HDR. Valid Beta trial groups retain nodes, order and parameters with original data saved; unverified groups retain their original data and require attention.
+- Higher quality, scale or frame multipliers can increase memory use and processing cost; results depend on GPU and content.
+- Use **manual HDR chains**: add, order and adjust HDR-to-SDR, SDR-to-HDR or RTX HDR.
 - New native SDR-white edits use **80–4000 nits, default 203**, a base step of 1 and segmented / Shift coarse adjustments. Legacy dim values remain compatible until edited. HDR nodes retain independent parameters and show pair-source information.
 
 #### DLSS frame generation and shared static-picture handling
 
-- DLSS FG uses a pinned community compatibility runtime with file-identity verification. Retain **2–4×, default 2×, step 1** and existing configurations, with improved runtime discovery and failed-update rollback. GPU compatibility depends on actual initialization and operation.
+- DLSS FG uses a pinned community compatibility runtime with file-identity verification. Retain **2–4×, default 2×, step 1** and existing configurations. GPU compatibility depends on actual initialization and operation.
 - DLSS / XeSS / FSR3 / VFG share general duplicate-frame detection and remove separate effect switches. General detection defaults to Off for new settings; existing explicit general settings remain.
 - With idle redraw enabled, about **0.5 seconds** without new content starts cached refresh at the effective idle rate. Disabling it holds the last picture. Cached redraw does not rerun effects or optical flow; resumed content resets FG history. Toolbar **R/s** counts cached redraw submissions separately from generated-frame rate.
 
+## Compatibility updates and bug fixes
+
+### Window startup, capture and parameter controls
+
+- **UWP startup:** Correct startup handling when Windows refuses the native owner relationship, and add a compatibility path for fullscreen UWP windows that pass identity and privilege checks.
+- **Protected-game window identification:** Recover and revalidate process identity through the window thread when the normal query fails, reducing startup rejections caused by identity-query failures. Startup, NVIDIA foreground compatibility and RTSS use the same result.
+- **Parameter focus and input:** Unify source, root-window and parameter-host identification. Fix failed focus returns being treated as success, stale window messages affecting a new session, and input waits surviving destruction of their host.
+- **Minimization, switching and stopping:** Hide or retire output when the source is hidden, minimized or closed. Detach window coordination before backend cleanup on stop or initialization failure, preventing old sessions from interfering with window order or new sessions.
+
+### RTSS and profile pages
+
+- **Profile-page errors:** Fix incorrect resource-map selection causing “ResourceMap not found” and exceptions caused by RTSS dynamic status collections.
+- **Limit saving and restoration:** Skip unchanged RTSS properties, fixing normal FPS profiles failing to save when a zero frametime is written again. Read back actual changes before requesting a reload.
+- **Status and tool actions:** Distinguish read failures, missing initialization, partial saves and restoration failures, and clear stale errors after stopping. Read-only recheck no longer retries the session; an absent or unstarted optional Afterburner is not treated as an RTSS failure.
+- **Settings display and retention:** Keep rendering-GPU selection in Performance and retain temporarily unavailable devices. Correct RTSS initialization-button visibility, text wrapping, spacing and Simple-mode reset behavior.
+
+### Image processing, HDR and existing settings
+
+- **VSR / Upscale colors:** Correct BGRA/RGBA boundary handling and HDR input/output conversion to prevent swapped channels. Preserve valid negative channel values in HDR10/scRGB conversion.
+- **Live parameters and size rollback:** Save and restore VSR parameters together with size. Update TrueHDR on the existing model, skip unchanged values and restore the complete old parameter set on failure. Reject requests from stopped sessions.
+- **HDR and legacy effect migration:** Retain valid Beta HDR trial-group nodes, order and parameters with original data saved. Correct legacy Denoise identification and RTX HDR restore-chain migration; retain unverified data and request attention.
+- **Screenshots and interface:** Export PNG/DDS according to the actual texture format. Fix repeated long Chinese parameter-group titles and layout jitter, restore arrow glyphs, and improve HDR toolbar/panel brightness and background readability.
+
+### Frame generation, VRR and runtimes
+
+- **DLSS FG startup and upgrades:** Load and verify the matched runtime and register its actual search directory before NGX initialization, fixing discovery failures when only the proxy was loaded. Restore original files after a failed upgrade.
+- **FSR3 motion and synchronization:** Fix missing sampling bindings on motion textures and premature wakeups from stale synchronization events. Stop on persistent optical-flow or synchronization failure instead of remaining apparently enabled while passing through original frames.
+- **FSR3 picture updates and statistics:** Fix live edits not refreshing static pictures and upstream parameter changes not resetting interpolation history correctly. Label submission counts as Submitted, and separate FSR3/XeSS input-copy time from unmeasured SDK frame-generation time.
+- **Presentation and session cleanup:** Use SDK-supported vsync when FSR3 tearing is disallowed. Keep VFG consumption waits working when frame sync is off and fix invalid wait statistics. Drain and release native effects on their original backend to reduce resource-state mix-ups during stop/restart.
+- **Effect-chain compatibility:** Add FSR3 rectangular NIS/NVSharpen combinations, correct recognition of the installed FSR RCAS effect ID for VFG, and distinguish HDR-configuration errors from unsupported effect chains.
+
 ## Which file should I download?
 
-### Upgrading from 0.6.9 or a local Beta
+### Upgrading from 0.6.9, an older version or a local Beta, or installing for the first time
 
-Download the complete **`Magpie-Experimental-x64.zip`**. Back up settings, fully exit Magpie from the tray, extract the entire ZIP into a new folder and run its `Magpie.exe`. Retain the previous folder and configuration backup for rollback.
+Everyone should download the complete **`Magpie-Experimental-x64.zip`**. Before upgrading, back up settings and fully exit Magpie from the tray. Extract the entire ZIP into a new folder and run its `Magpie.exe`. Retain the previous folder and configuration backup for rollback. For a first installation, simply extract the complete package and run it.
 
-### First installation or upgrading from an older version
-
-Use the same complete package. Normal settings are stored in `%LOCALAPPDATA%\Magpie\config\v4e\config.json`; absent v4e settings import from v4. Portable users can copy settings to `config\v4e\config.json` in the new folder. Source ZIPs are for developers; use the complete binary package to run Magpie.
+Normal settings are stored in `%LOCALAPPDATA%\Magpie\config\v4e\config.json`; absent v4e settings import from v4. Portable users can copy settings to `config\v4e\config.json` in the new folder. Source ZIPs are for developers; use the complete binary package to run Magpie.
 
 ### Optional assets
 
@@ -154,10 +199,3 @@ Use the same complete package. Normal settings are stored in `%LOCALAPPDATA%\Mag
 | --- | --- |
 | `DLSSNR-DLL-Options-310.8.0.0.zip` | Follow its bilingual instructions to choose an NVIDIA original, RTX 40/50 community-compatible or SF-v2 DLL. Fully exit Magpie, back up the existing file and place the selected DLL beside `Magpie.exe`. |
 | `NGX_OTA_Switch.bat` | View or change system-wide NGX OTA settings with administrator privileges; use Restore default to restore them. Normal installation does not require it. |
-
-## Usage notes and known limitations
-
-- Use one frame-generation effect per chain. Motion is estimated from captured pictures; fast movement, occlusion, text and HUD can produce artifacts or instability. Higher multipliers do not increase game logic FPS or guarantee lower latency.
-- Confirm capture with a simple chain before adding super resolution, HDR or FG individually. FSR3 requires SDR and supported rectangular combinations. VFG runs in SDR; apply TrueHDR at the output stage as described in the guides.
-- Actual RTSS limiting, physical VRR, game / UWP compatibility, HDR appearance and GPU performance require device- and scene-specific checks. Disable the related new option or restore the previous complete package and configuration if problems occur.
-- Include logs, capture method, effect chain, GPU / driver versions and reproducible steps in reports. Retain packaged licenses, third-party notices and `build-manifest.json`.
